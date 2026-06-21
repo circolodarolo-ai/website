@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">import { PrismaClient } from '@prisma/client'\n\nconst prisma = new PrismaClient()\n\nasync function checkData() {\n  console.log('📊 Verifica dati nel database...\\n')\n\n  // Check articoli\n  const articoli = await prisma.articolo.findMany({\n    where: { attivo: true },\n    include: { categoria: true }\n  })\n\n  console.log(`🍝 Articoli attivi: ${articoli.length}`)\n  articoli.forEach(art => {\n    console.log(`  - ${art.nome} (€${art.prezzo.toFixed(2)})`)\n    console.log(`    Categoria: ${art.categoria.nome}`)\n    console.log(`    Best Choice: ${art.eBestChoice ? '✓' : '✗'}`)\n    console.log(`    Promo: ${art.prezzoPromozionale ? `€${art.prezzoPromozionale.toFixed(2)}` : 'No'}`)\n    console.log(`    Immagine: ${art.immagineUrl || 'Nessuna'}`)\n    console.log('')\n  })\n\n  // Check site info\n  const siteInfo = await prisma.siteInfo.findFirst()\n  console.log(`🏠 Nome Locale: ${siteInfo?.nomeLocale}`)\n  console.log(`📝 Slogan: ${siteInfo?.slogan}`)\n  console.log('')\n\n  // Check footer info\n  const footerInfo = await prisma.footerInfo.findFirst()\n  console.log(`📍 Indirizzo: ${footerInfo?.indirizzo}, ${footerInfo?.citta}`)\n  console.log(`🌐 Facebook: ${footerInfo?.facebookUrl ? '✓' : '✗'}`)\n  console.log(`📷 Instagram: ${footerInfo?.instagramUrl ? '✓' : '✗'}`)\n  console.log(`📱 WhatsApp: ${footerInfo?.whatsappUrl ? '✓' : '✗'}`)\n  console.log('')\n\n  // Check images\n  const images = await prisma.siteImage.findMany()\n  console.log(`🖼️ Immagini salvate: ${images.length}`)\n\n  await prisma.$disconnect()\n}\n\ncheckData()\n</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/on1page/my-project/master/check-data.ts",
+    "usage": {
+      "tokens": 500
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 500
+    }
+  },
+  "status": 20000
+}

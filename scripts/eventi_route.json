@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">import { NextRequest, NextResponse } from 'next/server'\nimport { db } from '@/lib/db'\n\nfunction parseJsonField(field: unknown): string[] | null {\n  if (field === null || field === undefined) return null\n  if (Array.isArray(field)) return field\n  if (typeof field === 'string') {\n    try {\n      const parsed = JSON.parse(field)\n      if (Array.isArray(parsed)) return parsed\n      // Se è una stringa con newlines, splitta\n      return field.split('\\n').map(s => s.trim()).filter(Boolean)\n    } catch {\n      // Non è JSON valido, prova a splittare per newlines\n      return field.split('\\n').map(s => s.trim()).filter(Boolean)\n    }\n  }\n  return null\n}\n\nexport async function GET(request: NextRequest) {\n  try {\n    const eventi = await db.evento.findMany({\n      orderBy: [\n        { inEvidenza: 'desc' },\n        { data: 'asc' }\n      ]\n    })\n\n    // Filtra eventi passati\n    const oggi = new Date()\n    oggi.setHours(0, 0, 0, 0)\n\n    // Calcola posti rimanenti per ogni evento con capacità limitata\n    const eventiConPosti = await Promise.all(\n      eventi.map(async (evento) => {\n        let postiRimanenti: number | null = null\n\n        if (evento.capacita > 0) {\n          // Somma il numero di persone delle prenotazioni confermate per questo evento\n          const prenotazioniConfermate = await db.reservation.findMany({\n            where: {\n              eventoId: evento.id,\n              stato: 'confirmed'\n            },\n            select: {\n              persone: true\n            }\n          })\n\n          const totalePrenotati = prenotazioniConfermate.reduce((sum, p) => sum + (p.persone || 0), 0)\n          postiRimanenti = Math.max(0, evento.capacita - totalePrenotati)\n        }\n\n        return {\n          ...evento,\n          postiRimanenti,\n          incluso: parseJsonField(evento.incluso),\n          infoAggiuntive: parseJsonField(evento.infoAggiuntive),\n        }\n      })\n    )\n\n    const eventiFuturi = eventiConPosti.filter(e => {\n      const dataEvento = new Date(e.data)\n      return dataEvento >= oggi\n    })\n\n    return NextResponse.json({ data: eventiFuturi })\n  } catch (error) {\n    console.error('Errore nel recupero eventi pubblici:', error)\n    return NextResponse.json(\n      { error: 'Errore nel recupero degli eventi' },\n      { status: 500 }\n    )\n  }\n}\n</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/on1page/my-project/master/src/app/api/eventi/route.ts",
+    "usage": {
+      "tokens": 644
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 644
+    }
+  },
+  "status": 20000
+}

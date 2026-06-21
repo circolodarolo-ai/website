@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">import { NextResponse } from 'next/server';\nimport { db } from '@/lib/db';\n\nexport async function GET() {\n  try {\n    const oggi = new Date();\n\n    // Recupera gli articoli attivi con eBestChoice true OR prezzoPromozionale non null e scadenzaPromo valida\n    const result = await db.$queryRaw`\n      SELECT * FROM \"Articolo\"\n      WHERE attivo = true\n        AND (\"eBestChoice\" = true\n             OR (\"prezzoPromozionale\" IS NOT NULL AND \"scadenzaPromo\" > ${oggi}))\n      ORDER BY \"createdAt\" ASC\n    `;\n\n    // Converti le date da stringa a oggetto Date per compatibilità\n    const articoli = (result as any[]).map(item => ({\n      ...item,\n      prezzoPromozionale: item.prezzoPromozionale ? parseFloat(item.prezzoPromozionale) : null,\n      prezzo: parseFloat(item.prezzo),\n      scadenzaPromo: item.scadenzaPromo ? new Date(item.scadenzaPromo) : null,\n      createdAt: new Date(item.createdAt),\n      updatedAt: new Date(item.updatedAt),\n    }));\n\n    return NextResponse.json(articoli);\n  } catch (error) {\n    console.error('Errore nel recupero degli articoli:', error);\n    return NextResponse.json(\n      { error: 'Errore nel recupero degli articoli', details: String(error) },\n      { status: 500 }\n    );\n  }\n}\n\nexport async function POST(request: Request) {\n  try {\n    const body = await request.json();\n\n    const articolo = await db.articolo.create({\n      data: {\n        nome: body.nome,\n        descrizione: body.descrizione,\n        categoriaId: body.categoriaId,\n        prezzo: parseFloat(body.prezzo),\n        prezzoPromozionale: body.prezzoPromozionale ? parseFloat(body.prezzoPromozionale) : null,\n        scadenzaPromo: body.scadenzaPromo ? new Date(body.scadenzaPromo) : null,\n        eSurgelato: body.eSurgelato || false,\n        eBestChoice: body.eBestChoice || false,\n        attivo: body.attivo !== undefined ? body.attivo : true,\n        immagineUrl: body.immagineUrl,\n        immagineAiGenerata: body.immagineAiGenerata || false,\n      },\n    });\n\n    return NextResponse.json(articolo, { status: 201 });\n  } catch (error) {\n    console.error('Errore nella creazione dell\\'articolo:', error);\n    return NextResponse.json(\n      { error: 'Errore nella creazione dell\\'articolo' },\n      { status: 500 }\n    );\n  }\n}</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/on1page/my-project/master/src/app/api/articoli/route.ts",
+    "usage": {
+      "tokens": 634
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 634
+    }
+  },
+  "status": 20000
+}
