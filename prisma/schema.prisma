@@ -91,22 +91,39 @@ model Prenotazione {
 }
 
 model SiteInfo {
-  id               String   @id @default(cuid())
-  nomeLocale       String   @default("La Bella Italia")
-  slogan           String   @default("Autentica Cucina Italiana dal 1985")
-  chiSiamoTitolo   String   @default("Chi Siamo")
-  chiSiamoTesto    String   @default("Da tre generazioni portiamo in tavola i sapori autentici della tradizione italiana...")
-  telefono         String   @default("+39 06 1234567")
-  email            String   @default("info@labellaitalia.it")
-  indirizzo        String   @default("Via Roma 42, 00100 Roma (RM)")
-  orariApertura    String   @default("Mar-Dom: 12:00-14:30, 19:00-23:00")
-  prenotazioniAttive Boolean @default(true)
-  heroTitle        String   @default("Autentica Cucina Italiana")
-  heroSubtitle     String   @default("Tradizione, passione e sapori genuini nel cuore di Roma")
-  heroCTAText      String   @default("Prenota un Tavolo")
-  primaryColor     String   @default("#b91c1c")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  nomeLocale         String   @default("La Bella Italia")
+  slogan             String   @default("Autentica Cucina Italiana dal 1985")
+  chiSiamoTitolo     String   @default("Chi Siamo")
+  chiSiamoTesto      String   @default("Da tre generazioni portiamo in tavola i sapori autentici della tradizione italiana...")
+  telefono           String   @default("+39 06 1234567")
+  email              String   @default("info@labellaitalia.it")
+  indirizzo          String   @default("Via Roma 42, 00100 Roma (RM)")
+  orariApertura      String   @default("Mar-Dom: 12:00-14:30, 19:00-23:00")
+  prenotazioniAttive Boolean  @default(true)
+  heroTitle          String   @default("Autentica Cucina Italiana")
+  heroSubtitle       String   @default("Tradizione, passione e sapori genuini nel cuore di Roma")
+  heroCTAText        String   @default("Prenota un Tavolo")
+  primaryColor       String   @default("#b91c1c")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  chiSiamoImageUrl   String?
+  logoUrl            String?
+  faviconUrl         String?
+  heroImageUrl       String?
+  heroOverlayOpacity Float    @default(0.5)
+  specialitaTitle    String?  @default("Le Nostre Specialità")
+  specialitaSubtitle String?
+  primaryForeground  String?  @default("#ffffff")
+  seoTitle           String?
+  seoDescription     String?
+  seoKeywords        String?
+  seoOgTitle         String?
+  seoOgDescription   String?
+  seoOgImage         String?
+  seoTwitterCard     String?  @default("summary_large_image")
+  seoRobots          String?
+  seoCanonical       String?
 }
 
 model FooterInfo {
@@ -116,11 +133,98 @@ model FooterInfo {
   email        String   @default("info@labellaitalia.it")
   facebookUrl  String?
   instagramUrl String?
+  twitterUrl   String?
+  linkedinUrl  String?
+  whatsappUrl  String?
   tiktokUrl    String?
   justeatUrl   String?
   deliverooUrl String?
   glovoUrl     String?
   ubereatsUrl  String?
+  orariTesto   String?
+  giorniChiusura String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model SiteImage {
+  id          String   @id @default(cuid())
+  sezione     String
+  titolo      String?
+  descrizione String?
+  url         String
+  ordine      Int      @default(0)
+  attiva      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CompanyData {
+  id                       String    @id @default(cuid())
+  ragioneSociale           String?
+  partitaIva               String?
+  codiceFiscale            String?
+  indirizzo                String?
+  citta                    String?
+  cap                      String?
+  provincia                String?
+  paese                    String?
+  telefono                 String?
+  email                    String?
+  pec                      String?
+  dpoNome                  String?
+  dpoEmail                 String?
+  dpoIndirizzo             String?
+  privacyPolicy            String?
+  privacyEnabled           Boolean   @default(true)
+  cookiesPolicy            String?
+  cookiesEnabled           Boolean   @default(true)
+  cookieTecnici            Boolean   @default(true)
+  cookieAnalitici          Boolean   @default(true)
+  cookieMarketing          Boolean   @default(true)
+  showCookieBanner         Boolean   @default(true)
+  cookieBannerText         String?
+  cookieAcceptText         String?   @default("Autorizzo")
+  cookieDeclineText        String?   @default("Annulla")
+  terminiServizio          String?
+  thirdPartyScriptsEnabled Boolean   @default(true)
+  googleAnalyticsId        String?
+  facebookPixelId          String?
+  amazonTagId              String?
+  adSenseId                String?
+  adSenseSlotHorizontal    String?
+  adSenseSlotRectangle     String?
+  adSenseSlotTop           String?
+  adSenseSlotInline        String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+}
+
+model User {
+  id        String      @id @default(cuid())
+  email     String      @unique
+  nome      String
+  cognome   String?
+  password  String
+  ruolo     String      @default("admin")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  permessi  Permission?
+}
+
+model Permission {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  puoGestireMenu         Boolean  @default(true)
+  puoGestireFooter       Boolean  @default(true)
+  puoGestireTemi         Boolean  @default(true)
+  puoGestirePrenotazioni Boolean  @default(true)
+  puoGestireDatiAzienda  Boolean  @default(true)
+  puoGestireProfili      Boolean  @default(false)
+  puoGestireAnalytics    Boolean  @default(true)
+  puoGestireSito         Boolean  @default(true)
+  puoGestireEventi       Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

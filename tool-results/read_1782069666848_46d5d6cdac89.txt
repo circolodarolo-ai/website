@@ -1,0 +1,984 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useRef, useCallback } from 'react'
+     4→import {
+     5→  Calendar,
+     6→  Clock,
+     7→  Euro,
+     8→  Users,
+     9→  Plus,
+    10→  Pencil,
+    11→  Trash2,
+    12→  Save,
+    13→  X,
+    14→  Loader2,
+    15→  Sparkles,
+    16→  Upload,
+    17→  ZoomIn,
+    18→  ZoomOut,
+    19→  Move,
+    20→  Check,
+    21→  RotateCcw
+    22→} from 'lucide-react'
+    23→import { Card, CardContent } from '@/components/ui/card'
+    24→import { Button } from '@/components/ui/button'
+    25→import { Input } from '@/components/ui/input'
+    26→import { Textarea } from '@/components/ui/textarea'
+    27→import { Switch } from '@/components/ui/switch'
+    28→import { Checkbox } from '@/components/ui/checkbox'
+    29→import { Label } from '@/components/ui/label'
+    30→import { Slider } from '@/components/ui/slider'
+    31→import {
+    32→  Dialog,
+    33→  DialogContent,
+    34→  DialogHeader,
+    35→  DialogTitle,
+    36→  DialogFooter
+    37→} from '@/components/ui/dialog'
+    38→import {
+    39→  Table,
+    40→  TableBody,
+    41→  TableCell,
+    42→  TableHead,
+    43→  TableHeader,
+    44→  TableRow
+    45→} from '@/components/ui/table'
+    46→
+    47→interface Evento {
+    48→  id: string
+    49→  titolo: string
+    50→  slug: string
+    51→  descrizione: string
+    52→  descrizioneBreve: string
+    53→  immagineUrl: string | null
+    54→  data: string
+    55→  oraInizio: string
+    56→  oraFine: string
+    57→  prezzo: number
+    58→  etichettaPrezzo: string | null
+    59→  gratuito: boolean
+    60→  graditaPrenotazione: boolean
+    61→  capacita: number
+    62→  postiDisponibili: number
+    63→  location: string | null
+    64→  incluso: string | null
+    65→  infoAggiuntive: string | null
+    66→  inEvidenza: boolean
+    67→  nuovo: boolean
+    68→}
+    69→
+    70→export default function AdminEventi() {
+    71→  const [eventi, setEventi] = useState<Evento[]>([])
+    72→  const [loading, setLoading] = useState(true)
+    73→  const [saving, setSaving] = useState(false)
+    74→  const [uploading, setUploading] = useState(false)
+    75→  const [dialogOpen, setDialogOpen] = useState(false)
+    76→  const [editingEvento, setEditingEvento] = useState<Evento | null>(null)
+    77→  const fileInputRef = useRef<HTMLInputElement>(null)
+    78→
+    79→  // Image editor state
+    80→  const [imageEditorOpen, setImageEditorOpen] = useState(false)
+    81→  const [imageZoom, setImageZoom] = useState(1)
+    82→  const [imagePanX, setImagePanX] = useState(0)
+    83→  const [imagePanY, setImagePanY] = useState(0)
+    84→  const [isDragging, setIsDragging] = useState(false)
+    85→  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+    86→  const [imageNaturalSize, setImageNaturalSize] = useState({ w: 0, h: 0 })
+    87→  const editorContainerRef = useRef<HTMLDivElement>(null)
+    88→  const editorImageRef = useRef<HTMLImageElement>(null)
+    89→
+    90→  const [formData, setFormData] = useState({
+    91→    titolo: '',
+    92→    descrizione: '',
+    93→    descrizioneBreve: '',
+    94→    immagineUrl: '',
+    95→    data: '',
+    96→    oraInizio: '',
+    97→    oraFine: '',
+    98→    prezzo: '',
+    99→    etichettaPrezzo: '',
+   100→    gratuito: false,
+   101→    graditaPrenotazione: false,
+   102→    capacita: '',
+   103→    postiDisponibili: '',
+   104→    location: '',
+   105→    incluso: '',
+   106→    infoAggiuntive: '',
+   107→    inEvidenza: false,
+   108→    nuovo: false
+   109→  })
+   110→
+   111→  useEffect(() => {
+   112→    fetchEventi()
+   113→  }, [])
+   114→
+   115→  async function fetchEventi() {
+   116→    setLoading(true)
+   117→    try {
+   118→      const response = await fetch('/api/admin/eventi')
+   119→      const result = await response.json()
+   120→      setEventi(result.data || [])
+   121→    } catch (error) {
+   122→      console.error('Errore nel recupero eventi:', error)
+   123→    } finally {
+   124→      setLoading(false)
+   125→    }
+   126→  }
+   127→
+   128→  function openDialog(evento?: Evento) {
+   129→    if (evento) {
+   130→      setEditingEvento(evento)
+   131→      setFormData({
+   132→        titolo: evento.titolo,
+   133→        descrizione: evento.descrizione,
+   134→        descrizioneBreve: evento.descrizioneBreve,
+   135→        immagineUrl: evento.immagineUrl || '',
+   136→        data: new Date(evento.data).toISOString().split('T')[0],
+   137→        oraInizio: evento.oraInizio,
+   138→        oraFine: evento.oraFine,
+   139→        prezzo: evento.prezzo.toString(),
+   140→        etichettaPrezzo: evento.etichettaPrezzo || '',
+   141→        gratuito: evento.gratuito,
+   142→        graditaPrenotazione: evento.graditaPrenotazione,
+   143→        capacita: evento.capacita.toString(),
+   144→        postiDisponibili: evento.postiDisponibili.toString(),
+   145→        location: evento.location || '',
+   146→        incluso: evento.incluso || '',
+   147→        infoAggiuntive: evento.infoAggiuntive || '',
+   148→        inEvidenza: evento.inEvidenza,
+   149→        nuovo: evento.nuovo
+   150→      })
+   151→    } else {
+   152→      setEditingEvento(null)
+   153→      setFormData({
+   154→        titolo: '',
+   155→        descrizione: '',
+   156→        descrizioneBreve: '',
+   157→        immagineUrl: '',
+   158→        data: '',
+   159→        oraInizio: '',
+   160→        oraFine: '',
+   161→        prezzo: '',
+   162→        etichettaPrezzo: '',
+   163→        gratuito: false,
+   164→        graditaPrenotazione: false,
+   165→        capacita: '',
+   166→        postiDisponibili: '',
+   167→        location: '',
+   168→        incluso: '',
+   169→        infoAggiuntive: '',
+   170→        inEvidenza: false,
+   171→        nuovo: false
+   172→      })
+   173→    }
+   174→    resetImageEditor()
+   175→    setDialogOpen(true)
+   176→  }
+   177→
+   178→  function resetImageEditor() {
+   179→    setImageEditorOpen(false)
+   180→    setImageZoom(1)
+   181→    setImagePanX(0)
+   182→    setImagePanY(0)
+   183→    setIsDragging(false)
+   184→    setDragStart({ x: 0, y: 0 })
+   185→  }
+   186→
+   187→  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+   188→    const file = e.target.files?.[0]
+   189→    if (!file) return
+   190→
+   191→    setUploading(true)
+   192→    try {
+   193→      const formDataUpload = new FormData()
+   194→      formDataUpload.append('file', file)
+   195→
+   196→      const response = await fetch('/api/admin/upload-image', {
+   197→        method: 'POST',
+   198→        body: formDataUpload
+   199→      })
+   200→
+   201→      if (response.ok) {
+   202→        const result = await response.json()
+   203→        setFormData(prev => ({ ...prev, immagineUrl: result.url }))
+   204→        // Open image editor after upload
+   205→        resetImageEditor()
+   206→        setImageEditorOpen(true)
+   207→      } else {
+   208→        const error = await response.json()
+   209→        alert(error.error || 'Errore durante il caricamento')
+   210→      }
+   211→    } catch (error) {
+   212→      console.error('Errore upload:', error)
+   213→      alert('Errore durante il caricamento dell\'immagine')
+   214→    } finally {
+   215→      setUploading(false)
+   216→      if (fileInputRef.current) fileInputRef.current.value = ''
+   217→    }
+   218→  }
+   219→
+   220→  function removeImage() {
+   221→    setFormData(prev => ({ ...prev, immagineUrl: '' }))
+   222→    resetImageEditor()
+   223→  }
+   224→
+   225→  function openImageEditor() {
+   226→    if (!formData.immagineUrl) return
+   227→    resetImageEditor()
+   228→    setImageEditorOpen(true)
+   229→  }
+   230→
+   231→  // Image editor drag handlers
+   232→  const handleEditorMouseDown = useCallback((e: React.MouseEvent) => {
+   233→    e.preventDefault()
+   234→    setIsDragging(true)
+   235→    setDragStart({ x: e.clientX - imagePanX, y: e.clientY - imagePanY })
+   236→  }, [imagePanX, imagePanY])
+   237→
+   238→  const handleEditorMouseMove = useCallback((e: React.MouseEvent) => {
+   239→    if (!isDragging) return
+   240→    const newX = e.clientX - dragStart.x
+   241→    const newY = e.clientY - dragStart.y
+   242→
+   243→    // Clamp pan to prevent image from going too far
+   244→    const container = editorContainerRef.current
+   245→    if (container) {
+   246→      const rect = container.getBoundingClientRect()
+   247→      const scaledW = imageNaturalSize.w * (imageZoom / (rect.width / imageNaturalSize.w))
+   248→      const scaledH = imageNaturalSize.h * (imageZoom / (rect.height / imageNaturalSize.h))
+   249→      const maxPanX = Math.max(0, (scaledW - rect.width) / 2)
+   250→      const maxPanY = Math.max(0, (scaledH - rect.height) / 2)
+   251→
+   252→      setImagePanX(Math.max(-maxPanX, Math.min(maxPanX, newX)))
+   253→      setImagePanY(Math.max(-maxPanY, Math.min(maxPanY, newY)))
+   254→    } else {
+   255→      setImagePanX(newX)
+   256→      setImagePanY(newY)
+   257→    }
+   258→  }, [isDragging, dragStart, imageZoom, imageNaturalSize])
+   259→
+   260→  const handleEditorMouseUp = useCallback(() => {
+   261→    setIsDragging(false)
+   262→  }, [])
+   263→
+   264→  // Touch handlers for mobile
+   265→  const handleEditorTouchStart = useCallback((e: React.TouchEvent) => {
+   266→    const touch = e.touches[0]
+   267→    setIsDragging(true)
+   268→    setDragStart({ x: touch.clientX - imagePanX, y: touch.clientY - imagePanY })
+   269→  }, [imagePanX, imagePanY])
+   270→
+   271→  const handleEditorTouchMove = useCallback((e: React.TouchEvent) => {
+   272→    if (!isDragging) return
+   273→    e.preventDefault()
+   274→    const touch = e.touches[0]
+   275→    const newX = touch.clientX - dragStart.x
+   276→    const newY = touch.clientY - dragStart.y
+   277→
+   278→    const container = editorContainerRef.current
+   279→    if (container) {
+   280→      const rect = container.getBoundingClientRect()
+   281→      const maxPanX = Math.max(0, (imageNaturalSize.w * imageZoom - rect.width) / 2)
+   282→      const maxPanY = Math.max(0, (imageNaturalSize.h * imageZoom - rect.height) / 2)
+   283→      setImagePanX(Math.max(-maxPanX, Math.min(maxPanX, newX)))
+   284→      setImagePanY(Math.max(-maxPanY, Math.min(maxPanY, newY)))
+   285→    } else {
+   286→      setImagePanX(newX)
+   287→      setImagePanY(newY)
+   288→    }
+   289→  }, [isDragging, dragStart, imageZoom, imageNaturalSize])
+   290→
+   291→  const handleEditorTouchEnd = useCallback(() => {
+   292→    setIsDragging(false)
+   293→  }, [])
+   294→
+   295→  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+   296→    const img = e.currentTarget
+   297→    setImageNaturalSize({ w: img.naturalWidth, h: img.naturalHeight })
+   298→  }
+   299→
+   300→  function confirmImageEdit() {
+   301→    const img = editorImageRef.current
+   302→    const container = editorContainerRef.current
+   303→    if (!img || !container) return
+   304→
+   305→    const canvas = document.createElement('canvas')
+   306→    const ctx = canvas.getContext('2d')
+   307→    if (!ctx) return
+   308→
+   309→    // Canvas size = container display size
+   310→    const rect = container.getBoundingClientRect()
+   311→    canvas.width = rect.width * 2 // 2x for retina quality
+   312→    canvas.height = rect.height * 2
+   313→    ctx.scale(2, 2)
+   314→
+   315→    // Calculate how the image would be displayed at zoom=1 to fill the container
+   316→    const containerW = rect.width
+   317→    const containerH = rect.height
+   318→    const imgAspect = img.naturalWidth / img.naturalHeight
+   319→    const containerAspect = containerW / containerH
+   320→
+   321→    let baseW: number, baseH: number
+   322→    if (imgAspect > containerAspect) {
+   323→      baseW = containerW
+   324→      baseH = containerW / imgAspect
+   325→    } else {
+   326→      baseH = containerH
+   327→      baseW = containerH * imgAspect
+   328→    }
+   329→
+   330→    const scaledW = baseW * imageZoom
+   331→    const scaledH = baseH * imageZoom
+   332→    const drawX = (containerW - scaledW) / 2 + imagePanX
+   333→    const drawY = (containerH - scaledH) / 2 + imagePanY
+   334→
+   335→    ctx.drawImage(img, drawX, drawY, scaledW, scaledH)
+   336→    const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+   337→    setFormData(prev => ({ ...prev, immagineUrl: dataUrl }))
+   338→    resetImageEditor()
+   339→  }
+   340→
+   341→  function resetEditorPosition() {
+   342→    setImageZoom(1)
+   343→    setImagePanX(0)
+   344→    setImagePanY(0)
+   345→  }
+   346→
+   347→  async function handleSubmit(e: React.FormEvent) {
+   348→    e.preventDefault()
+   349→    setSaving(true)
+   350→
+   351→    try {
+   352→      const inclusoArray = formData.incluso
+   353→        .split('\n')
+   354→        .map(s => s.trim())
+   355→        .filter(s => s)
+   356→
+   357→      const infoArray = formData.infoAggiuntive
+   358→        .split('\n')
+   359→        .map(s => s.trim())
+   360→        .filter(s => s)
+   361→
+   362→      const payload = {
+   363→        ...formData,
+   364→        incluso: inclusoArray,
+   365→        infoAggiuntive: infoArray
+   366→      }
+   367→
+   368→      const url = editingEvento
+   369→        ? `/api/admin/eventi/${editingEvento.id}`
+   370→        : '/api/admin/eventi'
+   371→
+   372→      const method = editingEvento ? 'PUT' : 'POST'
+   373→
+   374→      const response = await fetch(url, {
+   375→        method,
+   376→        headers: { 'Content-Type': 'application/json' },
+   377→        body: JSON.stringify(payload)
+   378→      })
+   379→
+   380→      if (response.ok) {
+   381→        setDialogOpen(false)
+   382→        fetchEventi()
+   383→      } else {
+   384→        alert('Errore durante il salvataggio')
+   385→      }
+   386→    } catch (error) {
+   387→      console.error('Errore durante il salvataggio:', error)
+   388→      alert('Errore durante il salvataggio')
+   389→    } finally {
+   390→      setSaving(false)
+   391→    }
+   392→  }
+   393→
+   394→  async function handleDelete(id: string) {
+   395→    if (!confirm('Sei sicuro di voler eliminare questo evento?')) return
+   396→
+   397→    try {
+   398→      const response = await fetch(`/api/admin/eventi/${id}`, { method: 'DELETE' })
+   399→      if (response.ok) {
+   400→        fetchEventi()
+   401→      } else {
+   402→        alert('Errore durante l\'eliminazione')
+   403→      }
+   404→    } catch (error) {
+   405→      console.error('Errore durante l\'eliminazione:', error)
+   406→      alert('Errore durante l\'eliminazione')
+   407→    }
+   408→  }
+   409→
+   410→  function formatDate(dateStr: string) {
+   411→    return new Date(dateStr).toLocaleDateString('it-IT', {
+   412→      day: '2-digit',
+   413→      month: 'short',
+   414→      year: 'numeric'
+   415→    })
+   416→  }
+   417→
+   418→  if (loading) {
+   419→    return (
+   420→      <div className="flex items-center justify-center h-96">
+   421→        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+   422→      </div>
+   423→    )
+   424→  }
+   425→
+   426→  return (
+   427→    <div className="space-y-6">
+   428→      {/* Header */}
+   429→      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+   430→        <div>
+   431→          <h2 className="text-2xl font-bold">Gestione Eventi</h2>
+   432→          <p className="text-sm text-gray-500 mt-1">
+   433→            Crea e gestisci gli eventi del ristorante
+   434→          </p>
+   435→        </div>
+   436→        <Button onClick={() => openDialog()} className="gap-2">
+   437→          <Plus className="w-4 h-4" />
+   438→          Nuovo Evento
+   439→        </Button>
+   440→      </div>
+   441→
+   442→      {/* Tabella Eventi */}
+   443→      <Card>
+   444→        <CardContent className="p-0">
+   445→          <div className="overflow-x-auto max-h-[600px]">
+   446→            <Table>
+   447→              <TableHeader>
+   448→                <TableRow>
+   449→                  <TableHead>Evento</TableHead>
+   450→                  <TableHead>Data</TableHead>
+   451→                  <TableHead>Prezzo</TableHead>
+   452→                  <TableHead>Prenotazione</TableHead>
+   453→                  <TableHead>Evidenza</TableHead>
+   454→                  <TableHead className="text-right">Azioni</TableHead>
+   455→                </TableRow>
+   456→              </TableHeader>
+   457→              <TableBody>
+   458→                {eventi.length === 0 ? (
+   459→                  <TableRow>
+   460→                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+   461→                      Nessun evento presente. Clicca su &quot;Nuovo Evento&quot; per iniziare.
+   462→                    </TableCell>
+   463→                  </TableRow>
+   464→                ) : (
+   465→                  eventi.map((evento) => (
+   466→                    <TableRow key={evento.id}>
+   467→                      <TableCell className="font-medium">
+   468→                        <div className="flex items-start gap-3">
+   469→                          {evento.immagineUrl ? (
+   470→                            <img
+   471→                              src={evento.immagineUrl}
+   472→                              alt={evento.titolo}
+   473→                              className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+   474→                            />
+   475→                          ) : (
+   476→                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+   477→                              <Calendar className="w-5 h-5 text-gray-400" />
+   478→                            </div>
+   479→                          )}
+   480→                          <div className="min-w-0">
+   481→                            <div className="flex items-center gap-2 flex-wrap">
+   482→                              <span className="font-semibold">{evento.titolo}</span>
+   483→                              {evento.nuovo && (
+   484→                                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+   485→                                  Nuovo
+   486→                                </span>
+   487→                              )}
+   488→                              {evento.gratuito && (
+   489→                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+   490→                                  Gratuito
+   491→                                </span>
+   492→                              )}
+   493→                            </div>
+   494→                            <div className="text-sm text-gray-500 line-clamp-1">
+   495→                              {evento.descrizioneBreve}
+   496→                            </div>
+   497→                          </div>
+   498→                        </div>
+   499→                      </TableCell>
+   500→                      <TableCell>
+   501→                        <div className="flex items-center gap-1 text-sm">
+   502→                          <Calendar className="w-3 h-3" />
+   503→                          {formatDate(evento.data)}
+   504→                        </div>
+   505→                        <div className="flex items-center gap-1 text-xs text-gray-500">
+   506→                          <Clock className="w-3 h-3" />
+   507→                          {evento.oraInizio} - {evento.oraFine}
+   508→                        </div>
+   509→                      </TableCell>
+   510→                      <TableCell>
+   511→                        {evento.gratuito ? (
+   512→                          <span className="text-sm font-semibold text-green-600">Gratuito</span>
+   513→                        ) : (
+   514→                          <div className="flex items-center gap-1">
+   515→                            <Euro className="w-3 h-3" />
+   516→                            <span className="font-semibold">€{evento.prezzo}</span>
+   517→                          </div>
+   518→                        )}
+   519→                      </TableCell>
+   520→                      <TableCell>
+   521→                        {evento.graditaPrenotazione ? (
+   522→                          <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+   523→                            Si
+   524→                          </span>
+   525→                        ) : (
+   526→                          <span className="text-xs text-gray-400">—</span>
+   527→                        )}
+   528→                      </TableCell>
+   529→                      <TableCell>
+   530→                        {evento.inEvidenza && (
+   531→                          <Sparkles className="w-4 h-4 text-orange-500" />
+   532→                        )}
+   533→                      </TableCell>
+   534→                      <TableCell className="text-right">
+   535→                        <div className="flex justify-end gap-2">
+   536→                          <Button
+   537→                            variant="ghost"
+   538→                            size="sm"
+   539→                            onClick={() => openDialog(evento)}
+   540→                          >
+   541→                            <Pencil className="w-4 h-4" />
+   542→                          </Button>
+   543→                          <Button
+   544→                            variant="ghost"
+   545→                            size="sm"
+   546→                            onClick={() => handleDelete(evento.id)}
+   547→                          >
+   548→                            <Trash2 className="w-4 h-4 text-red-500" />
+   549→                          </Button>
+   550→                        </div>
+   551→                      </TableCell>
+   552→                    </TableRow>
+   553→                  ))
+   554→                )}
+   555→              </TableBody>
+   556→            </Table>
+   557→          </div>
+   558→        </CardContent>
+   559→      </Card>
+   560→
+   561→      {/* Dialog Crea/Modifica Evento */}
+   562→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   563→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+   564→          <DialogHeader>
+   565→            <DialogTitle>
+   566→              {editingEvento ? 'Modifica Evento' : 'Nuovo Evento'}
+   567→            </DialogTitle>
+   568→          </DialogHeader>
+   569→
+   570→          <form onSubmit={handleSubmit} className="space-y-4">
+   571→            {/* Titolo */}
+   572→            <div className="space-y-2">
+   573→              <Label htmlFor="titolo">Titolo *</Label>
+   574→              <Input
+   575→                id="titolo"
+   576→                value={formData.titolo}
+   577→                onChange={(e) => setFormData({ ...formData, titolo: e.target.value })}
+   578→                placeholder="Es: Serata Vini Toscani"
+   579→                required
+   580→              />
+   581→            </div>
+   582→
+   583→            {/* Upload Immagine */}
+   584→            <div className="space-y-2">
+   585→              <Label>Immagine</Label>
+   586→              {formData.immagineUrl ? (
+   587→                <div className="space-y-3">
+   588→                  <div className="relative rounded-xl overflow-hidden border border-gray-200">
+   589→                    <img
+   590→                      src={formData.immagineUrl}
+   591→                      alt="Immagine evento"
+   592→                      className="w-full h-48 object-cover"
+   593→                    />
+   594→                    <div className="absolute top-2 right-2 flex gap-1.5">
+   595→                      <button
+   596→                        type="button"
+   597→                        onClick={openImageEditor}
+   598→                        className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
+   599→                        title="Modifica immagine"
+   600→                      >
+   601→                        <Move className="w-4 h-4" />
+   602→                      </button>
+   603→                      <button
+   604→                        type="button"
+   605→                        onClick={removeImage}
+   606→                        className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
+   607→                        title="Rimuovi immagine"
+   608→                      >
+   609→                        <X className="w-4 h-4" />
+   610→                      </button>
+   611→                    </div>
+   612→                  </div>
+   613→                  <Button
+   614→                    type="button"
+   615→                    variant="outline"
+   616→                    size="sm"
+   617→                    onClick={openImageEditor}
+   618→                    className="gap-1.5 text-xs"
+   619→                  >
+   620→                    <Move className="w-3.5 h-3.5" />
+   621→                    Regola posizione e zoom
+   622→                  </Button>
+   623→                </div>
+   624→              ) : (
+   625→                <div className="space-y-3">
+   626→                  <button
+   627→                    type="button"
+   628→                    onClick={() => fileInputRef.current?.click()}
+   629→                    className="w-full h-28 border-2 border-dashed border-gray-300 hover:border-orange-400 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
+   630→                  >
+   631→                    {uploading ? (
+   632→                      <Loader2 className="w-6 h-6 animate-spin" />
+   633→                    ) : (
+   634→                      <>
+   635→                        <Upload className="w-6 h-6" />
+   636→                        <span className="text-sm font-medium">Carica da file</span>
+   637→                      </>
+   638→                    )}
+   639→                  </button>
+   640→                </div>
+   641→              )}
+   642→              <input
+   643→                ref={fileInputRef}
+   644→                type="file"
+   645→                accept="image/*"
+   646→                onChange={handleImageUpload}
+   647→                className="hidden"
+   648→              />
+   649→            </div>
+   650→
+   651→            {/* Image Editor Panel */}
+   652→            {imageEditorOpen && formData.immagineUrl && (
+   653→              <div className="rounded-xl border border-orange-200 bg-orange-50/50 overflow-hidden">
+   654→                <div className="flex items-center justify-between px-4 py-2.5 bg-orange-100/80 border-b border-orange-200">
+   655→                  <div className="flex items-center gap-2">
+   656→                    <Move className="w-4 h-4 text-orange-700" />
+   657→                    <span className="text-sm font-semibold text-orange-800">Regola immagine</span>
+   658→                  </div>
+   659→                  <button
+   660→                    type="button"
+   661→                    onClick={resetEditorPosition}
+   662→                    className="flex items-center gap-1 text-xs text-orange-700 hover:text-orange-900 transition-colors"
+   663→                  >
+   664→                    <RotateCcw className="w-3 h-3" />
+   665→                    Reset
+   666→                  </button>
+   667→                </div>
+   668→
+   669→                {/* Editor Canvas */}
+   670→                <div
+   671→                  ref={editorContainerRef}
+   672→                  className="relative w-full h-64 overflow-hidden bg-gray-900 cursor-grab active:cursor-grabbing select-none"
+   673→                  onMouseDown={handleEditorMouseDown}
+   674→                  onMouseMove={handleEditorMouseMove}
+   675→                  onMouseUp={handleEditorMouseUp}
+   676→                  onMouseLeave={handleEditorMouseUp}
+   677→                  onTouchStart={handleEditorTouchStart}
+   678→                  onTouchMove={handleEditorTouchMove}
+   679→                  onTouchEnd={handleEditorTouchEnd}
+   680→                >
+   681→                  <img
+   682→                    ref={editorImageRef}
+   683→                    src={formData.immagineUrl}
+   684→                    alt="Editor immagine"
+   685→                    onLoad={handleImageLoad}
+   686→                    className="absolute max-w-none pointer-events-none"
+   687→                    draggable={false}
+   688→                    style={{
+   689→                      width: `${imageNaturalSize.w ? (imageNaturalSize.w / imageNaturalSize.h) * 100 : 100}%`,
+   690→                      height: '100%',
+   691→                      objectFit: 'contain',
+   692→                      transform: `scale(${imageZoom}) translate(${imagePanX / imageZoom}px, ${imagePanY / imageZoom}px)`,
+   693→                      transformOrigin: 'center center',
+   694→                      left: '50%',
+   695→                      top: '50%',
+   696→                      marginLeft: `${imageNaturalSize.w ? -((imageNaturalSize.w / imageNaturalSize.h) * 50) : -50}%`,
+   697→                      marginTop: '-50%',
+   698→                    }}
+   699→                  />
+   700→                  {/* Grid overlay hint */}
+   701→                  {imageZoom === 1 && imagePanX === 0 && imagePanY === 0 && (
+   702→                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+   703→                      <div className="bg-black/50 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm flex items-center gap-1.5">
+   704→                        <Move className="w-3 h-3" />
+   705→                        Trascina per spostare, usa lo zoom sotto
+   706→                      </div>
+   707→                    </div>
+   708→                  )}
+   709→                </div>
+   710→
+   711→                {/* Zoom Controls */}
+   712→                <div className="px-4 py-3 space-y-3">
+   713→                  <div className="flex items-center gap-3">
+   714→                    <ZoomOut className="w-4 h-4 text-gray-500 flex-shrink-0" />
+   715→                    <Slider
+   716→                      value={[imageZoom]}
+   717→                      onValueChange={([val]) => setImageZoom(val)}
+   718→                      min={1}
+   719→                      max={3}
+   720→                      step={0.05}
+   721→                      className="flex-1"
+   722→                    />
+   723→                    <ZoomIn className="w-4 h-4 text-gray-500 flex-shrink-0" />
+   724→                    <span className="text-xs font-mono text-gray-500 w-10 text-right flex-shrink-0">
+   725→                      {imageZoom.toFixed(1)}x
+   726→                    </span>
+   727→                  </div>
+   728→                  <div className="flex gap-2">
+   729→                    <Button
+   730→                      type="button"
+   731→                      size="sm"
+   732→                      onClick={confirmImageEdit}
+   733→                      className="flex-1 gap-1.5"
+   734→                    >
+   735→                      <Check className="w-4 h-4" />
+   736→                      Conferma ritaglio
+   737→                    </Button>
+   738→                    <Button
+   739→                      type="button"
+   740→                      size="sm"
+   741→                      variant="outline"
+   742→                      onClick={resetImageEditor}
+   743→                    >
+   744→                      Annulla
+   745→                    </Button>
+   746→                  </div>
+   747→                </div>
+   748→              </div>
+   749→            )}
+   750→
+   751→            {/* Data e Orari */}
+   752→            <div className="grid grid-cols-3 gap-4">
+   753→              <div className="space-y-2">
+   754→                <Label htmlFor="data">Data *</Label>
+   755→                <Input
+   756→                  id="data"
+   757→                  type="date"
+   758→                  value={formData.data}
+   759→                  onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+   760→                  required
+   761→                />
+   762→              </div>
+   763→              <div className="space-y-2">
+   764→                <Label htmlFor="oraInizio">Ora Inizio *</Label>
+   765→                <Input
+   766→                  id="oraInizio"
+   767→                  type="time"
+   768→                  value={formData.oraInizio}
+   769→                  onChange={(e) => setFormData({ ...formData, oraInizio: e.target.value })}
+   770→                  required
+   771→                />
+   772→              </div>
+   773→              <div className="space-y-2">
+   774→                <Label htmlFor="oraFine">Ora Fine *</Label>
+   775→                <Input
+   776→                  id="oraFine"
+   777→                  type="time"
+   778→                  value={formData.oraFine}
+   779→                  onChange={(e) => setFormData({ ...formData, oraFine: e.target.value })}
+   780→                  required
+   781→                />
+   782→              </div>
+   783→            </div>
+   784→
+   785→            {/* Checkbox Gratuito + Gradita Prenotazione */}
+   786→            <div className="flex flex-wrap gap-6 p-4 bg-gray-50 rounded-xl">
+   787→              <div className="flex items-center gap-3">
+   788→                <Checkbox
+   789→                  id="gratuito"
+   790→                  checked={formData.gratuito}
+   791→                  onCheckedChange={(checked) =>
+   792→                    setFormData({ ...formData, gratuito: checked === true })
+   793→                  }
+   794→                />
+   795→                <div>
+   796→                  <Label htmlFor="gratuito" className="cursor-pointer font-medium">
+   797→                    Evento gratuito
+   798→                  </Label>
+   799→                  <p className="text-xs text-gray-500">Nasconde il prezzo</p>
+   800→                </div>
+   801→              </div>
+   802→
+   803→              <div className="flex items-center gap-3">
+   804→                <Checkbox
+   805→                  id="graditaPrenotazione"
+   806→                  checked={formData.graditaPrenotazione}
+   807→                  onCheckedChange={(checked) =>
+   808→                    setFormData({ ...formData, graditaPrenotazione: checked === true })
+   809→                  }
+   810→                />
+   811→                <div>
+   812→                  <Label htmlFor="graditaPrenotazione" className="cursor-pointer font-medium">
+   813→                    Gradita prenotazione
+   814→                  </Label>
+   815→                  <p className="text-xs text-gray-500">Consiglia di prenotare</p>
+   816→                </div>
+   817→              </div>
+   818→            </div>
+   819→
+   820→            {/* Prezzo - visivo solo se non gratuito */}
+   821→            {!formData.gratuito && (
+   822→              <div className="grid grid-cols-2 gap-4">
+   823→                <div className="space-y-2">
+   824→                  <Label htmlFor="prezzo">Prezzo *</Label>
+   825→                  <Input
+   826→                    id="prezzo"
+   827→                    type="number"
+   828→                    step="0.01"
+   829→                    value={formData.prezzo}
+   830→                    onChange={(e) => setFormData({ ...formData, prezzo: e.target.value })}
+   831→                    placeholder="85"
+   832→                    required
+   833→                  />
+   834→                </div>
+   835→                <div className="space-y-2">
+   836→                  <Label htmlFor="etichettaPrezzo">Etichetta prezzo</Label>
+   837→                  <Input
+   838→                    id="etichettaPrezzo"
+   839→                    value={formData.etichettaPrezzo}
+   840→                    onChange={(e) => setFormData({ ...formData, etichettaPrezzo: e.target.value })}
+   841→                    placeholder="Es: A partire da, Per persona..."
+   842→                  />
+   843→                </div>
+   844→              </div>
+   845→            )}
+   846→
+   847→            {/* Posti - visivo solo se gradita prenotazione */}
+   848→            {formData.graditaPrenotazione && (
+   849→              <div className="grid grid-cols-2 gap-4">
+   850→                <div className="space-y-2">
+   851→                  <Label htmlFor="capacita">Capacità Totale</Label>
+   852→                  <Input
+   853→                    id="capacita"
+   854→                    type="number"
+   855→                    value={formData.capacita}
+   856→                    onChange={(e) => setFormData({ ...formData, capacita: e.target.value })}
+   857→                    placeholder="20"
+   858→                  />
+   859→                </div>
+   860→                <div className="space-y-2">
+   861→                  <Label htmlFor="postiDisponibili">Posti Disponibili</Label>
+   862→                  <Input
+   863→                    id="postiDisponibili"
+   864→                    type="number"
+   865→                    value={formData.postiDisponibili}
+   866→                    onChange={(e) => setFormData({ ...formData, postiDisponibili: e.target.value })}
+   867→                    placeholder="20"
+   868→                  />
+   869→                </div>
+   870→              </div>
+   871→            )}
+   872→
+   873→            {/* Descrizione Breve */}
+   874→            <div className="space-y-2">
+   875→              <Label htmlFor="descrizioneBreve">Descrizione Breve *</Label>
+   876→              <Textarea
+   877→                id="descrizioneBreve"
+   878→                value={formData.descrizioneBreve}
+   879→                onChange={(e) => setFormData({ ...formData, descrizioneBreve: e.target.value })}
+   880→                placeholder="Breve descrizione per la card evento..."
+   881→                rows={2}
+   882→                required
+   883→              />
+   884→            </div>
+   885→
+   886→            {/* Descrizione Completa */}
+   887→            <div className="space-y-2">
+   888→              <Label htmlFor="descrizione">Descrizione Completa *</Label>
+   889→              <Textarea
+   890→                id="descrizione"
+   891→                value={formData.descrizione}
+   892→                onChange={(e) => setFormData({ ...formData, descrizione: e.target.value })}
+   893→                placeholder="Descrizione dettagliata dell'evento..."
+   894→                rows={5}
+   895→                required
+   896→              />
+   897→            </div>
+   898→
+   899→            {/* Location */}
+   900→            <div className="space-y-2">
+   901→              <Label htmlFor="location">Location</Label>
+   902→              <Input
+   903→                id="location"
+   904→                value={formData.location}
+   905→                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+   906→                placeholder="Es: Sala Privata, Terrazza..."
+   907→              />
+   908→            </div>
+   909→
+   910→            {/* Incluso */}
+   911→            <div className="space-y-2">
+   912→              <Label htmlFor="incluso">Cosa è incluso (una voce per riga)</Label>
+   913→              <Textarea
+   914→                id="incluso"
+   915→                value={formData.incluso}
+   916→                onChange={(e) => setFormData({ ...formData, incluso: e.target.value })}
+   917→                placeholder="Degustazione di 6 vini&#10;Selezione di formaggi&#10;Pane fatto in casa"
+   918→                rows={4}
+   919→              />
+   920→            </div>
+   921→
+   922→            {/* Info Aggiuntive */}
+   923→            <div className="space-y-2">
+   924→              <Label htmlFor="infoAggiuntive">Info Aggiuntive (una voce per riga)</Label>
+   925→              <Textarea
+   926→                id="infoAggiuntive"
+   927→                value={formData.infoAggiuntive}
+   928→                onChange={(e) => setFormData({ ...formData, infoAggiuntive: e.target.value })}
+   929→                placeholder="Abbigliamento smart casual&#10;Parcheggio disponibile&#10;Menu vegetariano su richiesta"
+   930→                rows={4}
+   931→              />
+   932→            </div>
+   933→
+   934→            {/* Toggle In Evidenza / Nuovo */}
+   935→            <div className="flex gap-6">
+   936→              <div className="flex items-center gap-2">
+   937→                <Switch
+   938→                  id="inEvidenza"
+   939→                  checked={formData.inEvidenza}
+   940→                  onCheckedChange={(checked) => setFormData({ ...formData, inEvidenza: checked })}
+   941→                />
+   942→                <Label htmlFor="inEvidenza" className="cursor-pointer">
+   943→                  In evidenza
+   944→                </Label>
+   945→              </div>
+   946→
+   947→              <div className="flex items-center gap-2">
+   948→                <Switch
+   949→                  id="nuovo"
+   950→                  checked={formData.nuovo}
+   951→                  onCheckedChange={(checked) => setFormData({ ...formData, nuovo: checked })}
+   952→                />
+   953→                <Label htmlFor="nuovo" className="cursor-pointer">
+   954→                  Contrassegna come nuovo
+   955→                </Label>
+   956→              </div>
+   957→            </div>
+   958→
+   959→            <DialogFooter className="gap-2">
+   960→              <Button
+   961→                type="button"
+   962→                variant="outline"
+   963→                onClick={() => setDialogOpen(false)}
+   964→                disabled={saving}
+   965→              >
+   966→                <X className="w-4 h-4 mr-2" />
+   967→                Annulla
+   968→              </Button>
+   969→              <Button type="submit" disabled={saving || uploading || imageEditorOpen}>
+   970→                {saving ? (
+   971→                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+   972→                ) : (
+   973→                  <Save className="w-4 h-4 mr-2" />
+   974→                )}
+   975→                {saving ? 'Salvataggio...' : 'Salva Evento'}
+   976→              </Button>
+   977→            </DialogFooter>
+   978→          </form>
+   979→        </DialogContent>
+   980→      </Dialog>
+   981→    </div>
+   982→  )
+   983→}
+   984→

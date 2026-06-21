@@ -1,0 +1,941 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useRef } from 'react'
+     4→import { Save, Plus, Trash2, Image as ImageIcon, FileText, Layout, Home, Info, Star, Upload, X, Loader2, Palette } from 'lucide-react'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Label } from '@/components/ui/label'
+     8→import { Textarea } from '@/components/ui/textarea'
+     9→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    10→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    11→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+    12→import { Slider } from '@/components/ui/slider'
+    13→import { Progress } from '@/components/ui/progress'
+    14→import {
+    15→  Table,
+    16→  TableBody,
+    17→  TableCell,
+    18→  TableHead,
+    19→  TableHeader,
+    20→  TableRow,
+    21→} from '@/components/ui/table'
+    22→
+    23→interface SiteInfo {
+    24→  id: string
+    25→  nomeLocale?: string | null
+    26→  slogan?: string | null
+    27→  chiSiamoTitolo?: string | null
+    28→  chiSiamoTesto?: string | null
+    29→  chiSiamoImageUrl?: string | null
+    30→  logoUrl?: string | null
+    31→  faviconUrl?: string | null
+    32→  telefono?: string | null
+    33→  email?: string | null
+    34→  prenotazioniAttive?: boolean
+    35→  heroTitle?: string | null
+    36→  heroSubtitle?: string | null
+    37→  heroCTAText?: string | null
+    38→  heroImageUrl?: string | null
+    39→  heroOverlayOpacity?: number
+    40→  specialitaTitle?: string | null
+    41→  specialitaSubtitle?: string | null
+    42→  primaryColor?: string | null
+    43→  primaryForeground?: string | null
+    44→}
+    45→
+    46→interface SiteImage {
+    47→  id: string
+    48→  sezione: string
+    49→  titolo?: string | null
+    50→  descrizione?: string | null
+    51→  url: string
+    52→  ordine: number
+    53→  attiva: boolean
+    54→}
+    55→
+    56→// Componente per l'upload delle immagini
+    57→interface ImageUploadProps {
+    58→  imageUrl?: string
+    59→  onImageUrlChange: (url: string) => void
+    60→  label: string
+    61→  accept?: string
+    62→  className?: string
+    63→}
+    64→
+    65→function ImageUpload({ imageUrl, onImageUrlChange, label, accept = "image/*", className = "" }: ImageUploadProps) {
+    66→  const [uploading, setUploading] = useState(false)
+    67→  const [uploadProgress, setUploadProgress] = useState(0)
+    68→  const fileInputRef = useRef<HTMLInputElement>(null)
+    69→
+    70→  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    71→    const file = e.target.files?.[0]
+    72→    if (!file) return
+    73→
+    74→    // Validazione dimensione (5MB)
+    75→    if (file.size > 5 * 1024 * 1024) {
+    76→      alert('Il file supera la dimensione massima di 5MB')
+    77→      return
+    78→    }
+    79→
+    80→    // Validazione tipo
+    81→    if (!file.type.startsWith('image/')) {
+    82→      alert('Seleziona un file immagine valido')
+    83→      return
+    84→    }
+    85→
+    86→    setUploading(true)
+    87→    setUploadProgress(0)
+    88→
+    89→    try {
+    90→      const formData = new FormData()
+    91→      formData.append('file', file)
+    92→
+    93→      // Simula progresso
+    94→      const progressInterval = setInterval(() => {
+    95→        setUploadProgress(prev => {
+    96→          if (prev >= 90) {
+    97→            clearInterval(progressInterval)
+    98→            return 90
+    99→          }
+   100→          return prev + 10
+   101→        })
+   102→      }, 100)
+   103→
+   104→      const response = await fetch('/api/admin/upload-image', {
+   105→        method: 'POST',
+   106→        body: formData
+   107→      })
+   108→
+   109→      clearInterval(progressInterval)
+   110→
+   111→      if (response.ok) {
+   112→        const data = await response.json()
+   113→        onImageUrlChange(data.url)
+   114→        setUploadProgress(100)
+   115→        alert('Immagine caricata con successo!')
+   116→      } else {
+   117→        const error = await response.json()
+   118→        alert(error.error || 'Errore durante il caricamento dell\'immagine')
+   119→      }
+   120→    } catch (error) {
+   121→      console.error('Errore upload:', error)
+   122→      alert('Errore durante il caricamento dell\'immagine')
+   123→    } finally {
+   124→      setUploading(false)
+   125→      setUploadProgress(0)
+   126→      if (fileInputRef.current) {
+   127→        fileInputRef.current.value = ''
+   128→      }
+   129→    }
+   130→  }
+   131→
+   132→  const handleRemoveImage = () => {
+   133→    onImageUrlChange('')
+   134→  }
+   135→
+   136→  return (
+   137→    <div className={`space-y-3 ${className}`}>
+   138→      <Label>{label}</Label>
+   139→      <div className="flex gap-2">
+   140→        <Input
+   141→          type="text"
+   142→          value={imageUrl || ''}
+   143→          onChange={(e) => onImageUrlChange(e.target.value)}
+   144→          placeholder="https://... o carica un file"
+   145→          disabled={uploading}
+   146→        />
+   147→        <input
+   148→          ref={fileInputRef}
+   149→          type="file"
+   150→          accept={accept}
+   151→          onChange={handleFileSelect}
+   152→          className="hidden"
+   153→          id={`upload-${label.replace(/\s+/g, '-')}`}
+   154→        />
+   155→        <Button
+   156→          type="button"
+   157→          variant="outline"
+   158→          onClick={() => fileInputRef.current?.click()}
+   159→          disabled={uploading}
+   160→          size="icon"
+   161→          title="Carica immagine dal computer"
+   162→        >
+   163→          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+   164→        </Button>
+   165→        {imageUrl && (
+   166→          <Button
+   167→            type="button"
+   168→            variant="outline"
+   169→            onClick={handleRemoveImage}
+   170→            disabled={uploading}
+   171→            size="icon"
+   172→            title="Rimuovi immagine"
+   173→          >
+   174→            <X className="w-4 h-4" />
+   175→          </Button>
+   176→        )}
+   177→      </div>
+   178→      {uploading && (
+   179→        <div className="space-y-2">
+   180→          <Progress value={uploadProgress} className="h-2" />
+   181→          <p className="text-xs text-gray-600">Caricamento in corso... {uploadProgress}%</p>
+   182→        </div>
+   183→      )}
+   184→      {imageUrl && !uploading && (
+   185→        <div className="mt-4">
+   186→          <p className="text-sm text-gray-600 mb-2">Anteprima:</p>
+   187→          <img
+   188→            src={imageUrl}
+   189→            alt="Preview"
+   190→            className="w-full h-64 object-cover rounded-lg border"
+   191→          />
+   192→        </div>
+   193→      )}
+   194→    </div>
+   195→  )
+   196→}
+   197→
+   198→export default function AdminTheme() {
+   199→  const [siteInfo, setSiteInfo] = useState<SiteInfo>({
+   200→    id: '',
+   201→    nomeLocale: '',
+   202→    slogan: '',
+   203→    chiSiamoTitolo: '',
+   204→    chiSiamoTesto: '',
+   205→    chiSiamoImageUrl: '',
+   206→    logoUrl: '',
+   207→    faviconUrl: '',
+   208→    telefono: '',
+   209→    email: '',
+   210→    prenotazioniAttive: true,
+   211→    heroTitle: '',
+   212→    heroSubtitle: '',
+   213→    heroCTAText: '',
+   214→    heroImageUrl: '',
+   215→    heroOverlayOpacity: 0.5,
+   216→    specialitaTitle: '',
+   217→    specialitaSubtitle: '',
+   218→    primaryColor: '#ea580c',
+   219→    primaryForeground: '#ffffff'
+   220→  })
+   221→  const [images, setImages] = useState<SiteImage[]>([])
+   222→  const [loading, setLoading] = useState(true)
+   223→  const [saving, setSaving] = useState(false)
+   224→
+   225→  // Image form
+   226→  const [imageForm, setImageForm] = useState({
+   227→    id: '',
+   228→    sezione: 'hero',
+   229→    titolo: '',
+   230→    descrizione: '',
+   231→    url: '',
+   232→    ordine: 0,
+   233→    attiva: true
+   234→  })
+   235→  const [showImageDialog, setShowImageDialog] = useState(false)
+   236→  const [selectedSection, setSelectedSection] = useState('hero')
+   237→
+   238→  useEffect(() => {
+   239→    fetchData()
+   240→  }, [selectedSection])
+   241→
+   242→  async function fetchData() {
+   243→    setLoading(true)
+   244→    try {
+   245→      const [siteRes, imgRes] = await Promise.all([
+   246→        fetch('/api/admin/site-info'),
+   247→        fetch(`/api/admin/images?sezione=${selectedSection}`)
+   248→      ])
+   249→
+   250→      if (siteRes.ok) setSiteInfo(await siteRes.json())
+   251→      if (imgRes.ok) setImages(await imgRes.json())
+   252→    } catch (error) {
+   253→      console.error('Errore nel recupero dati:', error)
+   254→    } finally {
+   255→      setLoading(false)
+   256→    }
+   257→  }
+   258→
+   259→  async function saveSiteInfo() {
+   260→    setSaving(true)
+   261→    try {
+   262→      console.log('Salvataggio siteInfo:', JSON.stringify(siteInfo, null, 2))
+   263→
+   264→      const response = await fetch('/api/admin/site-info', {
+   265→        method: 'PUT',
+   266→        headers: { 'Content-Type': 'application/json' },
+   267→        body: JSON.stringify(siteInfo)
+   268→      })
+   269→
+   270→      if (response.ok) {
+   271→        alert('Informazioni del sito salvate con successo!')
+   272→      } else {
+   273→        const errorData = await response.json()
+   274→        console.error('Errore risposta server:', errorData)
+   275→        alert(`Errore nel salvataggio:\n${errorData.error}\n\nDettagli: ${errorData.details}\nTipo: ${errorData.errorType}`)
+   276→      }
+   277→    } catch (error) {
+   278→      console.error('Errore salvataggio site info:', error)
+   279→      alert(`Errore di rete o server:\n${error instanceof Error ? error.message : 'Errore sconosciuto'}`)
+   280→    } finally {
+   281→      setSaving(false)
+   282→    }
+   283→  }
+   284→
+   285→  async function saveImage() {
+   286→    const url = imageForm.id
+   287→      ? `/api/admin/images/${imageForm.id}`
+   288→      : '/api/admin/images'
+   289→    const method = imageForm.id ? 'PUT' : 'POST'
+   290→
+   291→    try {
+   292→      const response = await fetch(url, {
+   293→        method,
+   294→        headers: { 'Content-Type': 'application/json' },
+   295→        body: JSON.stringify(imageForm)
+   296→      })
+   297→
+   298→      if (response.ok) {
+   299→        setShowImageDialog(false)
+   300→        resetImageForm()
+   301→        fetchData()
+   302→      }
+   303→    } catch (error) {
+   304→      console.error('Errore salvataggio immagine:', error)
+   305→    }
+   306→  }
+   307→
+   308→  async function deleteImage(id: string) {
+   309→    if (!confirm('Sei sicuro di voler eliminare questa immagine?')) return
+   310→
+   311→    try {
+   312→      const response = await fetch(`/api/admin/images/${id}`, { method: 'DELETE' })
+   313→      if (response.ok) fetchData()
+   314→    } catch (error) {
+   315→      console.error('Errore eliminazione immagine:', error)
+   316→    }
+   317→  }
+   318→
+   319→  async function toggleImageActive(id: string, attiva: boolean) {
+   320→    try {
+   321→      const response = await fetch(`/api/admin/images/${id}`, {
+   322→        method: 'PUT',
+   323→        headers: { 'Content-Type': 'application/json' },
+   324→        body: JSON.stringify({ attiva })
+   325→      })
+   326→      if (response.ok) fetchData()
+   327→    } catch (error) {
+   328→      console.error('Errore aggiornamento immagine:', error)
+   329→    }
+   330→  }
+   331→
+   332→  function editImage(img: SiteImage) {
+   333→    setImageForm({
+   334→      id: img.id,
+   335→      sezione: img.sezione,
+   336→      titolo: img.titolo || '',
+   337→      descrizione: img.descrizione || '',
+   338→      url: img.url,
+   339→      ordine: img.ordine,
+   340→      attiva: img.attiva
+   341→    })
+   342→    setShowImageDialog(true)
+   343→  }
+   344→
+   345→  function resetImageForm() {
+   346→    setImageForm({
+   347→      id: '',
+   348→      sezione: selectedSection,
+   349→      titolo: '',
+   350→      descrizione: '',
+   351→      url: '',
+   352→      ordine: 0,
+   353→      attiva: true
+   354→    })
+   355→  }
+   356→
+   357→  if (loading) {
+   358→    return <div className="text-center py-8">Caricamento...</div>
+   359→  }
+   360→
+   361→  return (
+   362→    <div className="space-y-6">
+   363→      <Tabs defaultValue="hero" className="w-full">
+   364→        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-7">
+   365→          <TabsTrigger value="hero">Hero</TabsTrigger>
+   366→          <TabsTrigger value="chi-siamo">Chi Siamo</TabsTrigger>
+   367→          <TabsTrigger value="specialita">Specialità</TabsTrigger>
+   368→          <TabsTrigger value="info">Generali</TabsTrigger>
+   369→          <TabsTrigger value="temi">Temi</TabsTrigger>
+   370→          <TabsTrigger value="images">Immagini</TabsTrigger>
+   371→          <TabsTrigger value="prenotazioni">Prenotazioni</TabsTrigger>
+   372→        </TabsList>
+   373→
+   374→        {/* Hero Section */}
+   375→        <TabsContent value="hero" className="space-y-4">
+   376→          <div className="flex justify-between items-center">
+   377→            <h2 className="text-2xl font-bold flex items-center gap-2">
+   378→              <Home className="w-6 h-6" />
+   379→              Sezione Hero
+   380→            </h2>
+   381→            <Button onClick={saveSiteInfo} disabled={saving}>
+   382→              <Save className="w-4 h-4 mr-2" />
+   383→              {saving ? 'Salvataggio...' : 'Salva'}
+   384→            </Button>
+   385→          </div>
+   386→
+   387→          <Card>
+   388→            <CardHeader>
+   389→              <CardTitle>Testo Hero</CardTitle>
+   390→              <CardDescription>Configura il testo principale della hero section</CardDescription>
+   391→            </CardHeader>
+   392→            <CardContent className="space-y-4">
+   393→              <div>
+   394→                <Label>Titolo Principale *</Label>
+   395→                <Input
+   396→                  value={siteInfo.heroTitle || ''}
+   397→                  onChange={(e) => setSiteInfo({ ...siteInfo, heroTitle: e.target.value })}
+   398→                  placeholder="Autentica Cucina Italiana"
+   399→                />
+   400→              </div>
+   401→              <div>
+   402→                <Label>Sottotitolo</Label>
+   403→                <Textarea
+   404→                  value={siteInfo.heroSubtitle || ''}
+   405→                  onChange={(e) => setSiteInfo({ ...siteInfo, heroSubtitle: e.target.value })}
+   406→                  rows={3}
+   407→                  placeholder="Scopri i sapori tradizionali della nostra cucina..."
+   408→                />
+   409→              </div>
+   410→              <div>
+   411→                <Label>Testo Bottone CTA *</Label>
+   412→                <Input
+   413→                  value={siteInfo.heroCTAText || ''}
+   414→                  onChange={(e) => setSiteInfo({ ...siteInfo, heroCTAText: e.target.value })}
+   415→                  placeholder="Scopri il Menu"
+   416→                />
+   417→              </div>
+   418→            </CardContent>
+   419→          </Card>
+   420→
+   421→          <Card>
+   422→            <CardHeader>
+   423→              <CardTitle>Immagine di Sfondo</CardTitle>
+   424→              <CardDescription>Carica o inserisci l'URL dell'immagine di sfondo della hero</CardDescription>
+   425→            </CardHeader>
+   426→            <CardContent className="space-y-4">
+   427→              <ImageUpload
+   428→                imageUrl={siteInfo.heroImageUrl || ''}
+   429→                onImageUrlChange={(url) => setSiteInfo({ ...siteInfo, heroImageUrl: url })}
+   430→                label="Immagine Hero"
+   431→                accept="image/*"
+   432→              />
+   433→              <div>
+   434→                <Label>Opacità Overlay: {siteInfo.heroOverlayOpacity?.toFixed(2) || 0.5}</Label>
+   435→                <Slider
+   436→                  value={[siteInfo.heroOverlayOpacity || 0.5]}
+   437→                  onValueChange={([value]) => setSiteInfo({ ...siteInfo, heroOverlayOpacity: value })}
+   438→                  min={0}
+   439→                  max={1}
+   440→                  step={0.05}
+   441→                  className="mt-2"
+   442→                />
+   443→              </div>
+   444→            </CardContent>
+   445→          </Card>
+   446→        </TabsContent>
+   447→
+   448→        {/* Chi Siamo Section */}
+   449→        <TabsContent value="chi-siamo" className="space-y-4">
+   450→          <div className="flex justify-between items-center">
+   451→            <h2 className="text-2xl font-bold flex items-center gap-2">
+   452→              <Info className="w-6 h-6" />
+   453→              Sezione Chi Siamo
+   454→            </h2>
+   455→            <Button onClick={saveSiteInfo} disabled={saving}>
+   456→              <Save className="w-4 h-4 mr-2" />
+   457→              {saving ? 'Salvataggio...' : 'Salva'}
+   458→            </Button>
+   459→          </div>
+   460→
+   461→          <Card>
+   462→            <CardHeader>
+   463→              <CardTitle>Contenuti Testuali</CardTitle>
+   464→              <CardDescription>Configura titolo e descrizione della sezione Chi Siamo</CardDescription>
+   465→            </CardHeader>
+   466→            <CardContent className="space-y-4">
+   467→              <div>
+   468→                <Label>Titolo Sezione *</Label>
+   469→                <Input
+   470→                  value={siteInfo.chiSiamoTitolo || ''}
+   471→                  onChange={(e) => setSiteInfo({ ...siteInfo, chiSiamoTitolo: e.target.value })}
+   472→                  placeholder="Chi Siamo"
+   473→                />
+   474→              </div>
+   475→              <div>
+   476→                <Label>Testo Descrittivo *</Label>
+   477→                <Textarea
+   478→                  value={siteInfo.chiSiamoTesto || ''}
+   479→                  onChange={(e) => setSiteInfo({ ...siteInfo, chiSiamoTesto: e.target.value })}
+   480→                  rows={6}
+   481→                  placeholder="Dal 1985, portiamo in tavola l'autentica tradizione culinaria italiana..."
+   482→                />
+   483→              </div>
+   484→            </CardContent>
+   485→          </Card>
+   486→
+   487→          <Card>
+   488→            <CardHeader>
+   489→              <CardTitle>Immagine Sezione</CardTitle>
+   490→              <CardDescription>Carica o inserisci l'URL dell'immagine della sezione Chi Siamo</CardDescription>
+   491→            </CardHeader>
+   492→            <CardContent className="space-y-4">
+   493→              <ImageUpload
+   494→                imageUrl={siteInfo.chiSiamoImageUrl || ''}
+   495→                onImageUrlChange={(url) => setSiteInfo({ ...siteInfo, chiSiamoImageUrl: url })}
+   496→                label="Immagine Chi Siamo"
+   497→                accept="image/*"
+   498→              />
+   499→            </CardContent>
+   500→          </Card>
+   501→        </TabsContent>
+   502→
+   503→        {/* Specialità Section */}
+   504→        <TabsContent value="specialita" className="space-y-4">
+   505→          <div className="flex justify-between items-center">
+   506→            <h2 className="text-2xl font-bold flex items-center gap-2">
+   507→              <Star className="w-6 h-6" />
+   508→              Sezione Specialità
+   509→            </h2>
+   510→            <Button onClick={saveSiteInfo} disabled={saving}>
+   511→              <Save className="w-4 h-4 mr-2" />
+   512→              {saving ? 'Salvataggio...' : 'Salva'}
+   513→            </Button>
+   514→          </div>
+   515→
+   516→          <Card>
+   517→            <CardHeader>
+   518→              <CardTitle>Contenuti Testuali</CardTitle>
+   519→              <CardDescription>Configura titolo e sottotitolo della sezione Specialità</CardDescription>
+   520→            </CardHeader>
+   521→            <CardContent className="space-y-4">
+   522→              <div>
+   523→                <Label>Titolo Sezione *</Label>
+   524→                <Input
+   525→                  value={siteInfo.specialitaTitle || ''}
+   526→                  onChange={(e) => setSiteInfo({ ...siteInfo, specialitaTitle: e.target.value })}
+   527→                  placeholder="Le Nostre Specialità"
+   528→                />
+   529→              </div>
+   530→              <div>
+   531→                <Label>Sottotitolo</Label>
+   532→                <Textarea
+   533→                  value={siteInfo.specialitaSubtitle || ''}
+   534→                  onChange={(e) => setSiteInfo({ ...siteInfo, specialitaSubtitle: e.target.value })}
+   535→                  rows={3}
+   536→                  placeholder="Scopri i piatti più amati dai nostri clienti..."
+   537→                />
+   538→              </div>
+   539→            </CardContent>
+   540→          </Card>
+   541→        </TabsContent>
+   542→
+   543→        {/* Info Generali */}
+   544→        <TabsContent value="info" className="space-y-4">
+   545→          <div className="flex justify-between items-center">
+   546→            <h2 className="text-2xl font-bold flex items-center gap-2">
+   547→              <Layout className="w-6 h-6" />
+   548→              Informazioni Generali
+   549→            </h2>
+   550→            <Button onClick={saveSiteInfo} disabled={saving}>
+   551→              <Save className="w-4 h-4 mr-2" />
+   552→              {saving ? 'Salvataggio...' : 'Salva'}
+   553→            </Button>
+   554→          </div>
+   555→
+   556→          <Card>
+   557→            <CardHeader>
+   558→              <CardTitle>Nome e Branding</CardTitle>
+   559→            </CardHeader>
+   560→            <CardContent className="space-y-4">
+   561→              <div>
+   562→                <Label>Nome del Locale *</Label>
+   563→                <Input
+   564→                  value={siteInfo.nomeLocale || ''}
+   565→                  onChange={(e) => setSiteInfo({ ...siteInfo, nomeLocale: e.target.value })}
+   566→                  placeholder="Il Nostro Ristorante"
+   567→                />
+   568→              </div>
+   569→              <div>
+   570→                <Label>Slogan Generale</Label>
+   571→                <Input
+   572→                  value={siteInfo.slogan || ''}
+   573→                  onChange={(e) => setSiteInfo({ ...siteInfo, slogan: e.target.value })}
+   574→                  placeholder="Slogan del locale"
+   575→                />
+   576→              </div>
+   577→              <ImageUpload
+   578→                imageUrl={siteInfo.logoUrl || ''}
+   579→                onImageUrlChange={(url) => setSiteInfo({ ...siteInfo, logoUrl: url })}
+   580→                label="URL Logo"
+   581→                accept="image/*"
+   582→              />
+   583→              <ImageUpload
+   584→                imageUrl={siteInfo.faviconUrl || ''}
+   585→                onImageUrlChange={(url) => setSiteInfo({ ...siteInfo, faviconUrl: url })}
+   586→                label="URL Favicon"
+   587→                accept="image/x-icon,image/png"
+   588→              />
+   589→            </CardContent>
+   590→          </Card>
+   591→
+   592→          <Card>
+   593→            <CardHeader>
+   594→              <CardTitle>Contatti</CardTitle>
+   595→            </CardHeader>
+   596→            <CardContent className="space-y-4">
+   597→              <div>
+   598→                <Label>Telefono</Label>
+   599→                <Input
+   600→                  value={siteInfo.telefono || ''}
+   601→                  onChange={(e) => setSiteInfo({ ...siteInfo, telefono: e.target.value })}
+   602→                  placeholder="+39 012 345 6789"
+   603→                />
+   604→              </div>
+   605→              <div>
+   606→                <Label>Email</Label>
+   607→                <Input
+   608→                  value={siteInfo.email || ''}
+   609→                  onChange={(e) => setSiteInfo({ ...siteInfo, email: e.target.value })}
+   610→                  placeholder="info@tuoristorante.it"
+   611→                />
+   612→              </div>
+   613→            </CardContent>
+   614→          </Card>
+   615→        </TabsContent>
+   616→
+   617→        {/* Temi */}
+   618→        <TabsContent value="temi" className="space-y-4">
+   619→          <div className="flex justify-between items-center">
+   620→            <h2 className="text-2xl font-bold flex items-center gap-2">
+   621→              <Palette className="w-6 h-6" />
+   622→              Temi e Colori
+   623→            </h2>
+   624→            <Button onClick={saveSiteInfo} disabled={saving}>
+   625→              <Save className="w-4 h-4 mr-2" />
+   626→              {saving ? 'Salvataggio...' : 'Salva'}
+   627→            </Button>
+   628→          </div>
+   629→
+   630→          <Card>
+   631→            <CardHeader>
+   632→              <CardTitle>Colore Primario</CardTitle>
+   633→              <CardDescription>Personalizza il colore principale del sito</CardDescription>
+   634→            </CardHeader>
+   635→            <CardContent className="space-y-4">
+   636→              <div>
+   637→                <Label>Colore Primario</Label>
+   638→                <div className="flex gap-3 mt-2">
+   639→                  <Input
+   640→                    type="color"
+   641→                    value={siteInfo.primaryColor || '#ea580c'}
+   642→                    onChange={(e) => setSiteInfo({ ...siteInfo, primaryColor: e.target.value })}
+   643→                    className="w-20 h-10 p-1 cursor-pointer"
+   644→                  />
+   645→                  <Input
+   646→                    type="text"
+   647→                    value={siteInfo.primaryColor || '#ea580c'}
+   648→                    onChange={(e) => setSiteInfo({ ...siteInfo, primaryColor: e.target.value })}
+   649→                    placeholder="#ea580c"
+   650→                    className="flex-1"
+   651→                  />
+   652→                </div>
+   653→              </div>
+   654→              <div>
+   655→                <Label>Colore Testo su Primario</Label>
+   656→                <div className="flex gap-3 mt-2">
+   657→                  <Input
+   658→                    type="color"
+   659→                    value={siteInfo.primaryForeground || '#ffffff'}
+   660→                    onChange={(e) => setSiteInfo({ ...siteInfo, primaryForeground: e.target.value })}
+   661→                    className="w-20 h-10 p-1 cursor-pointer"
+   662→                  />
+   663→                  <Input
+   664→                    type="text"
+   665→                    value={siteInfo.primaryForeground || '#ffffff'}
+   666→                    onChange={(e) => setSiteInfo({ ...siteInfo, primaryForeground: e.target.value })}
+   667→                    placeholder="#ffffff"
+   668→                    className="flex-1"
+   669→                  />
+   670→                </div>
+   671→              </div>
+   672→              <div className="p-4 border rounded-lg">
+   673→                <p className="text-sm font-medium mb-3">Anteprima</p>
+   674→                <div className="flex gap-4">
+   675→                  <div
+   676→                    className="px-6 py-3 rounded-lg text-white font-medium"
+   677→                    style={{ backgroundColor: siteInfo.primaryColor || '#ea580c', color: siteInfo.primaryForeground || '#ffffff' }}
+   678→                  >
+   679→                    Esempio Bottone
+   680→                  </div>
+   681→                  <div className="flex items-center gap-2">
+   682→                    <div
+   683→                      className="w-8 h-8 rounded-full"
+   684→                      style={{ backgroundColor: siteInfo.primaryColor || '#ea580c' }}
+   685→                    />
+   686→                    <span className="text-sm">Icona</span>
+   687→                  </div>
+   688→                </div>
+   689→              </div>
+   690→            </CardContent>
+   691→          </Card>
+   692→        </TabsContent>
+   693→
+   694→        {/* Prenotazioni */}
+   695→        <TabsContent value="prenotazioni" className="space-y-4">
+   696→          <div className="flex justify-between items-center">
+   697→            <h2 className="text-2xl font-bold flex items-center gap-2">
+   698→              <FileText className="w-6 h-6" />
+   699→              Gestione Prenotazioni
+   700→            </h2>
+   701→            <Button onClick={saveSiteInfo} disabled={saving}>
+   702→              <Save className="w-4 h-4 mr-2" />
+   703→              {saving ? 'Salvataggio...' : 'Salva'}
+   704→            </Button>
+   705→          </div>
+   706→
+   707→          <Card>
+   708→            <CardHeader>
+   709→              <CardTitle>Impostazioni Prenotazioni</CardTitle>
+   710→              <CardDescription>Attiva o disattiva il sistema di prenotazioni</CardDescription>
+   711→            </CardHeader>
+   712→            <CardContent>
+   713→              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+   714→                <div>
+   715→                  <Label className="text-base font-medium">Prenotazioni Online</Label>
+   716→                  <p className="text-sm text-gray-600 mt-1">
+   717→                    Attiva o disattiva la possibilità per i clienti di prenotare online
+   718→                  </p>
+   719→                </div>
+   720→                <Button
+   721→                  variant={siteInfo.prenotazioniAttive ? "default" : "outline"}
+   722→                  onClick={() => setSiteInfo({ ...siteInfo, prenotazioniAttive: !siteInfo.prenotazioniAttive })}
+   723→                >
+   724→                  {siteInfo.prenotazioniAttive ? 'Attive' : 'Disattivate'}
+   725→                </Button>
+   726→              </div>
+   727→            </CardContent>
+   728→          </Card>
+   729→        </TabsContent>
+   730→
+   731→        {/* Immagini */}
+   732→        <TabsContent value="images" className="space-y-4">
+   733→          <div className="flex justify-between items-center">
+   734→            <h2 className="text-2xl font-bold flex items-center gap-2">
+   735→              <ImageIcon className="w-6 h-6" />
+   736→              Gestione Immagini
+   737→            </h2>
+   738→            <div className="flex items-center gap-4">
+   739→              <select
+   740→                className="p-2 border rounded"
+   741→                value={selectedSection}
+   742→                onChange={(e) => setSelectedSection(e.target.value)}
+   743→              >
+   744→                <option value="hero">Hero</option>
+   745→                <option value="chi_siamo">Chi Siamo</option>
+   746→                <option value="gallery">Galleria</option>
+   747→                <option value="menu">Menu</option>
+   748→              </select>
+   749→              <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+   750→                <DialogTrigger asChild>
+   751→                  <Button onClick={() => { resetImageForm(); setImageForm({ ...imageForm, sezione: selectedSection }) }}>
+   752→                    <Plus className="w-4 h-4 mr-2" />
+   753→                    Nuova Immagine
+   754→                  </Button>
+   755→                </DialogTrigger>
+   756→                <DialogContent className="max-w-2xl">
+   757→                  <DialogHeader>
+   758→                    <DialogTitle>
+   759→                      {imageForm.id ? 'Modifica Immagine' : 'Nuova Immagine'}
+   760→                    </DialogTitle>
+   761→                  </DialogHeader>
+   762→                  <div className="space-y-4">
+   763→                    <div>
+   764→                      <Label>Sezione</Label>
+   765→                      <select
+   766→                        className="w-full p-2 border rounded"
+   767→                        value={imageForm.sezione}
+   768→                        onChange={(e) => setImageForm({ ...imageForm, sezione: e.target.value })}
+   769→                      >
+   770→                        <option value="hero">Hero</option>
+   771→                        <option value="chi_siamo">Chi Siamo</option>
+   772→                        <option value="gallery">Galleria</option>
+   773→                        <option value="menu">Menu</option>
+   774→                      </select>
+   775→                    </div>
+   776→                    <div>
+   777→                      <Label>Titolo</Label>
+   778→                      <Input
+   779→                        value={imageForm.titolo}
+   780→                        onChange={(e) => setImageForm({ ...imageForm, titolo: e.target.value })}
+   781→                      />
+   782→                    </div>
+   783→                    <div>
+   784→                      <Label>Descrizione</Label>
+   785→                      <Textarea
+   786→                        value={imageForm.descrizione}
+   787→                        onChange={(e) => setImageForm({ ...imageForm, descrizione: e.target.value })}
+   788→                      />
+   789→                    </div>
+   790→                    <div>
+   791→                      <Label>URL Immagine *</Label>
+   792→                      <div className="flex gap-2">
+   793→                        <Input
+   794→                          value={imageForm.url}
+   795→                          onChange={(e) => setImageForm({ ...imageForm, url: e.target.value })}
+   796→                          placeholder="https://..."
+   797→                        />
+   798→                        <input
+   799→                          type="file"
+   800→                          accept="image/*"
+   801→                          onChange={async (e) => {
+   802→                            const file = e.target.files?.[0]
+   803→                            if (!file) return
+   804→
+   805→                            if (file.size > 5 * 1024 * 1024) {
+   806→                              alert('Il file supera la dimensione massima di 5MB')
+   807→                              return
+   808→                            }
+   809→
+   810→                            try {
+   811→                              const formData = new FormData()
+   812→                              formData.append('file', file)
+   813→
+   814→                              const response = await fetch('/api/admin/upload-image', {
+   815→                                method: 'POST',
+   816→                                body: formData
+   817→                              })
+   818→
+   819→                              if (response.ok) {
+   820→                                const data = await response.json()
+   821→                                setImageForm({ ...imageForm, url: data.url })
+   822→                                alert('Immagine caricata con successo!')
+   823→                              } else {
+   824→                                const error = await response.json()
+   825→                                alert(error.error || 'Errore durante il caricamento')
+   826→                              }
+   827→                            } catch (error) {
+   828→                              console.error('Errore upload:', error)
+   829→                              alert('Errore durante il caricamento')
+   830→                            }
+   831→                            e.target.value = ''
+   832→                          }}
+   833→                          className="hidden"
+   834→                          id="upload-dialog"
+   835→                        />
+   836→                        <Button
+   837→                          type="button"
+   838→                          variant="outline"
+   839→                          onClick={() => document.getElementById('upload-dialog')?.click()}
+   840→                        >
+   841→                          <Upload className="w-4 h-4 mr-2" />
+   842→                          Carica
+   843→                        </Button>
+   844→                      </div>
+   845→                      {imageForm.url && (
+   846→                        <div className="mt-2">
+   847→                          <img
+   848→                            src={imageForm.url}
+   849→                            alt="Preview"
+   850→                            className="w-full h-48 object-cover rounded"
+   851→                          />
+   852→                        </div>
+   853→                      )}
+   854→                    </div>
+   855→                    <div>
+   856→                      <Label>Ordine</Label>
+   857→                      <Input
+   858→                        type="number"
+   859→                        value={imageForm.ordine}
+   860→                        onChange={(e) => setImageForm({ ...imageForm, ordine: parseInt(e.target.value) || 0 })}
+   861→                      />
+   862→                    </div>
+   863→                    <div className="flex items-center gap-2">
+   864→                      <input
+   865→                        type="checkbox"
+   866→                        id="imgAttiva"
+   867→                        checked={imageForm.attiva}
+   868→                        onChange={(e) => setImageForm({ ...imageForm, attiva: e.target.checked })}
+   869→                      />
+   870→                      <Label htmlFor="imgAttiva">Immagine Attiva</Label>
+   871→                    </div>
+   872→                    <div className="flex gap-2">
+   873→                      <Button onClick={saveImage}>
+   874→                        <Save className="w-4 h-4 mr-2" />
+   875→                        Salva
+   876→                      </Button>
+   877→                      <Button variant="outline" onClick={() => setShowImageDialog(false)}>
+   878→                        Annulla
+   879→                      </Button>
+   880→                    </div>
+   881→                  </div>
+   882→                </DialogContent>
+   883→              </Dialog>
+   884→            </div>
+   885→          </div>
+   886→
+   887→          <Card>
+   888→            <Table>
+   889→              <TableHeader>
+   890→                <TableRow>
+   891→                  <TableHead>Anteprima</TableHead>
+   892→                  <TableHead>Titolo</TableHead>
+   893→                  <TableHead>Sezione</TableHead>
+   894→                  <TableHead>Ordine</TableHead>
+   895→                  <TableHead>Attiva</TableHead>
+   896→                  <TableHead>Azioni</TableHead>
+   897→                </TableRow>
+   898→              </TableHeader>
+   899→              <TableBody>
+   900→                {images.map((img) => (
+   901→                  <TableRow key={img.id}>
+   902→                    <TableCell>
+   903→                      <img
+   904→                        src={img.url}
+   905→                        alt={img.titolo || img.sezione}
+   906→                        className="w-20 h-20 object-cover rounded"
+   907→                      />
+   908→                    </TableCell>
+   909→                    <TableCell>{img.titolo || '-'}</TableCell>
+   910→                    <TableCell>{img.sezione}</TableCell>
+   911→                    <TableCell>{img.ordine}</TableCell>
+   912→                    <TableCell>
+   913→                      <Button
+   914→                        size="sm"
+   915→                        variant={img.attiva ? "default" : "outline"}
+   916→                        onClick={() => toggleImageActive(img.id, !img.attiva)}
+   917→                      >
+   918→                        {img.attiva ? 'Sì' : 'No'}
+   919→                      </Button>
+   920→                    </TableCell>
+   921→                    <TableCell>
+   922→                      <div className="flex gap-2">
+   923→                        <Button size="sm" variant="ghost" onClick={() => editImage(img)}>
+   924→                          <Save className="w-4 h-4" />
+   925→                        </Button>
+   926→                        <Button size="sm" variant="ghost" onClick={() => deleteImage(img.id)}>
+   927→                          <Trash2 className="w-4 h-4 text-red-600" />
+   928→                        </Button>
+   929→                      </div>
+   930→                    </TableCell>
+   931→                  </TableRow>
+   932→                ))}
+   933→              </TableBody>
+   934→            </Table>
+   935→          </Card>
+   936→        </TabsContent>
+   937→      </Tabs>
+   938→    </div>
+   939→  )
+   940→}
+   941→

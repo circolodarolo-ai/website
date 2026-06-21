@@ -1,0 +1,914 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect } from 'react'
+     4→import { Save, FileText, Cookie, ShieldCheck, Building2, UserCheck, Settings, Globe, Info, Code } from 'lucide-react'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Label } from '@/components/ui/label'
+     8→import { Textarea } from '@/components/ui/textarea'
+     9→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    10→import { Switch } from '@/components/ui/switch'
+    11→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    12→import { ScrollArea } from '@/components/ui/scroll-area'
+    13→
+    14→interface CompanyData {
+    15→  id: string
+    16→  ragioneSociale?: string | null
+    17→  partitaIva?: string | null
+    18→  codiceFiscale?: string | null
+    19→  indirizzo?: string | null
+    20→  citta?: string | null
+    21→  cap?: string | null
+    22→  provincia?: string | null
+    23→  paese?: string | null
+    24→  telefono?: string | null
+    25→  email?: string | null
+    26→  pec?: string | null
+    27→  dpoNome?: string | null
+    28→  dpoEmail?: string | null
+    29→  dpoIndirizzo?: string | null
+    30→  privacyPolicy?: string | null
+    31→  privacyEnabled?: boolean | null
+    32→  cookiesPolicy?: string | null
+    33→  cookiesEnabled?: boolean | null
+    34→  cookieTecnici?: boolean | null
+    35→  cookieAnalitici?: boolean | null
+    36→  cookieMarketing?: boolean | null
+    37→  terminiServizio?: string | null
+    38→  privacyUrl?: string | null
+    39→  cookiesUrl?: string | null
+    40→  terminiUrl?: string | null
+    41→  showCookieBanner?: boolean | null
+    42→  cookieBannerText?: string | null
+    43→  cookieAcceptText?: string | null
+    44→  cookieDeclineText?: string | null
+    45→  privacyPolicyUpdate?: string | null
+    46→  cookiesPolicyUpdate?: string | null
+    47→  thirdPartyScriptsEnabled?: boolean | null
+    48→  googleAnalyticsId?: string | null
+    49→  facebookPixelId?: string | null
+    50→  amazonTagId?: string | null
+    51→  adSenseId?: string | null
+    52→  adSenseSlotHorizontal?: string | null
+    53→  adSenseSlotRectangle?: string | null
+    54→  adSenseSlotTop?: string | null
+    55→  adSenseSlotInline?: string | null
+    56→}
+    57→
+    58→export default function AdminCompanyData() {
+    59→  const [companyData, setCompanyData] = useState<CompanyData>({
+    60→    id: '',
+    61→    ragioneSociale: '',
+    62→    partitaIva: '',
+    63→    codiceFiscale: '',
+    64→    indirizzo: '',
+    65→    citta: '',
+    66→    cap: '',
+    67→    provincia: '',
+    68→    paese: 'Italia',
+    69→    telefono: '',
+    70→    email: '',
+    71→    pec: '',
+    72→    dpoNome: '',
+    73→    dpoEmail: '',
+    74→    dpoIndirizzo: '',
+    75→    privacyPolicy: '',
+    76→    privacyEnabled: true,
+    77→    cookiesPolicy: '',
+    78→    cookiesEnabled: true,
+    79→    cookieTecnici: true,
+    80→    cookieAnalitici: true,
+    81→    cookieMarketing: false,
+    82→    terminiServizio: '',
+    83→    privacyUrl: '/privacy-policy',
+    84→    cookiesUrl: '/cookie-policy',
+    85→    terminiUrl: '/termini-servizio',
+    86→    showCookieBanner: true,
+    87→    cookieBannerText: "Questo sito utilizza cookie tecnici e analitici per migliorare la tua esperienza di navigazione. Cliccando su 'Autorizzo', accetti l'uso dei cookie.",
+    88→    cookieAcceptText: 'Autorizzo',
+    89→    cookieDeclineText: 'Annulla',
+    90→    thirdPartyScriptsEnabled: true,
+    91→    googleAnalyticsId: '',
+    92→    facebookPixelId: '',
+    93→    amazonTagId: '',
+    94→    adSenseId: '',
+    95→    adSenseSlotHorizontal: '',
+    96→    adSenseSlotRectangle: '',
+    97→    adSenseSlotTop: '',
+    98→    adSenseSlotInline: ''
+    99→  })
+   100→  const [loading, setLoading] = useState(true)
+   101→  const [saving, setSaving] = useState(false)
+   102→  const [activeTab, setActiveTab] = useState('azienda')
+   103→
+   104→  useEffect(() => {
+   105→    let isMounted = true;
+   106→
+   107→    async function fetchData() {
+   108→      setLoading(true);
+   109→      try {
+   110→        const response = await fetch('/api/admin/company-data');
+   111→        if (response.ok) {
+   112→          const result = await response.json();
+   113→          // Supporta entrambi i formati: { data: {...} } o direttamente i dati
+   114→          const data = result.data || result;
+   115→          if (isMounted) {
+   116→            setCompanyData(data);
+   117→          }
+   118→        }
+   119→      } catch (error) {
+   120→        console.error('Errore nel recupero dati aziendali:', error);
+   121→      } finally {
+   122→        if (isMounted) {
+   123→          setLoading(false);
+   124→        }
+   125→      }
+   126→    }
+   127→
+   128→    fetchData();
+   129→
+   130→    return () => {
+   131→      isMounted = false;
+   132→    };
+   133→  }, []);
+   134→
+   135→  async function handleSave() {
+   136→    setSaving(true);
+   137→    try {
+   138→      const response = await fetch('/api/admin/company-data', {
+   139→        method: 'PUT',
+   140→        headers: { 'Content-Type': 'application/json' },
+   141→        body: JSON.stringify(companyData)
+   142→      });
+   143→
+   144→      if (response.ok) {
+   145→        alert('Dati aziendali salvati con successo!');
+   146→        fetchData(); // Ricarica i dati aggiornati
+   147→      } else {
+   148→        alert('Errore nel salvataggio');
+   149→      }
+   150→    } catch (error) {
+   151→      console.error('Errore salvataggio:', error);
+   152→      alert('Errore di connessione');
+   153→    } finally {
+   154→      setSaving(false);
+   155→    }
+   156→  }
+   157→
+   158→  async function fetchData() {
+   159→    setLoading(true);
+   160→    try {
+   161→      const response = await fetch('/api/admin/company-data');
+   162→      if (response.ok) {
+   163→        const result = await response.json();
+   164→        const data = result.data || result;
+   165→        setCompanyData(data);
+   166→      }
+   167→    } catch (error) {
+   168→      console.error('Errore nel recupero dati aziendali:', error);
+   169→    } finally {
+   170→      setLoading(false);
+   171→    }
+   172→  }
+   173→
+   174→  if (loading) {
+   175→    return (
+   176→      <div className="flex items-center justify-center py-16">
+   177→        <div className="text-center">
+   178→          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+   179→          <p className="text-gray-600">Caricamento dati...</p>
+   180→        </div>
+   181→      </div>
+   182→    );
+   183→  }
+   184→
+   185→  return (
+   186→    <div className="space-y-6">
+   187→      <div className="flex justify-between items-center">
+   188→        <div>
+   189→          <h2 className="text-2xl font-bold text-gray-900">Dati Aziendali e Legali</h2>
+   190→          <p className="text-sm text-gray-500 mt-1">
+   191→            Configura i dati aziendali e le impostazioni GDPR per Privacy e Cookie Policy
+   192→          </p>
+   193→        </div>
+   194→        <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
+   195→          <Save className="w-4 h-4 mr-2" />
+   196→          {saving ? 'Salvataggio...' : 'Salva Dati'}
+   197→        </Button>
+   198→      </div>
+   199→
+   200→      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+   201→        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+   202→          <TabsTrigger value="azienda">
+   203→            <Building2 className="w-4 h-4 mr-2" />
+   204→            Azienda
+   205→          </TabsTrigger>
+   206→          <TabsTrigger value="dpo">
+   207→            <UserCheck className="w-4 h-4 mr-2" />
+   208→            DPO
+   209→          </TabsTrigger>
+   210→          <TabsTrigger value="privacy">
+   211→            <ShieldCheck className="w-4 h-4 mr-2" />
+   212→            Privacy
+   213→          </TabsTrigger>
+   214→          <TabsTrigger value="cookies">
+   215→            <Cookie className="w-4 h-4 mr-2" />
+   216→            Cookie
+   217→          </TabsTrigger>
+   218→          <TabsTrigger value="scripts">
+   219→            <Code className="w-4 h-4 mr-2" />
+   220→            Script
+   221→          </TabsTrigger>
+   222→          <TabsTrigger value="impostazioni">
+   223→            <Settings className="w-4 h-4 mr-2" />
+   224→            Impostazioni
+   225→          </TabsTrigger>
+   226→        </TabsList>
+   227→
+   228→        <ScrollArea className="h-[calc(95vh-220px)] mt-6">
+   229→          <div className="space-y-6 pr-4">
+   230→            {/* Tab Azienda */}
+   231→            <TabsContent value="azienda" className="space-y-6">
+   232→              <Card>
+   233→                <CardHeader>
+   234→                  <CardTitle className="flex items-center gap-2">
+   235→                    <Building2 className="w-5 h-5 text-primary" />
+   236→                    Dati Aziendali
+   237→                  </CardTitle>
+   238→                  <CardDescription>
+   239→                    Inserisci le informazioni legali della tua azienda per i documenti GDPR
+   240→                  </CardDescription>
+   241→                </CardHeader>
+   242→                <CardContent className="space-y-4">
+   243→                  <div>
+   244→                    <Label htmlFor="ragioneSociale">Ragione Sociale *</Label>
+   245→                    <Input
+   246→                      id="ragioneSociale"
+   247→                      value={companyData.ragioneSociale || ''}
+   248→                      onChange={(e) => setCompanyData({ ...companyData, ragioneSociale: e.target.value })}
+   249→                      placeholder="Es: La Bella Tavola S.r.l."
+   250→                    />
+   251→                  </div>
+   252→
+   253→                  <div className="grid md:grid-cols-2 gap-4">
+   254→                    <div>
+   255→                      <Label htmlFor="partitaIva">Partita IVA *</Label>
+   256→                      <Input
+   257→                        id="partitaIva"
+   258→                        value={companyData.partitaIva || ''}
+   259→                        onChange={(e) => setCompanyData({ ...companyData, partitaIva: e.target.value })}
+   260→                        placeholder="Es: IT12345678901"
+   261→                      />
+   262→                    </div>
+   263→                    <div>
+   264→                      <Label htmlFor="codiceFiscale">Codice Fiscale</Label>
+   265→                      <Input
+   266→                        id="codiceFiscale"
+   267→                        value={companyData.codiceFiscale || ''}
+   268→                        onChange={(e) => setCompanyData({ ...companyData, codiceFiscale: e.target.value })}
+   269→                        placeholder="Es: RSSMRA80A01H501U"
+   270→                      />
+   271→                    </div>
+   272→                  </div>
+   273→
+   274→                  <div>
+   275→                    <Label htmlFor="indirizzo">Indirizzo</Label>
+   276→                    <Input
+   277→                      id="indirizzo"
+   278→                      value={companyData.indirizzo || ''}
+   279→                      onChange={(e) => setCompanyData({ ...companyData, indirizzo: e.target.value })}
+   280→                      placeholder="Es: Via Roma 123"
+   281→                    />
+   282→                  </div>
+   283→
+   284→                  <div className="grid md:grid-cols-3 gap-4">
+   285→                    <div>
+   286→                      <Label htmlFor="cap">CAP</Label>
+   287→                      <Input
+   288→                        id="cap"
+   289→                        value={companyData.cap || ''}
+   290→                        onChange={(e) => setCompanyData({ ...companyData, cap: e.target.value })}
+   291→                        placeholder="00100"
+   292→                      />
+   293→                    </div>
+   294→                    <div>
+   295→                      <Label htmlFor="citta">Città *</Label>
+   296→                      <Input
+   297→                        id="citta"
+   298→                        value={companyData.citta || ''}
+   299→                        onChange={(e) => setCompanyData({ ...companyData, citta: e.target.value })}
+   300→                        placeholder="Es: Milano"
+   301→                      />
+   302→                    </div>
+   303→                    <div>
+   304→                      <Label htmlFor="provincia">Provincia</Label>
+   305→                      <Input
+   306→                        id="provincia"
+   307→                        value={companyData.provincia || ''}
+   308→                        onChange={(e) => setCompanyData({ ...companyData, provincia: e.target.value })}
+   309→                        placeholder="Es: MI"
+   310→                        maxLength={2}
+   311→                      />
+   312→                    </div>
+   313→                  </div>
+   314→
+   315→                  <div>
+   316→                    <Label htmlFor="paese">Paese</Label>
+   317→                    <Input
+   318→                      id="paese"
+   319→                      value={companyData.paese || 'Italia'}
+   320→                      onChange={(e) => setCompanyData({ ...companyData, paese: e.target.value })}
+   321→                      placeholder="Es: Italia"
+   322→                    />
+   323→                  </div>
+   324→
+   325→                  <div className="grid md:grid-cols-3 gap-4">
+   326→                    <div>
+   327→                      <Label htmlFor="telefono">Telefono</Label>
+   328→                      <Input
+   329→                        id="telefono"
+   330→                        value={companyData.telefono || ''}
+   331→                        onChange={(e) => setCompanyData({ ...companyData, telefono: e.target.value })}
+   332→                        placeholder="+39 02 1234567"
+   333→                      />
+   334→                    </div>
+   335→                    <div>
+   336→                      <Label htmlFor="email">Email *</Label>
+   337→                      <Input
+   338→                        id="email"
+   339→                        type="email"
+   340→                        value={companyData.email || ''}
+   341→                        onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })}
+   342→                        placeholder="info@azienda.com"
+   343→                      />
+   344→                    </div>
+   345→                    <div>
+   346→                      <Label htmlFor="pec">PEC</Label>
+   347→                      <Input
+   348→                        id="pec"
+   349→                        type="email"
+   350→                        value={companyData.pec || ''}
+   351→                        onChange={(e) => setCompanyData({ ...companyData, pec: e.target.value })}
+   352→                        placeholder="pec@azienda.com"
+   353→                      />
+   354→                    </div>
+   355→                  </div>
+   356→                </CardContent>
+   357→              </Card>
+   358→            </TabsContent>
+   359→
+   360→            {/* Tab DPO */}
+   361→            <TabsContent value="dpo" className="space-y-6">
+   362→              <Card>
+   363→                <CardHeader>
+   364→                  <CardTitle className="flex items-center gap-2">
+   365→                    <UserCheck className="w-5 h-5 text-blue-600" />
+   366→                    Data Protection Officer (DPO)
+   367→                  </CardTitle>
+   368→                  <CardDescription>
+   369→                    Indica il responsabile della protezione dei dati, se richiesto dal GDPR
+   370→                  </CardDescription>
+   371→                </CardHeader>
+   372→                <CardContent className="space-y-4">
+   373→                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+   374→                    <div className="flex items-start gap-3">
+   375→                      <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+   376→                      <div className="text-sm text-blue-800">
+   377→                        <p className="font-semibold mb-1">Chi deve avere un DPO?</p>
+   378→                        <p>Il DPO è obbligatorio se: (a) trattamenti su larga scala, (b) dati sensibili o giudiziari, 
+   379→                        (c) monitoraggio sistematico di persone, oppure è richiesto dalle autorità.</p>
+   380→                      </div>
+   381→                    </div>
+   382→                  </div>
+   383→
+   384→                  <div>
+   385→                    <Label htmlFor="dpoNome">Nome e Cognome del DPO</Label>
+   386→                    <Input
+   387→                      id="dpoNome"
+   388→                      value={companyData.dpoNome || ''}
+   389→                      onChange={(e) => setCompanyData({ ...companyData, dpoNome: e.target.value })}
+   390→                      placeholder="Es: Mario Rossi"
+   391→                    />
+   392→                  </div>
+   393→
+   394→                  <div>
+   395→                    <Label htmlFor="dpoEmail">Email del DPO</Label>
+   396→                    <Input
+   397→                      id="dpoEmail"
+   398→                      type="email"
+   399→                      value={companyData.dpoEmail || ''}
+   400→                      onChange={(e) => setCompanyData({ ...companyData, dpoEmail: e.target.value })}
+   401→                      placeholder="dpo@azienda.com"
+   402→                    />
+   403→                  </div>
+   404→
+   405→                  <div>
+   406→                    <Label htmlFor="dpoIndirizzo">Indirizzo del DPO</Label>
+   407→                    <Input
+   408→                      id="dpoIndirizzo"
+   409→                      value={companyData.dpoIndirizzo || ''}
+   410→                      onChange={(e) => setCompanyData({ ...companyData, dpoIndirizzo: e.target.value })}
+   411→                      placeholder="Es: Via della Privacy 1, Milano"
+   412→                    />
+   413→                  </div>
+   414→                </CardContent>
+   415→              </Card>
+   416→            </TabsContent>
+   417→
+   418→            {/* Tab Privacy */}
+   419→            <TabsContent value="privacy" className="space-y-6">
+   420→              <Card>
+   421→                <CardHeader>
+   422→                  <CardTitle className="flex items-center gap-2">
+   423→                    <ShieldCheck className="w-5 h-5 text-green-600" />
+   424→                    Privacy Policy
+   425→                  </CardTitle>
+   426→                  <CardDescription>
+   427→                    Configura la Privacy Policy conforme al GDPR
+   428→                  </CardDescription>
+   429→                </CardHeader>
+   430→                <CardContent className="space-y-4">
+   431→                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+   432→                    <div>
+   433→                      <Label className="text-base font-semibold">Abilita Privacy Policy</Label>
+   434→                      <p className="text-sm text-gray-500 mt-1">
+   435→                        Mostra la pagina Privacy Policy e il link nel footer
+   436→                      </p>
+   437→                    </div>
+   438→                    <Switch
+   439→                      checked={companyData.privacyEnabled ?? true}
+   440→                      onCheckedChange={(checked) => setCompanyData({ ...companyData, privacyEnabled: checked })}
+   441→                    />
+   442→                  </div>
+   443→
+   444→                  <div>
+   445→                    <Label htmlFor="privacyUrl">URL Privacy Policy</Label>
+   446→                    <Input
+   447→                      id="privacyUrl"
+   448→                      value={companyData.privacyUrl || '/privacy-policy'}
+   449→                      onChange={(e) => setCompanyData({ ...companyData, privacyUrl: e.target.value })}
+   450→                      placeholder="/privacy-policy"
+   451→                    />
+   452→                  </div>
+   453→
+   454→                  <div>
+   455→                    <Label htmlFor="privacyPolicy">Testo Privacy Policy (opzionale)</Label>
+   456→                    <p className="text-sm text-gray-500 mb-2">
+   457→                      Se lasciato vuoto, verrà generato automaticamente un template GDPR-compliant
+   458→                    </p>
+   459→                    <Textarea
+   460→                      id="privacyPolicy"
+   461→                      value={companyData.privacyPolicy || ''}
+   462→                      onChange={(e) => setCompanyData({ ...companyData, privacyPolicy: e.target.value })}
+   463→                      rows={10}
+   464→                      placeholder="Inserisci il testo personalizzato della privacy policy..."
+   465→                      className="font-mono text-sm"
+   466→                    />
+   467→                  </div>
+   468→
+   469→                  {companyData.privacyPolicyUpdate && (
+   470→                    <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+   471→                      Ultimo aggiornamento: {new Date(companyData.privacyPolicyUpdate).toLocaleDateString('it-IT')}
+   472→                    </div>
+   473→                  )}
+   474→                </CardContent>
+   475→              </Card>
+   476→            </TabsContent>
+   477→
+   478→            {/* Tab Cookies */}
+   479→            <TabsContent value="cookies" className="space-y-6">
+   480→              <Card>
+   481→                <CardHeader>
+   482→                  <CardTitle className="flex items-center gap-2">
+   483→                    <Cookie className="w-5 h-5 text-amber-600" />
+   484→                    Cookie Policy
+   485→                  </CardTitle>
+   486→                  <CardDescription>
+   487→                    Configura i cookie e la Cookie Policy conforme al GDPR
+   488→                  </CardDescription>
+   489→                </CardHeader>
+   490→                <CardContent className="space-y-4">
+   491→                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+   492→                    <div>
+   493→                      <Label className="text-base font-semibold">Abilita Cookie Policy</Label>
+   494→                      <p className="text-sm text-gray-500 mt-1">
+   495→                        Mostra la pagina Cookie Policy e il link nel footer
+   496→                      </p>
+   497→                    </div>
+   498→                    <Switch
+   499→                      checked={companyData.cookiesEnabled ?? true}
+   500→                      onCheckedChange={(checked) => setCompanyData({ ...companyData, cookiesEnabled: checked })}
+   501→                    />
+   502→                  </div>
+   503→
+   504→                  <div>
+   505→                    <Label htmlFor="cookiesUrl">URL Cookie Policy</Label>
+   506→                    <Input
+   507→                      id="cookiesUrl"
+   508→                      value={companyData.cookiesUrl || '/cookie-policy'}
+   509→                      onChange={(e) => setCompanyData({ ...companyData, cookiesUrl: e.target.value })}
+   510→                      placeholder="/cookie-policy"
+   511→                    />
+   512→                  </div>
+   513→
+   514→                  <div className="space-y-3 pt-4 border-t">
+   515→                    <Label className="text-base font-semibold">Tipi di Cookie Utilizzati</Label>
+   516→
+   517→                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+   518→                      <div>
+   519→                        <Label className="font-medium">Cookie Tecnici</Label>
+   520→                        <p className="text-sm text-gray-500 mt-1">
+   521→                          Essenziali per il funzionamento del sito (es. autenticazione, carrello)
+   522→                        </p>
+   523→                      </div>
+   524→                      <Switch
+   525→                        checked={companyData.cookieTecnici ?? true}
+   526→                        onCheckedChange={(checked) => setCompanyData({ ...companyData, cookieTecnici: checked })}
+   527→                      />
+   528→                    </div>
+   529→
+   530→                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+   531→                      <div>
+   532→                        <Label className="font-medium">Cookie Analitici</Label>
+   533→                        <p className="text-sm text-gray-500 mt-1">
+   534→                          Per analizzare l'utilizzo del sito e migliorare le prestazioni (es. Google Analytics)
+   535→                        </p>
+   536→                      </div>
+   537→                      <Switch
+   538→                        checked={companyData.cookieAnalitici ?? true}
+   539→                        onCheckedChange={(checked) => setCompanyData({ ...companyData, cookieAnalitici: checked })}
+   540→                      />
+   541→                    </div>
+   542→
+   543→                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+   544→                      <div>
+   545→                        <Label className="font-medium">Cookie di Marketing</Label>
+   546→                        <p className="text-sm text-gray-500 mt-1">
+   547→                          Per inviare pubblicità personalizzata (es. retargeting, social media)
+   548→                        </p>
+   549→                      </div>
+   550→                      <Switch
+   551→                        checked={companyData.cookieMarketing ?? false}
+   552→                        onCheckedChange={(checked) => setCompanyData({ ...companyData, cookieMarketing: checked })}
+   553→                      />
+   554→                    </div>
+   555→                  </div>
+   556→
+   557→                  <div>
+   558→                    <Label htmlFor="cookiesPolicy">Testo Cookie Policy (opzionale)</Label>
+   559→                    <p className="text-sm text-gray-500 mb-2">
+   560→                      Se lasciato vuoto, verrà generato automaticamente un template GDPR-compliant
+   561→                    </p>
+   562→                    <Textarea
+   563→                      id="cookiesPolicy"
+   564→                      value={companyData.cookiesPolicy || ''}
+   565→                      onChange={(e) => setCompanyData({ ...companyData, cookiesPolicy: e.target.value })}
+   566→                      rows={10}
+   567→                      placeholder="Inserisci il testo personalizzato della cookie policy..."
+   568→                      className="font-mono text-sm"
+   569→                    />
+   570→                  </div>
+   571→
+   572→                  {companyData.cookiesPolicyUpdate && (
+   573→                    <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+   574→                      Ultimo aggiornamento: {new Date(companyData.cookiesPolicyUpdate).toLocaleDateString('it-IT')}
+   575→                    </div>
+   576→                  )}
+   577→                </CardContent>
+   578→              </Card>
+   579→            </TabsContent>
+   580→
+   581→            {/* Tab Script di Terze Parti */}
+   582→            <TabsContent value="scripts" className="space-y-6">
+   583→              <Card>
+   584→                <CardHeader>
+   585→                  <CardTitle className="flex items-center gap-2">
+   586→                    <Code className="w-5 h-5 text-indigo-600" />
+   587→                    Script di Terze Parti
+   588→                  </CardTitle>
+   589→                  <CardDescription>
+   590→                    Configura gli ID per gli script di tracking e marketing (Google Analytics, Facebook Pixel, Amazon, AdSense)
+   591→                  </CardDescription>
+   592→                </CardHeader>
+   593→                <CardContent className="space-y-4">
+   594→                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+   595→                    <div>
+   596→                      <Label className="text-base font-semibold">Abilita Script di Terze Parti</Label>
+   597→                      <p className="text-sm text-gray-500 mt-1">
+   598→                        Carica gli script solo se l'utente ha dato il consenso appropriato
+   599→                      </p>
+   600→                    </div>
+   601→                    <Switch
+   602→                      checked={companyData.thirdPartyScriptsEnabled ?? true}
+   603→                      onCheckedChange={(checked) => setCompanyData({ ...companyData, thirdPartyScriptsEnabled: checked })}
+   604→                    />
+   605→                  </div>
+   606→
+   607→                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+   608→                    <div className="flex items-start gap-3">
+   609→                      <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+   610→                      <div className="text-sm text-blue-800">
+   611→                        <p className="font-semibold mb-1">GDPR-Compliant</p>
+   612→                        <p>Questi script vengono caricati solo dopo che l'utente ha dato il consenso appropriato:
+   613→                        Google Analytics richiede cookie analitici, Facebook Pixel, Amazon e AdSense richiedono cookie marketing.</p>
+   614→                      </div>
+   615→                    </div>
+   616→                  </div>
+   617→
+   618→                  <div className="space-y-4 pt-4 border-t">
+   619→                    <div>
+   620→                      <Label htmlFor="googleAnalyticsId" className="flex items-center gap-2">
+   621→                        <span className="font-semibold">📊 Google Analytics 4</span>
+   622→                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Cookie Analitici</span>
+   623→                      </Label>
+   624→                      <p className="text-sm text-gray-500 mb-2">
+   625→                        Inserisci il tuo GA4 Measurement ID (es: G-XXXXXXXXXX)
+   626→                      </p>
+   627→                      <Input
+   628→                        id="googleAnalyticsId"
+   629→                        value={companyData.googleAnalyticsId || ''}
+   630→                        onChange={(e) => setCompanyData({ ...companyData, googleAnalyticsId: e.target.value })}
+   631→                        placeholder="G-XXXXXXXXXX"
+   632→                        className="font-mono"
+   633→                      />
+   634→                    </div>
+   635→
+   636→                    <div>
+   637→                      <Label htmlFor="facebookPixelId" className="flex items-center gap-2">
+   638→                        <span className="font-semibold">🎯 Facebook Pixel / Meta Pixel</span>
+   639→                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Cookie Marketing</span>
+   640→                      </Label>
+   641→                      <p className="text-sm text-gray-500 mb-2">
+   642→                        Inserisci il tuo Facebook Pixel ID (es: 123456789012345)
+   643→                      </p>
+   644→                      <Input
+   645→                        id="facebookPixelId"
+   646→                        value={companyData.facebookPixelId || ''}
+   647→                        onChange={(e) => setCompanyData({ ...companyData, facebookPixelId: e.target.value })}
+   648→                        placeholder="123456789012345"
+   649→                        className="font-mono"
+   650→                      />
+   651→                    </div>
+   652→
+   653→                    <div>
+   654→                      <Label htmlFor="amazonTagId" className="flex items-center gap-2">
+   655→                        <span className="font-semibold">🛒 Amazon Associates Tag</span>
+   656→                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">Cookie Marketing</span>
+   657→                      </Label>
+   658→                      <p className="text-sm text-gray-500 mb-2">
+   659→                        Inserisci il tuo Amazon Associate Tag ID (es: tuoazienda-20)
+   660→                      </p>
+   661→                      <Input
+   662→                        id="amazonTagId"
+   663→                        value={companyData.amazonTagId || ''}
+   664→                        onChange={(e) => setCompanyData({ ...companyData, amazonTagId: e.target.value })}
+   665→                        placeholder="tuoazienda-20"
+   666→                        className="font-mono"
+   667→                      />
+   668→                    </div>
+   669→
+   670→                    <div className="pt-4 border-t">
+   671→                      <Label htmlFor="adSenseId" className="flex items-center gap-2">
+   672→                        <span className="font-semibold">💰 Google AdSense - Publisher ID</span>
+   673→                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Cookie Marketing</span>
+   674→                      </Label>
+   675→                      <p className="text-sm text-gray-500 mb-2">
+   676→                        Inserisci il tuo Publisher ID di Google AdSense (formato completo: ca-pub-XXXXXXXXXXXXXXXX)
+   677→                      </p>
+   678→                      <Input
+   679→                        id="adSenseId"
+   680→                        value={companyData.adSenseId || ''}
+   681→                        onChange={(e) => setCompanyData({ ...companyData, adSenseId: e.target.value })}
+   682→                        placeholder="ca-pub-1234567890123456"
+   683→                        className="font-mono"
+   684→                      />
+   685→                      <p className="text-xs text-gray-400 mt-2">
+   686→                        Esempio: <code className="bg-gray-100 px-1 rounded">ca-pub-1234567890123456</code>
+   687→                      </p>
+   688→                    </div>
+   689→
+   690→                    <div className="pt-4 border-t bg-green-50 rounded-lg p-4">
+   691→                      <Label className="flex items-center gap-2 mb-4">
+   692→                        <span className="font-semibold">📦 AdSense Slot IDs</span>
+   693→                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Banner Pubblicitari</span>
+   694→                      </Label>
+   695→                      <p className="text-sm text-gray-600 mb-4">
+   696→                        Inserisci gli ID Slot creati nel tuo account AdSense per ciascun tipo di banner. 
+   697→                        Questi ID si trovano nella dashboard AdSense under "Unità pubblicitarie".
+   698→                      </p>
+   699→                      
+   700→                      <div className="space-y-4">
+   701→                        <div>
+   702→                          <Label htmlFor="adSenseSlotHorizontal" className="text-sm font-medium">Slot Banner Orizzontale</Label>
+   703→                          <p className="text-xs text-gray-500 mb-2">Per banner a tutta larghezza (es: 728x90px)</p>
+   704→                          <Input
+   705→                            id="adSenseSlotHorizontal"
+   706→                            value={companyData.adSenseSlotHorizontal || ''}
+   707→                            onChange={(e) => setCompanyData({ ...companyData, adSenseSlotHorizontal: e.target.value })}
+   708→                            placeholder="1234567890"
+   709→                            className="font-mono text-sm"
+   710→                          />
+   711→                        </div>
+   712→
+   713→                        <div>
+   714→                          <Label htmlFor="adSenseSlotRectangle" className="text-sm font-medium">Slot Banner Rettangolare</Label>
+   715→                          <p className="text-xs text-gray-500 mb-2">Per banner quadrati o rettangolari (es: 300x250px)</p>
+   716→                          <Input
+   717→                            id="adSenseSlotRectangle"
+   718→                            value={companyData.adSenseSlotRectangle || ''}
+   719→                            onChange={(e) => setCompanyData({ ...companyData, adSenseSlotRectangle: e.target.value })}
+   720→                            placeholder="1234567890"
+   721→                            className="font-mono text-sm"
+   722→                          />
+   723→                        </div>
+   724→
+   725→                        <div>
+   726→                          <Label htmlFor="adSenseSlotTop" className="text-sm font-medium">Slot Banner Top</Label>
+   727→                          <p className="text-xs text-gray-500 mb-2">Per banner in alto alla pagina</p>
+   728→                          <Input
+   729→                            id="adSenseSlotTop"
+   730→                            value={companyData.adSenseSlotTop || ''}
+   731→                            onChange={(e) => setCompanyData({ ...companyData, adSenseSlotTop: e.target.value })}
+   732→                            placeholder="1234567890"
+   733→                            className="font-mono text-sm"
+   734→                          />
+   735→                        </div>
+   736→
+   737→                        <div>
+   738→                          <Label htmlFor="adSenseSlotInline" className="text-sm font-medium">Slot Banner Inline</Label>
+   739→                          <p className="text-xs text-gray-500 mb-2">Per banner inseriti nel contenuto della pagina</p>
+   740→                          <Input
+   741→                            id="adSenseSlotInline"
+   742→                            value={companyData.adSenseSlotInline || ''}
+   743→                            onChange={(e) => setCompanyData({ ...companyData, adSenseSlotInline: e.target.value })}
+   744→                            placeholder="1234567890"
+   745→                            className="font-mono text-sm"
+   746→                          />
+   747→                        </div>
+   748→                      </div>
+   749→
+   750→                      <div className="mt-4 bg-white rounded p-3 border border-green-200">
+   751→                        <p className="text-xs text-gray-600">
+   752→                          <strong>Dove trovo gli Slot IDs?</strong> Vai su <a href="https://adsense.google.com" target="_blank" rel="noopener noreferrer" className="text-green-600 underline">Google AdSense</a> → Contenuti → Unità pubblicitarie → clicca sull'unità desiderata → copia il "ID dati" che inizia con un numero.
+   753→                        </p>
+   754→                      </div>
+   755→                    </div>
+   756→                  </div>
+   757→
+   758→                  <div className="pt-4 border-t">
+   759→                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+   760→                      <div className="flex items-start gap-3">
+   761→                        <Info className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+   762→                        <div className="text-sm text-yellow-800">
+   763→                          <p className="font-semibold mb-1">Come Testare</p>
+   764→                          <ol className="list-decimal list-inside space-y-1 mt-1">
+   765→                            <li>Inserisci gli ID/Tag nei campi sopra</li>
+   766→                            <li>Clicca "Salva Dati"</li>
+   767→                            <li>Resetta il consenso cookie dal tab "Impostazioni"</li>
+   768→                            <li>Dai il consenso appropriato nel banner (Marketing per AdSense)</li>
+   769→                            <li>Apri la console (F12) per vedere i log di caricamento</li>
+   770→                          </ol>
+   771→                        </div>
+   772→                      </div>
+   773→                    </div>
+   774→                  </div>
+   775→                </CardContent>
+   776→              </Card>
+   777→            </TabsContent>
+   778→
+   779→            {/* Tab Impostazioni */}
+   780→            <TabsContent value="impostazioni" className="space-y-6">
+   781→              <Card>
+   782→                <CardHeader>
+   783→                  <CardTitle className="flex items-center gap-2">
+   784→                    <Settings className="w-5 h-5 text-purple-600" />
+   785→                    Banner Cookie
+   786→                  </CardTitle>
+   787→                  <CardDescription>
+   788→                    Configura il banner di consenso cookie che appare all'accesso del sito
+   789→                  </CardDescription>
+   790→                </CardHeader>
+   791→                <CardContent className="space-y-4">
+   792→                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+   793→                    <div>
+   794→                      <Label className="text-base font-semibold">Mostra Banner Cookie</Label>
+   795→                      <p className="text-sm text-gray-500 mt-1">
+   796→                        Il banner apparirà agli utenti che non hanno ancora dato il consenso
+   797→                      </p>
+   798→                    </div>
+   799→                    <Switch
+   800→                      checked={companyData.showCookieBanner ?? true}
+   801→                      onCheckedChange={(checked) => setCompanyData({ ...companyData, showCookieBanner: checked })}
+   802→                    />
+   803→                  </div>
+   804→
+   805→                  <div>
+   806→                    <Label htmlFor="cookieBannerText">Testo del Banner</Label>
+   807→                    <Textarea
+   808→                      id="cookieBannerText"
+   809→                      value={companyData.cookieBannerText || ''}
+   810→                      onChange={(e) => setCompanyData({ ...companyData, cookieBannerText: e.target.value })}
+   811→                      rows={3}
+   812→                      placeholder="Inserisci il testo che appare nel banner..."
+   813→                    />
+   814→                  </div>
+   815→
+   816→                  <div className="grid md:grid-cols-2 gap-4">
+   817→                    <div>
+   818→                      <Label htmlFor="cookieAcceptText">Testo Pulsante "Autorizzo"</Label>
+   819→                      <Input
+   820→                        id="cookieAcceptText"
+   821→                        value={companyData.cookieAcceptText || 'Autorizzo'}
+   822→                        onChange={(e) => setCompanyData({ ...companyData, cookieAcceptText: e.target.value })}
+   823→                        placeholder="Autorizzo"
+   824→                      />
+   825→                    </div>
+   826→                    <div>
+   827→                      <Label htmlFor="cookieDeclineText">Testo Pulsante "Annulla"</Label>
+   828→                      <Input
+   829→                        id="cookieDeclineText"
+   830→                        value={companyData.cookieDeclineText || 'Annulla'}
+   831→                        onChange={(e) => setCompanyData({ ...companyData, cookieDeclineText: e.target.value })}
+   832→                        placeholder="Annulla"
+   833→                      />
+   834→                    </div>
+   835→                  </div>
+   836→
+   837→                  <div className="pt-4 border-t">
+   838→                    <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+   839→                      <div className="flex items-start gap-3 mb-3">
+   840→                        <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+   841→                        <div className="text-sm text-primary">
+   842→                          <p className="font-semibold mb-1">Test del Banner Cookie</p>
+   843→                          <p>Usa questi strumenti per testare il banner senza dover cancellare manualmente il localStorage.</p>
+   844→                        </div>
+   845→                      </div>
+   846→                      <div className="flex flex-wrap gap-2">
+   847→                        <Button
+   848→                          variant="outline"
+   849→                          onClick={() => {
+   850→                            localStorage.removeItem('cookie-consent')
+   851→                            localStorage.removeItem('cookie-consent-date')
+   852→                            window.location.reload()
+   853→                          }}
+   854→                          className="border-primary/30 text-primary hover:bg-primary/10"
+   855→                        >
+   856→                          Resetta Consenso e Ricarica
+   857→                        </Button>
+   858→                        <Button
+   859→                          variant="outline"
+   860→                          onClick={() => {
+   861→                            const consent = localStorage.getItem('cookie-consent')
+   862→                            const date = localStorage.getItem('cookie-consent-date')
+   863→                            alert(`Consenso attuale: ${consent || 'Nessuno'}\nData: ${date || 'Nessuna'}`)
+   864→                          }}
+   865→                        >
+   866→                          Verifica Stato Consenso
+   867→                        </Button>
+   868→                      </div>
+   869→                    </div>
+   870→                  </div>
+   871→                </CardContent>
+   872→              </Card>
+   873→
+   874→              <Card>
+   875→                <CardHeader>
+   876→                  <CardTitle className="flex items-center gap-2">
+   877→                    <Globe className="w-5 h-5 text-blue-600" />
+   878→                    Termini di Servizio
+   879→                  </CardTitle>
+   880→                  <CardDescription>
+   881→                    Configura i termini di servizio del sito (opzionale)
+   882→                  </CardDescription>
+   883→                </CardHeader>
+   884→                <CardContent className="space-y-4">
+   885→                  <div>
+   886→                    <Label htmlFor="terminiUrl">URL Termini di Servizio</Label>
+   887→                    <Input
+   888→                      id="terminiUrl"
+   889→                      value={companyData.terminiUrl || '/termini-servizio'}
+   890→                      onChange={(e) => setCompanyData({ ...companyData, terminiUrl: e.target.value })}
+   891→                      placeholder="/termini-servizio"
+   892→                    />
+   893→                  </div>
+   894→
+   895→                  <div>
+   896→                    <Label htmlFor="terminiServizio">Testo Termini di Servizio</Label>
+   897→                    <Textarea
+   898→                      id="terminiServizio"
+   899→                      value={companyData.terminiServizio || ''}
+   900→                      onChange={(e) => setCompanyData({ ...companyData, terminiServizio: e.target.value })}
+   901→                      rows={8}
+   902→                      placeholder="Inserisci i termini di servizio..."
+   903→                      className="font-mono text-sm"
+   904→                    />
+   905→                  </div>
+   906→                </CardContent>
+   907→              </Card>
+   908→            </TabsContent>
+   909→          </div>
+   910→        </ScrollArea>
+   911→      </Tabs>
+   912→    </div>
+   913→  );
+   914→}

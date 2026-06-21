@@ -7,7 +7,7 @@ import ReservationDialog from '@/components/restaurant/ReservationDialog';
 import Footer from '@/components/restaurant/Footer';
 import CookieBanner from '@/components/restaurant/CookieBanner';
 import SocialSidebar from '@/components/restaurant/SocialSidebar';
-import AdminPanel from '@/components/restaurant/AdminPanel';
+import AdminPanel from '@/components/admin/AdminPanel';
 
 export default function Home() {
   return (

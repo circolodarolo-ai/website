@@ -1,0 +1,938 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useRef, useCallback } from 'react'
+     4→import { Plus, Pencil, Trash2, Save, X, Check, Upload, Move, ZoomIn, ZoomOut, RotateCcw, Loader2 } from 'lucide-react'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Textarea } from '@/components/ui/textarea'
+     8→import { Label } from '@/components/ui/label'
+     9→import { Checkbox } from '@/components/ui/checkbox'
+    10→import { Slider } from '@/components/ui/slider'
+    11→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+    12→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    13→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    14→import {
+    15→  Table,
+    16→  TableBody,
+    17→  TableCell,
+    18→  TableHead,
+    19→  TableHeader,
+    20→  TableRow,
+    21→} from '@/components/ui/table'
+    22→
+    23→interface Allergene {
+    24→  id: string
+    25→  nome: string
+    26→  icona?: string | null
+    27→}
+    28→
+    29→interface Categoria {
+    30→  id: string
+    31→  nome: string
+    32→  ordine: number
+    33→  attiva: boolean
+    34→  _count?: { articoli: number }
+    35→}
+    36→
+    37→interface Articolo {
+    38→  id: string
+    39→  nome: string
+    40→  descrizione: string | null
+    41→  categoriaId: string
+    42→  categoria: Categoria
+    43→  prezzo: number
+    44→  prezzoPromozionale: number | null
+    45→  scadenzaPromo: string | null
+    46→  eSurgelato: boolean
+    47→  eBestChoice: boolean
+    48→  attivo: boolean
+    49→  allergeni: Allergene[]
+    50→  immagineUrl: string | null
+    51→}
+    52→
+    53→export default function AdminMenu() {
+    54→  const [categorie, setCategorie] = useState<Categoria[]>([])
+    55→  const [articoli, setArticoli] = useState<Articolo[]>([])
+    56→  const [allergeni, setAllergeni] = useState<Allergene[]>([])
+    57→  const [loading, setLoading] = useState(true)
+    58→  const [error, setError] = useState<string | null>(null)
+    59→
+    60→  // Categoria form
+    61→  const [categoriaForm, setCategoriaForm] = useState({ id: '', nome: '', ordine: 0, attiva: true })
+    62→  const [showCategoriaDialog, setShowCategoriaDialog] = useState(false)
+    63→
+    64→  // Articolo form
+    65→  const [articoloForm, setArticoloForm] = useState({
+    66→    id: '',
+    67→    nome: '',
+    68→    descrizione: '',
+    69→    categoriaId: '',
+    70→    prezzo: '',
+    71→    prezzoPromozionale: '',
+    72→    scadenzaPromo: '',
+    73→    eSurgelato: false,
+    74→    eBestChoice: false,
+    75→    attivo: true,
+    76→    allergeni: [] as string[],
+    77→    immagineUrl: '',
+    78→    immagineAiGenerata: false
+    79→  })
+    80→  const [showArticoloDialog, setShowArticoloDialog] = useState(false)
+    81→
+    82→  // Image upload state
+    83→  const [uploading, setUploading] = useState(false)
+    84→  const fileInputRef = useRef<HTMLInputElement>(null)
+    85→
+    86→  // Image editor state
+    87→  const [imageEditorOpen, setImageEditorOpen] = useState(false)
+    88→  const [imageZoom, setImageZoom] = useState(1)
+    89→  const [imagePanX, setImagePanX] = useState(0)
+    90→  const [imagePanY, setImagePanY] = useState(0)
+    91→  const [isDragging, setIsDragging] = useState(false)
+    92→  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+    93→  const [imageNaturalSize, setImageNaturalSize] = useState({ w: 0, h: 0 })
+    94→  const editorContainerRef = useRef<HTMLDivElement>(null)
+    95→  const editorImageRef = useRef<HTMLImageElement>(null)
+    96→
+    97→  useEffect(() => {
+    98→    fetchData()
+    99→  }, [])
+   100→
+   101→  async function fetchData() {
+   102→    setLoading(true)
+   103→    try {
+   104→      const [catRes, artRes, allRes] = await Promise.all([
+   105→        fetch('/api/admin/categorie'),
+   106→        fetch('/api/admin/articoli'),
+   107→        fetch('/api/admin/allergeni')
+   108→      ])
+   109→
+   110→      if (catRes.ok) setCategorie(await catRes.json())
+   111→      if (artRes.ok) setArticoli(await artRes.json())
+   112→      if (allRes.ok) setAllergeni(await allRes.json())
+   113→    } catch (error) {
+   114→      console.error('Errore nel recupero dati:', error)
+   115→    } finally {
+   116→      setLoading(false)
+   117→    }
+   118→  }
+   119→
+   120→  // --- Image editor functions ---
+   121→
+   122→  function resetImageEditor() {
+   123→    setImageEditorOpen(false)
+   124→    setImageZoom(1)
+   125→    setImagePanX(0)
+   126→    setImagePanY(0)
+   127→    setIsDragging(false)
+   128→    setDragStart({ x: 0, y: 0 })
+   129→  }
+   130→
+   131→  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+   132→    const file = e.target.files?.[0]
+   133→    if (!file) return
+   134→
+   135→    setUploading(true)
+   136→    try {
+   137→      const formDataUpload = new FormData()
+   138→      formDataUpload.append('file', file)
+   139→
+   140→      const response = await fetch('/api/admin/upload-image', {
+   141→        method: 'POST',
+   142→        body: formDataUpload
+   143→      })
+   144→
+   145→      if (response.ok) {
+   146→        const result = await response.json()
+   147→        setArticoloForm(prev => ({ ...prev, immagineUrl: result.url }))
+   148→        resetImageEditor()
+   149→        setImageEditorOpen(true)
+   150→      } else {
+   151→        const err = await response.json()
+   152→        alert(err.error || 'Errore durante il caricamento')
+   153→      }
+   154→    } catch (error) {
+   155→      console.error('Errore upload:', error)
+   156→      alert('Errore durante il caricamento dell\'immagine')
+   157→    } finally {
+   158→      setUploading(false)
+   159→      if (fileInputRef.current) fileInputRef.current.value = ''
+   160→    }
+   161→  }
+   162→
+   163→  function removeImage() {
+   164→    setArticoloForm(prev => ({ ...prev, immagineUrl: '', immagineAiGenerata: false }))
+   165→    resetImageEditor()
+   166→  }
+   167→
+   168→  function openImageEditor() {
+   169→    if (!articoloForm.immagineUrl) return
+   170→    resetImageEditor()
+   171→    setImageEditorOpen(true)
+   172→  }
+   173→
+   174→  const handleEditorMouseDown = useCallback((e: React.MouseEvent) => {
+   175→    e.preventDefault()
+   176→    setIsDragging(true)
+   177→    setDragStart({ x: e.clientX - imagePanX, y: e.clientY - imagePanY })
+   178→  }, [imagePanX, imagePanY])
+   179→
+   180→  const handleEditorMouseMove = useCallback((e: React.MouseEvent) => {
+   181→    if (!isDragging) return
+   182→    const newX = e.clientX - dragStart.x
+   183→    const newY = e.clientY - dragStart.y
+   184→    const container = editorContainerRef.current
+   185→    if (container) {
+   186→      const rect = container.getBoundingClientRect()
+   187→      const maxPanX = Math.max(0, (imageNaturalSize.w * imageZoom - rect.width) / 2)
+   188→      const maxPanY = Math.max(0, (imageNaturalSize.h * imageZoom - rect.height) / 2)
+   189→      setImagePanX(Math.max(-maxPanX, Math.min(maxPanX, newX)))
+   190→      setImagePanY(Math.max(-maxPanY, Math.min(maxPanY, newY)))
+   191→    } else {
+   192→      setImagePanX(newX)
+   193→      setImagePanY(newY)
+   194→    }
+   195→  }, [isDragging, dragStart, imageZoom, imageNaturalSize])
+   196→
+   197→  const handleEditorMouseUp = useCallback(() => { setIsDragging(false) }, [])
+   198→
+   199→  const handleEditorTouchStart = useCallback((e: React.TouchEvent) => {
+   200→    const touch = e.touches[0]
+   201→    setIsDragging(true)
+   202→    setDragStart({ x: touch.clientX - imagePanX, y: touch.clientY - imagePanY })
+   203→  }, [imagePanX, imagePanY])
+   204→
+   205→  const handleEditorTouchMove = useCallback((e: React.TouchEvent) => {
+   206→    if (!isDragging) return
+   207→    e.preventDefault()
+   208→    const touch = e.touches[0]
+   209→    const newX = touch.clientX - dragStart.x
+   210→    const newY = touch.clientY - dragStart.y
+   211→    const container = editorContainerRef.current
+   212→    if (container) {
+   213→      const rect = container.getBoundingClientRect()
+   214→      const maxPanX = Math.max(0, (imageNaturalSize.w * imageZoom - rect.width) / 2)
+   215→      const maxPanY = Math.max(0, (imageNaturalSize.h * imageZoom - rect.height) / 2)
+   216→      setImagePanX(Math.max(-maxPanX, Math.min(maxPanX, newX)))
+   217→      setImagePanY(Math.max(-maxPanY, Math.min(maxPanY, newY)))
+   218→    } else {
+   219→      setImagePanX(newX)
+   220→      setImagePanY(newY)
+   221→    }
+   222→  }, [isDragging, dragStart, imageZoom, imageNaturalSize])
+   223→
+   224→  const handleEditorTouchEnd = useCallback(() => { setIsDragging(false) }, [])
+   225→
+   226→  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+   227→    const img = e.currentTarget
+   228→    setImageNaturalSize({ w: img.naturalWidth, h: img.naturalHeight })
+   229→  }
+   230→
+   231→  function confirmImageEdit() {
+   232→    const img = editorImageRef.current
+   233→    const container = editorContainerRef.current
+   234→    if (!img || !container) return
+   235→
+   236→    const canvas = document.createElement('canvas')
+   237→    const ctx = canvas.getContext('2d')
+   238→    if (!ctx) return
+   239→
+   240→    const rect = container.getBoundingClientRect()
+   241→    canvas.width = rect.width * 2
+   242→    canvas.height = rect.height * 2
+   243→    ctx.scale(2, 2)
+   244→
+   245→    const containerW = rect.width
+   246→    const containerH = rect.height
+   247→    const imgAspect = img.naturalWidth / img.naturalHeight
+   248→    const containerAspect = containerW / containerH
+   249→
+   250→    let baseW: number, baseH: number
+   251→    if (imgAspect > containerAspect) {
+   252→      baseW = containerW
+   253→      baseH = containerW / imgAspect
+   254→    } else {
+   255→      baseH = containerH
+   256→      baseW = containerH * imgAspect
+   257→    }
+   258→
+   259→    const scaledW = baseW * imageZoom
+   260→    const scaledH = baseH * imageZoom
+   261→    const drawX = (containerW - scaledW) / 2 + imagePanX
+   262→    const drawY = (containerH - scaledH) / 2 + imagePanY
+   263→
+   264→    ctx.drawImage(img, drawX, drawY, scaledW, scaledH)
+   265→    const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+   266→    setArticoloForm(prev => ({ ...prev, immagineUrl: dataUrl }))
+   267→    resetImageEditor()
+   268→  }
+   269→
+   270→  function resetEditorPosition() {
+   271→    setImageZoom(1)
+   272→    setImagePanX(0)
+   273→    setImagePanY(0)
+   274→  }
+   275→
+   276→  // --- Categorie CRUD ---
+   277→
+   278→  async function saveCategoria() {
+   279→    setError(null)
+   280→    const url = categoriaForm.id
+   281→      ? `/api/admin/categorie/${categoriaForm.id}`
+   282→      : '/api/admin/categorie'
+   283→    const method = categoriaForm.id ? 'PUT' : 'POST'
+   284→
+   285→    try {
+   286→      const response = await fetch(url, {
+   287→        method,
+   288→        headers: { 'Content-Type': 'application/json' },
+   289→        body: JSON.stringify(categoriaForm)
+   290→      })
+   291→
+   292→      if (response.ok) {
+   293→        setShowCategoriaDialog(false)
+   294→        setCategoriaForm({ id: '', nome: '', ordine: 0, attiva: true })
+   295→        fetchData()
+   296→        alert('Categoria salvata con successo!')
+   297→      } else {
+   298→        const errorData = await response.json()
+   299→        setError(errorData.error || 'Errore nel salvataggio della categoria')
+   300→        alert(`Errore: ${errorData.error || 'Errore nel salvataggio della categoria'}`)
+   301→      }
+   302→    } catch (error) {
+   303→      console.error('Errore salvataggio categoria:', error)
+   304→      const errorMsg = 'Errore di connessione. Verifica che il server sia attivo.'
+   305→      setError(errorMsg)
+   306→      alert(errorMsg)
+   307→    }
+   308→  }
+   309→
+   310→  async function deleteCategoria(id: string) {
+   311→    if (!confirm('Sei sicuro di voler eliminare questa categoria?')) return
+   312→
+   313→    setError(null)
+   314→    try {
+   315→      const response = await fetch(`/api/admin/categorie/${id}`, { method: 'DELETE' })
+   316→      if (response.ok) {
+   317→        fetchData()
+   318→        alert('Categoria eliminata con successo!')
+   319→      } else {
+   320→        const errorData = await response.json()
+   321→        setError(errorData.error || 'Errore nell\'eliminazione della categoria')
+   322→        alert(`Errore: ${errorData.error || 'Errore nell\'eliminazione della categoria'}`)
+   323→      }
+   324→    } catch (error) {
+   325→      console.error('Errore eliminazione categoria:', error)
+   326→      const errorMsg = 'Errore di connessione. Verifica che il server sia attivo.'
+   327→      setError(errorMsg)
+   328→      alert(errorMsg)
+   329→    }
+   330→  }
+   331→
+   332→  function editCategoria(cat: Categoria) {
+   333→    setCategoriaForm({
+   334→      id: cat.id,
+   335→      nome: cat.nome,
+   336→      ordine: cat.ordine,
+   337→      attiva: cat.attiva
+   338→    })
+   339→    setShowCategoriaDialog(true)
+   340→  }
+   341→
+   342→  // --- Articoli CRUD ---
+   343→
+   344→  async function saveArticolo() {
+   345→    if (imageEditorOpen) return
+   346→    setError(null)
+   347→    const url = articoloForm.id
+   348→      ? `/api/admin/articoli/${articoloForm.id}`
+   349→      : '/api/admin/articoli'
+   350→    const method = articoloForm.id ? 'PUT' : 'POST'
+   351→
+   352→    try {
+   353→      const response = await fetch(url, {
+   354→        method,
+   355→        headers: { 'Content-Type': 'application/json' },
+   356→        body: JSON.stringify(articoloForm)
+   357→      })
+   358→
+   359→      if (response.ok) {
+   360→        setShowArticoloDialog(false)
+   361→        resetArticoloForm()
+   362→        fetchData()
+   363→        alert('Articolo salvato con successo!')
+   364→      } else {
+   365→        const errorData = await response.json()
+   366→        setError(errorData.error || 'Errore nel salvataggio dell\'articolo')
+   367→        alert(`Errore: ${errorData.error || 'Errore nel salvataggio dell\'articolo'}`)
+   368→      }
+   369→    } catch (error) {
+   370→      console.error('Errore salvataggio articolo:', error)
+   371→      const errorMsg = 'Errore di connessione. Verifica che il server sia attivo.'
+   372→      setError(errorMsg)
+   373→      alert(errorMsg)
+   374→    }
+   375→  }
+   376→
+   377→  async function deleteArticolo(id: string) {
+   378→    if (!confirm('Sei sicuro di voler eliminare questo articolo?')) return
+   379→
+   380→    setError(null)
+   381→    try {
+   382→      const response = await fetch(`/api/admin/articoli/${id}`, { method: 'DELETE' })
+   383→      if (response.ok) {
+   384→        fetchData()
+   385→        alert('Articolo eliminato con successo!')
+   386→      } else {
+   387→        const errorData = await response.json()
+   388→        setError(errorData.error || 'Errore nell\'eliminazione dell\'articolo')
+   389→        alert(`Errore: ${errorData.error || 'Errore nell\'eliminazione dell\'articolo'}`)
+   390→      }
+   391→    } catch (error) {
+   392→      console.error('Errore eliminazione articolo:', error)
+   393→      const errorMsg = 'Errore di connessione. Verifica che il server sia attivo.'
+   394→      setError(errorMsg)
+   395→      alert(errorMsg)
+   396→    }
+   397→  }
+   398→
+   399→  function editArticolo(art: Articolo) {
+   400→    setArticoloForm({
+   401→      id: art.id,
+   402→      nome: art.nome,
+   403→      descrizione: art.descrizione || '',
+   404→      categoriaId: art.categoriaId,
+   405→      prezzo: art.prezzo.toString(),
+   406→      prezzoPromozionale: art.prezzoPromozionale?.toString() || '',
+   407→      scadenzaPromo: art.scadenzaPromo?.split('T')[0] || '',
+   408→      eSurgelato: art.eSurgelato,
+   409→      eBestChoice: art.eBestChoice,
+   410→      attivo: art.attivo,
+   411→      allergeni: art.allergeni.map(a => a.id),
+   412→      immagineUrl: art.immagineUrl || '',
+   413→      immagineAiGenerata: (art as any).immagineAiGenerata || false
+   414→    })
+   415→    resetImageEditor()
+   416→    setShowArticoloDialog(true)
+   417→  }
+   418→
+   419→  function resetArticoloForm() {
+   420→    setArticoloForm({
+   421→      id: '',
+   422→      nome: '',
+   423→      descrizione: '',
+   424→      categoriaId: '',
+   425→      prezzo: '',
+   426→      prezzoPromozionale: '',
+   427→      scadenzaPromo: '',
+   428→      eSurgelato: false,
+   429→      eBestChoice: false,
+   430→      attivo: true,
+   431→      allergeni: [],
+   432→      immagineUrl: '',
+   433→      immagineAiGenerata: false
+   434→    })
+   435→    resetImageEditor()
+   436→  }
+   437→
+   438→  function toggleAllergene(allergeneId: string) {
+   439→    setArticoloForm(prev => ({
+   440→      ...prev,
+   441→      allergeni: prev.allergeni.includes(allergeneId)
+   442→        ? prev.allergeni.filter(id => id !== allergeneId)
+   443→        : [...prev.allergeni, allergeneId]
+   444→    }))
+   445→  }
+   446→
+   447→  if (loading) {
+   448→    return <div className="text-center py-8">Caricamento...</div>
+   449→  }
+   450→
+   451→  return (
+   452→    <div className="space-y-6">
+   453→      {error && (
+   454→        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+   455→          <strong className="font-bold">Errore: </strong>
+   456→          <span className="block sm:inline">{error}</span>
+   457→          <button
+   458→            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+   459→            onClick={() => setError(null)}
+   460→          >
+   461→            <span className="text-red-700 font-bold">×</span>
+   462→          </button>
+   463→        </div>
+   464→      )}
+   465→
+   466→      <Tabs defaultValue="categorie">
+   467→        <TabsList>
+   468→          <TabsTrigger value="categorie">Categorie</TabsTrigger>
+   469→          <TabsTrigger value="articoli">Articoli</TabsTrigger>
+   470→          <TabsTrigger value="allergeni">Allergeni</TabsTrigger>
+   471→        </TabsList>
+   472→
+   473→        {/* Categorie */}
+   474→        <TabsContent value="categorie" className="space-y-4">
+   475→          <div className="flex justify-between items-center">
+   476→            <h2 className="text-2xl font-bold">Gestione Categorie</h2>
+   477→            <Dialog open={showCategoriaDialog} onOpenChange={setShowCategoriaDialog}>
+   478→              <DialogTrigger asChild>
+   479→                <Button onClick={() => { setCategoriaForm({ id: '', nome: '', ordine: 0, attiva: true }) }}>
+   480→                  <Plus className="w-4 h-4 mr-2" />
+   481→                  Nuova Categoria
+   482→                </Button>
+   483→              </DialogTrigger>
+   484→              <DialogContent>
+   485→                <DialogHeader>
+   486→                  <DialogTitle>
+   487→                    {categoriaForm.id ? 'Modifica Categoria' : 'Nuova Categoria'}
+   488→                  </DialogTitle>
+   489→                </DialogHeader>
+   490→                <div className="space-y-4">
+   491→                  <div>
+   492→                    <Label>Nome</Label>
+   493→                    <Input
+   494→                      value={categoriaForm.nome}
+   495→                      onChange={(e) => setCategoriaForm({ ...categoriaForm, nome: e.target.value })}
+   496→                    />
+   497→                  </div>
+   498→                  <div>
+   499→                    <Label>Ordine</Label>
+   500→                    <Input
+   501→                      type="number"
+   502→                      value={categoriaForm.ordine}
+   503→                      onChange={(e) => setCategoriaForm({ ...categoriaForm, ordine: parseInt(e.target.value) || 0 })}
+   504→                    />
+   505→                  </div>
+   506→                  <div className="flex items-center gap-2">
+   507→                    <Checkbox
+   508→                      id="attiva"
+   509→                      checked={categoriaForm.attiva}
+   510→                      onCheckedChange={(checked) => setCategoriaForm({ ...categoriaForm, attiva: checked as boolean })}
+   511→                    />
+   512→                    <Label htmlFor="attiva">Attiva</Label>
+   513→                  </div>
+   514→                  <div className="flex gap-2">
+   515→                    <Button onClick={saveCategoria}>
+   516→                      <Save className="w-4 h-4 mr-2" />
+   517→                      Salva
+   518→                    </Button>
+   519→                    <Button variant="outline" onClick={() => setShowCategoriaDialog(false)}>
+   520→                      Annulla
+   521→                    </Button>
+   522→                  </div>
+   523→                </div>
+   524→              </DialogContent>
+   525→            </Dialog>
+   526→          </div>
+   527→
+   528→          <Card>
+   529→            <Table>
+   530→              <TableHeader>
+   531→                <TableRow>
+   532→                  <TableHead>Nome</TableHead>
+   533→                  <TableHead>Ordine</TableHead>
+   534→                  <TableHead>Articoli</TableHead>
+   535→                  <TableHead>Attiva</TableHead>
+   536→                  <TableHead>Azioni</TableHead>
+   537→                </TableRow>
+   538→              </TableHeader>
+   539→              <TableBody>
+   540→                {categorie.map((cat) => (
+   541→                  <TableRow key={cat.id}>
+   542→                    <TableCell>{cat.nome}</TableCell>
+   543→                    <TableCell>{cat.ordine}</TableCell>
+   544→                    <TableCell>{cat._count?.articoli || 0}</TableCell>
+   545→                    <TableCell>{cat.attiva ? <Check className="text-green-600" /> : <X className="text-red-600" />}</TableCell>
+   546→                    <TableCell>
+   547→                      <div className="flex gap-2">
+   548→                        <Button size="sm" variant="ghost" onClick={() => editCategoria(cat)}>
+   549→                          <Pencil className="w-4 h-4" />
+   550→                        </Button>
+   551→                        <Button size="sm" variant="ghost" onClick={() => deleteCategoria(cat.id)}>
+   552→                          <Trash2 className="w-4 h-4 text-red-600" />
+   553→                        </Button>
+   554→                      </div>
+   555→                    </TableCell>
+   556→                  </TableRow>
+   557→                ))}
+   558→              </TableBody>
+   559→            </Table>
+   560→          </Card>
+   561→        </TabsContent>
+   562→
+   563→        {/* Articoli */}
+   564→        <TabsContent value="articoli" className="space-y-4">
+   565→          <div className="flex justify-between items-center">
+   566→            <h2 className="text-2xl font-bold">Gestione Articoli</h2>
+   567→            <Button onClick={() => {
+   568→              resetArticoloForm()
+   569→              setShowArticoloDialog(true)
+   570→            }}>
+   571→              <Plus className="w-4 h-4 mr-2" />
+   572→              Nuovo Articolo
+   573→            </Button>
+   574→            <Dialog open={showArticoloDialog} onOpenChange={(open) => {
+   575→              if (!open && !imageEditorOpen) {
+   576→                setShowArticoloDialog(false)
+   577→              }
+   578→            }}>
+   579→              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+   580→                <DialogHeader>
+   581→                  <DialogTitle>
+   582→                    {articoloForm.id ? 'Modifica Articolo' : 'Nuovo Articolo'}
+   583→                  </DialogTitle>
+   584→                </DialogHeader>
+   585→                <div className="space-y-4">
+   586→                  <div>
+   587→                    <Label>Nome *</Label>
+   588→                    <Input
+   589→                      value={articoloForm.nome}
+   590→                      onChange={(e) => setArticoloForm({ ...articoloForm, nome: e.target.value })}
+   591→                    />
+   592→                  </div>
+   593→                  <div>
+   594→                    <Label>Descrizione</Label>
+   595→                    <Textarea
+   596→                      value={articoloForm.descrizione}
+   597→                      onChange={(e) => setArticoloForm({ ...articoloForm, descrizione: e.target.value })}
+   598→                    />
+   599→                  </div>
+   600→                  <div>
+   601→                    <Label>Categoria *</Label>
+   602→                    <select
+   603→                      className="w-full p-2 border rounded"
+   604→                      value={articoloForm.categoriaId}
+   605→                      onChange={(e) => setArticoloForm({ ...articoloForm, categoriaId: e.target.value })}
+   606→                    >
+   607→                      <option value="">Seleziona categoria</option>
+   608→                      {categorie.map((cat) => (
+   609→                        <option key={cat.id} value={cat.id}>{cat.nome}</option>
+   610→                      ))}
+   611→                    </select>
+   612→                  </div>
+   613→                  <div className="grid grid-cols-2 gap-4">
+   614→                    <div>
+   615→                      <Label>Prezzo (€) *</Label>
+   616→                      <Input
+   617→                        type="number"
+   618→                        step="0.01"
+   619→                        value={articoloForm.prezzo}
+   620→                        onChange={(e) => setArticoloForm({ ...articoloForm, prezzo: e.target.value })}
+   621→                      />
+   622→                    </div>
+   623→                    <div>
+   624→                      <Label>Prezzo Promo (€)</Label>
+   625→                      <Input
+   626→                        type="number"
+   627→                        step="0.01"
+   628→                        value={articoloForm.prezzoPromozionale}
+   629→                        onChange={(e) => setArticoloForm({ ...articoloForm, prezzoPromozionale: e.target.value })}
+   630→                      />
+   631→                    </div>
+   632→                  </div>
+   633→                  {articoloForm.prezzoPromozionale && (
+   634→                    <div>
+   635→                      <Label>Scadenza Promo</Label>
+   636→                      <Input
+   637→                        type="date"
+   638→                        value={articoloForm.scadenzaPromo}
+   639→                        onChange={(e) => setArticoloForm({ ...articoloForm, scadenzaPromo: e.target.value })}
+   640→                      />
+   641→                    </div>
+   642→                  )}
+   643→
+   644→                  {/* Immagine - Upload + Editor */}
+   645→                  <div className="space-y-2">
+   646→                    <Label>Immagine</Label>
+   647→                    {articoloForm.immagineUrl ? (
+   648→                      <div className="space-y-3">
+   649→                        <div className="relative rounded-xl overflow-hidden border border-gray-200">
+   650→                          <img
+   651→                            src={articoloForm.immagineUrl}
+   652→                            alt="Immagine articolo"
+   653→                            className="w-full h-48 object-cover"
+   654→                          />
+   655→                          <div className="absolute top-2 right-2 flex gap-1.5">
+   656→                            <button
+   657→                              type="button"
+   658→                              onClick={openImageEditor}
+   659→                              className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
+   660→                              title="Modifica immagine"
+   661→                            >
+   662→                              <Move className="w-4 h-4" />
+   663→                            </button>
+   664→                            <button
+   665→                              type="button"
+   666→                              onClick={removeImage}
+   667→                              className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
+   668→                              title="Rimuovi immagine"
+   669→                            >
+   670→                              <X className="w-4 h-4" />
+   671→                            </button>
+   672→                          </div>
+   673→                        </div>
+   674→                        <Button
+   675→                          type="button"
+   676→                          variant="outline"
+   677→                          size="sm"
+   678→                          onClick={openImageEditor}
+   679→                          className="gap-1.5 text-xs"
+   680→                        >
+   681→                          <Move className="w-3.5 h-3.5" />
+   682→                          Regola posizione e zoom
+   683→                        </Button>
+   684→                      </div>
+   685→                    ) : (
+   686→                      <div className="space-y-3">
+   687→                        <button
+   688→                          type="button"
+   689→                          onClick={() => fileInputRef.current?.click()}
+   690→                          disabled={uploading}
+   691→                          className={`w-full h-28 border-2 border-dashed ${uploading ? 'border-gray-200 opacity-50' : 'border-gray-300 hover:border-orange-400'} rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-orange-500 transition-colors cursor-pointer disabled:cursor-not-allowed`}
+   692→                        >
+   693→                          {uploading ? (
+   694→                            <Loader2 className="w-6 h-6 animate-spin" />
+   695→                          ) : (
+   696→                            <>
+   697→                              <Upload className="w-6 h-6" />
+   698→                              <span className="text-sm font-medium">Carica da file</span>
+   699→                            </>
+   700→                          )}
+   701→                        </button>
+   702→                      </div>
+   703→                    )}
+   704→                    <input
+   705→                      ref={fileInputRef}
+   706→                      type="file"
+   707→                      accept="image/*"
+   708→                      onChange={handleImageUpload}
+   709→                      className="hidden"
+   710→                    />
+   711→                  </div>
+   712→
+   713→                  {/* Image Editor Panel */}
+   714→                  {imageEditorOpen && articoloForm.immagineUrl && (
+   715→                    <div className="rounded-xl border border-orange-200 bg-orange-50/50 overflow-hidden">
+   716→                      <div className="flex items-center justify-between px-4 py-2.5 bg-orange-100/80 border-b border-orange-200">
+   717→                        <div className="flex items-center gap-2">
+   718→                          <Move className="w-4 h-4 text-orange-700" />
+   719→                          <span className="text-sm font-semibold text-orange-800">Regola immagine</span>
+   720→                        </div>
+   721→                        <button
+   722→                          type="button"
+   723→                          onClick={resetEditorPosition}
+   724→                          className="flex items-center gap-1 text-xs text-orange-700 hover:text-orange-900 transition-colors"
+   725→                        >
+   726→                          <RotateCcw className="w-3 h-3" />
+   727→                          Reset
+   728→                        </button>
+   729→                      </div>
+   730→
+   731→                      <div
+   732→                        ref={editorContainerRef}
+   733→                        className="relative w-full h-64 overflow-hidden bg-gray-900 cursor-grab active:cursor-grabbing select-none"
+   734→                        onMouseDown={handleEditorMouseDown}
+   735→                        onMouseMove={handleEditorMouseMove}
+   736→                        onMouseUp={handleEditorMouseUp}
+   737→                        onMouseLeave={handleEditorMouseUp}
+   738→                        onTouchStart={handleEditorTouchStart}
+   739→                        onTouchMove={handleEditorTouchMove}
+   740→                        onTouchEnd={handleEditorTouchEnd}
+   741→                      >
+   742→                        <img
+   743→                          ref={editorImageRef}
+   744→                          src={articoloForm.immagineUrl}
+   745→                          alt="Editor immagine"
+   746→                          onLoad={handleImageLoad}
+   747→                          className="absolute max-w-none pointer-events-none"
+   748→                          draggable={false}
+   749→                          style={{
+   750→                            width: `${imageNaturalSize.w ? (imageNaturalSize.w / imageNaturalSize.h) * 100 : 100}%`,
+   751→                            height: '100%',
+   752→                            objectFit: 'contain',
+   753→                            transform: `scale(${imageZoom}) translate(${imagePanX / imageZoom}px, ${imagePanY / imageZoom}px)`,
+   754→                            transformOrigin: 'center center',
+   755→                            left: '50%',
+   756→                            top: '50%',
+   757→                            marginLeft: `${imageNaturalSize.w ? -((imageNaturalSize.w / imageNaturalSize.h) * 50) : -50}%`,
+   758→                            marginTop: '-50%',
+   759→                          }}
+   760→                        />
+   761→                        {imageZoom === 1 && imagePanX === 0 && imagePanY === 0 && (
+   762→                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+   763→                            <div className="bg-black/50 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm flex items-center gap-1.5">
+   764→                              <Move className="w-3 h-3" />
+   765→                              Trascina per spostare, usa lo zoom sotto
+   766→                            </div>
+   767→                          </div>
+   768→                        )}
+   769→                      </div>
+   770→
+   771→                      <div className="px-4 py-3 space-y-3">
+   772→                        <div className="flex items-center gap-3">
+   773→                          <ZoomOut className="w-4 h-4 text-gray-500 flex-shrink-0" />
+   774→                          <Slider
+   775→                            value={[imageZoom]}
+   776→                            onValueChange={([val]) => setImageZoom(val)}
+   777→                            min={1}
+   778→                            max={3}
+   779→                            step={0.05}
+   780→                            className="flex-1"
+   781→                          />
+   782→                          <ZoomIn className="w-4 h-4 text-gray-500 flex-shrink-0" />
+   783→                          <span className="text-xs font-mono text-gray-500 w-10 text-right flex-shrink-0">
+   784→                            {imageZoom.toFixed(1)}x
+   785→                          </span>
+   786→                        </div>
+   787→                        <div className="flex gap-2">
+   788→                          <Button
+   789→                            type="button"
+   790→                            size="sm"
+   791→                            onClick={confirmImageEdit}
+   792→                            className="flex-1 gap-1.5"
+   793→                          >
+   794→                            <Check className="w-4 h-4" />
+   795→                            Conferma ritaglio
+   796→                          </Button>
+   797→                          <Button
+   798→                            type="button"
+   799→                            size="sm"
+   800→                            variant="outline"
+   801→                            onClick={resetImageEditor}
+   802→                          >
+   803→                            Annulla
+   804→                          </Button>
+   805→                        </div>
+   806→                      </div>
+   807→                    </div>
+   808→                  )}
+   809→
+   810→                  <div className="space-y-2">
+   811→                    <Label>Flag Speciali</Label>
+   812→                    <div className="flex flex-wrap gap-4">
+   813→                      <label className="flex items-center gap-2">
+   814→                        <Checkbox
+   815→                          checked={articoloForm.eBestChoice}
+   816→                          onCheckedChange={(checked) => setArticoloForm({ ...articoloForm, eBestChoice: checked as boolean })}
+   817→                        />
+   818→                        <span>Best Choice</span>
+   819→                      </label>
+   820→                      <label className="flex items-center gap-2">
+   821→                        <Checkbox
+   822→                          checked={articoloForm.eSurgelato}
+   823→                          onCheckedChange={(checked) => setArticoloForm({ ...articoloForm, eSurgelato: checked as boolean })}
+   824→                        />
+   825→                        <span>Prodotto Surgelato</span>
+   826→                      </label>
+   827→                    </div>
+   828→                  </div>
+   829→                  <div className="space-y-2">
+   830→                    <Label>Allergeni</Label>
+   831→                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+   832→                      {allergeni.map((all) => (
+   833→                        <label key={all.id} className="flex items-center gap-2 p-2 border rounded">
+   834→                          <Checkbox
+   835→                            checked={articoloForm.allergeni.includes(all.id)}
+   836→                            onCheckedChange={() => toggleAllergene(all.id)}
+   837→                          />
+   838→                          <span className="text-sm">{all.icona} {all.nome}</span>
+   839→                        </label>
+   840→                      ))}
+   841→                    </div>
+   842→                  </div>
+   843→                  <div className="flex gap-2">
+   844→                    <Button onClick={saveArticolo} disabled={imageEditorOpen || uploading}>
+   845→                      <Save className="w-4 h-4 mr-2" />
+   846→                      Salva
+   847→                    </Button>
+   848→                    <Button variant="outline" onClick={() => { if (!imageEditorOpen) setShowArticoloDialog(false) }} disabled={imageEditorOpen || uploading}>
+   849→                      Annulla
+   850→                    </Button>
+   851→                  </div>
+   852→                </div>
+   853→              </DialogContent>
+   854→            </Dialog>
+   855→          </div>
+   856→
+   857→          <Card>
+   858→            <Table>
+   859→              <TableHeader>
+   860→                <TableRow>
+   861→                  <TableHead>Immagine</TableHead>
+   862→                  <TableHead>Nome</TableHead>
+   863→                  <TableHead>Categoria</TableHead>
+   864→                  <TableHead>Prezzo</TableHead>
+   865→                  <TableHead>Promo</TableHead>
+   866→                  <TableHead>Best Choice</TableHead>
+   867→                  <TableHead>Attivo</TableHead>
+   868→                  <TableHead>Azioni</TableHead>
+   869→                </TableRow>
+   870→              </TableHeader>
+   871→              <TableBody>
+   872→                {articoli.map((art) => (
+   873→                  <TableRow key={art.id}>
+   874→                    <TableCell>
+   875→                      {art.immagineUrl ? (
+   876→                        <img src={art.immagineUrl} alt={art.nome} className="w-12 h-12 object-cover rounded-lg" />
+   877→                      ) : (
+   878→                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">Nessuna</div>
+   879→                      )}
+   880→                    </TableCell>
+   881→                    <TableCell>{art.nome}</TableCell>
+   882→                    <TableCell>{art.categoria.nome}</TableCell>
+   883→                    <TableCell>€{art.prezzo.toFixed(2)}</TableCell>
+   884→                    <TableCell>
+   885→                      {art.prezzoPromozionale ? `€${art.prezzoPromozionale.toFixed(2)}` : '-'}
+   886→                    </TableCell>
+   887→                    <TableCell>
+   888→                      {art.eBestChoice ? <Check className="text-green-600" /> : <X className="text-gray-400" />}
+   889→                    </TableCell>
+   890→                    <TableCell>
+   891→                      {art.attivo ? <Check className="text-green-600" /> : <X className="text-red-600" />}
+   892→                    </TableCell>
+   893→                    <TableCell>
+   894→                      <div className="flex gap-2">
+   895→                        <Button size="sm" variant="ghost" onClick={() => editArticolo(art)}>
+   896→                          <Pencil className="w-4 h-4" />
+   897→                        </Button>
+   898→                        <Button size="sm" variant="ghost" onClick={() => deleteArticolo(art.id)}>
+   899→                          <Trash2 className="w-4 h-4 text-red-600" />
+   900→                        </Button>
+   901→                      </div>
+   902→                    </TableCell>
+   903→                  </TableRow>
+   904→                ))}
+   905→              </TableBody>
+   906→            </Table>
+   907→          </Card>
+   908→        </TabsContent>
+   909→
+   910→        {/* Allergeni */}
+   911→        <TabsContent value="allergeni" className="space-y-4">
+   912→          <h2 className="text-2xl font-bold">Lista Allergeni (Normativa UE)</h2>
+   913→          <Card>
+   914→            <Table>
+   915→              <TableHeader>
+   916→                <TableRow>
+   917→                  <TableHead>Icona</TableHead>
+   918→                  <TableHead>Nome</TableHead>
+   919→                  <TableHead>Descrizione</TableHead>
+   920→                </TableRow>
+   921→              </TableHeader>
+   922→              <TableBody>
+   923→                {allergeni.map((all) => (
+   924→                  <TableRow key={all.id}>
+   925→                    <TableCell>{all.icona}</TableCell>
+   926→                    <TableCell>{all.nome}</TableCell>
+   927→                    <TableCell>{all.descrizione || '-'}</TableCell>
+   928→                  </TableRow>
+   929→                ))}
+   930→              </TableBody>
+   931→            </Table>
+   932→          </Card>
+   933→        </TabsContent>
+   934→      </Tabs>
+   935→    </div>
+   936→  )
+   937→}
+   938→
