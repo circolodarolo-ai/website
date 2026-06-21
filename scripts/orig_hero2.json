@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">'use client'\n\nimport { useRouter } from 'next/navigation'\nimport { Button } from '@/components/ui/button'\n\ninterface HeroProps {\n  title?: string\n  subtitle?: string\n  heroImage?: string\n  ctaText?: string\n  heroOverlayOpacity?: number\n}\n\nexport default function Hero({\n  title = \"Autentica Cucina Italiana\",\n  subtitle = \"Scopri i sapori tradizionali della nostra cucina, preparati con passione e ingredienti freschi ogni giorno\",\n  heroImage = \"/images/hero.jpg\",\n  ctaText = \"Scopri il Menu\",\n  heroOverlayOpacity = 0.5\n}: HeroProps) {\n  const router = useRouter()\n\n  return (\n    <section id=\"home\" className=\"relative min-h-screen flex items-center justify-center pt-20\">\n      {/* Background Image with Overlay */}\n      <div\n        className=\"absolute inset-0 bg-cover bg-center bg-no-repeat\"\n        style={{ backgroundImage: `url('${heroImage}')` }}\n      >\n        <div className=\"absolute inset-0 bg-black/50\" style={{ opacity: heroOverlayOpacity }}></div>\n      </div>\n\n      {/* Content */}\n      <div className=\"relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 text-center\">\n        <h1 className=\"text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight\">\n          {title}\n        </h1>\n        <p className=\"text-lg md:text-xl text-gray-200 mb-8 max-w-3xl mx-auto\">\n          {subtitle}\n        </p>\n        <div className=\"flex flex-col sm:flex-row gap-4 justify-center\">\n          <Button\n            size=\"lg\"\n            className=\"bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 text-lg\"\n            onClick={() => router.push('/menu')}\n          >\n            {ctaText}\n          </Button>\n          <Button\n            size=\"lg\"\n            variant=\"outline\"\n            className=\"bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 px-8 py-6 text-lg\"\n            onClick={() => document.getElementById('contatti')?.scrollIntoView({ behavior: 'smooth' })}\n          >\n            Contattaci\n          </Button>\n        </div>\n      </div>\n\n      {/* Scroll Indicator */}\n      <div className=\"absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce\">\n        <div className=\"w-6 h-10 border-2 border-white rounded-full flex justify-center pt-2\">\n          <div className=\"w-1 h-3 bg-white rounded-full\"></div>\n        </div>\n      </div>\n    </section>\n  )\n}\n</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/on1page/my-project/master/src/components/Hero.tsx",
+    "usage": {
+      "tokens": 634
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 634
+    }
+  },
+  "status": 20000
+}
