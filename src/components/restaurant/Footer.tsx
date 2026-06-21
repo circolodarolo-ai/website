@@ -159,6 +159,21 @@ export default function Footer() {
             </p>
           </div>
         </div>
+
+        {/* Map */}
+        <div className="mt-10 rounded-xl overflow-hidden border border-gray-700 shadow-lg">
+          <iframe
+            title="Posizione del ristorante"
+            src="https://maps.google.com/maps?q=Via+Roma+123+Milano+Italia&t=&z=15&ie=UTF8&iwloc=&output=embed"
+            width="100%"
+            height="250"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            className="w-full grayscale hover:grayscale-0 transition-all duration-500"
+          />
+        </div>
       </div>
 
       {/* Bottom Bar */}
