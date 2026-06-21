@@ -1,0 +1,1194 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback } from 'react';
+     4→     4→import {
+     5→     5→  Settings,
+     6→     6→  Plus,
+     7→     7→  Pencil,
+     8→     8→  Trash2,
+     9→     9→  UtensilsCrossed,
+    10→    10→  CalendarDays,
+    11→    11→  ClipboardList,
+    12→    12→} from 'lucide-react';
+    13→    13→import { toast } from 'sonner';
+    14→    14→
+    15→    15→import { Button } from '@/components/ui/button';
+    16→    16→import { Switch } from '@/components/ui/switch';
+    17→    17→import { Checkbox } from '@/components/ui/checkbox';
+    18→    18→import { Badge } from '@/components/ui/badge';
+    19→    19→import { Input } from '@/components/ui/input';
+    20→    20→import { Label } from '@/components/ui/label';
+    21→    21→import { Textarea } from '@/components/ui/textarea';
+    22→    22→import {
+    23→    23→  Sheet,
+    24→    24→  SheetContent,
+    25→    25→  SheetHeader,
+    26→    26→  SheetTitle,
+    27→    27→} from '@/components/ui/sheet';
+    28→    28→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    29→    29→import {
+    30→    30→  Table,
+    31→    31→  TableHeader,
+    32→    32→  TableRow,
+    33→    33→  TableHead,
+    34→    34→  TableBody,
+    35→    35→  TableCell,
+    36→    36→} from '@/components/ui/table';
+    37→    37→import {
+    38→    38→  Dialog,
+    39→    39→  DialogContent,
+    40→    40→  DialogHeader,
+    41→    41→  DialogTitle,
+    42→    42→  DialogFooter,
+    43→    43→} from '@/components/ui/dialog';
+    44→    44→import {
+    45→    45→  Select,
+    46→    46→  SelectTrigger,
+    47→    47→  SelectValue,
+    48→    48→  SelectContent,
+    49→    49→  SelectItem,
+    50→    50→} from '@/components/ui/select';
+    51→    51→import {
+    52→    52→  AlertDialog,
+    53→    53→  AlertDialogAction,
+    54→    54→  AlertDialogCancel,
+    55→    55→  AlertDialogContent,
+    56→    56→  AlertDialogDescription,
+    57→    57→  AlertDialogFooter,
+    58→    58→  AlertDialogHeader,
+    59→    59→  AlertDialogTitle,
+    60→    60→} from '@/components/ui/alert-dialog';
+    61→    61→
+    62→    62→// ─── Types ──────────────────────────────────────────────────────────────────
+    63→    63→
+    64→    64→interface Categoria {
+    65→    65→  id: string;
+    66→    66→  nome: string;
+    67→    67→}
+    68→    68→
+    69→    69→interface Articolo {
+    70→    70→  id: string;
+    71→    71→  nome: string;
+    72→    72→  descrizione: string;
+    73→    73→  categoriaId: string;
+    74→    74→  prezzo: number;
+    75→    75→  prezzoPromozionale: number | null;
+    76→    76→  eBestChoice: boolean;
+    77→    77→  attivo: boolean;
+    78→    78→  immagineUrl: string | null;
+    79→    79→  categoria?: Categoria;
+    80→    80→}
+    81→    81→
+    82→    82→interface Evento {
+    83→    83→  id: string;
+    84→    84→  titolo: string;
+    85→    85→  descrizione: string;
+    86→    86→  descrizioneBreve: string;
+    87→    87→  data: string;
+    88→    88→  oraInizio: string;
+    89→    89→  oraFine: string;
+    90→    90→  prezzo: number;
+    91→    91→  gratuito: boolean;
+    92→    92→  graditaPrenotazione: boolean;
+    93→    93→  capacita: number;
+    94→    94→  postiDisponibili: number;
+    95→    95→  inEvidenza: boolean;
+    96→    96→  attivo: boolean;
+    97→    97→  immagineUrl: string | null;
+    98→    98→}
+    99→    99→
+   100→   100→interface Prenotazione {
+   101→   101→  id: string;
+   102→   102→  nome: string;
+   103→   103→  cognome: string;
+   104→   104→  data: string;
+   105→   105→  ora: string;
+   106→   106→  persone: number;
+   107→   107→  telefono: string;
+   108→   108→  stato: 'pending' | 'confirmed' | 'cancelled';
+   109→   109→  evento?: { id: string; titolo: string } | null;
+   110→   110→}
+   111→   111→
+   112→   112→interface ArticoloFormData {
+   113→   113→  nome: string;
+   114→   114→  descrizione: string;
+   115→   115→  categoriaId: string;
+   116→   116→  prezzo: number;
+   117→   117→  prezzoPromozionale: string;
+   118→   118→  eBestChoice: boolean;
+   119→   119→  immagineUrl: string;
+   120→   120→}
+   121→   121→
+   122→   122→interface EventoFormData {
+   123→   123→  titolo: string;
+   124→   124→  descrizione: string;
+   125→   125→  descrizioneBreve: string;
+   126→   126→  data: string;
+   127→   127→  oraInizio: string;
+   128→   128→  oraFine: string;
+   129→   129→  prezzo: number;
+   130→   130→  gratuito: boolean;
+   131→   131→  graditaPrenotazione: boolean;
+   132→   132→  capacita: number;
+   133→   133→  postiDisponibili: number;
+   134→   134→  inEvidenza: boolean;
+   135→   135→  immagineUrl: string;
+   136→   136→}
+   137→   137→
+   138→   138→// ─── Default form values ─────────────────────────────────────────────────────
+   139→   139→
+   140→   140→const emptyArticolo: ArticoloFormData = {
+   141→   141→  nome: '',
+   142→   142→  descrizione: '',
+   143→   143→  categoriaId: '',
+   144→   144→  prezzo: 0,
+   145→   145→  prezzoPromozionale: '',
+   146→   146→  eBestChoice: false,
+   147→   147→  immagineUrl: '',
+   148→   148→};
+   149→   149→
+   150→   150→const emptyEvento: EventoFormData = {
+   151→   151→  titolo: '',
+   152→   152→  descrizione: '',
+   153→   153→  descrizioneBreve: '',
+   154→   154→  data: '',
+   155→   155→  oraInizio: '',
+   156→   156→  oraFine: '',
+   157→   157→  prezzo: 0,
+   158→   158→  gratuito: false,
+   159→   159→  graditaPrenotazione: false,
+   160→   160→  capacita: 50,
+   161→   161→  postiDisponibili: 50,
+   162→   162→  inEvidenza: false,
+   163→   163→  immagineUrl: '',
+   164→   164→};
+   165→   165→
+   166→   166→// ─── Helper ─────────────────────────────────────────────────────────────────
+   167→   167→
+   168→   168→function formatPrice(val: number | null | undefined): string {
+   169→   169→  if (val == null || isNaN(val)) return '-';
+   170→   170→  return `€ ${val.toFixed(2)}`;
+   171→   171→}
+   172→   172→
+   173→   173→function formatDate(dateStr: string): string {
+   174→   174→  if (!dateStr) return '-';
+   175→   175→  return new Date(dateStr).toLocaleDateString('it-IT');
+   176→   176→}
+   177→   177→
+   178→   178→// ─── Component ──────────────────────────────────────────────────────────────
+   179→   179→
+   180→   180→export default function AdminPanel() {
+   181→   181→  // Sheet open state
+   182→   182→  const [open, setOpen] = useState(false);
+   183→   183→
+   184→   184→  // ── Menu Tab State ─────────────────────────────────────────────────────────
+   185→   185→  const [articoli, setArticoli] = useState<Articolo[]>([]);
+   186→   186→  const [categorie, setCategorie] = useState<Categoria[]>([]);
+   187→   187→  const [articoloLoading, setArticoloLoading] = useState(false);
+   188→   188→
+   189→   189→  const [articoloDialogOpen, setArticoloDialogOpen] = useState(false);
+   190→   190→  const [editingArticolo, setEditingArticolo] = useState<Articolo | null>(null);
+   191→   191→  const [articoloForm, setArticoloForm] = useState<ArticoloFormData>(emptyArticolo);
+   192→   192→
+   193→   193→  const [articoloDeleteOpen, setArticoloDeleteOpen] = useState(false);
+   194→   194→  const [deletingArticolo, setDeletingArticolo] = useState<Articolo | null>(null);
+   195→   195→
+   196→   196→  // ── Eventi Tab State ──────────────────────────────────────────────────────
+   197→   197→  const [eventi, setEventi] = useState<Evento[]>([]);
+   198→   198→  const [eventoLoading, setEventoLoading] = useState(false);
+   199→   199→
+   200→   200→  const [eventoDialogOpen, setEventoDialogOpen] = useState(false);
+   201→   201→  const [editingEvento, setEditingEvento] = useState<Evento | null>(null);
+   202→   202→  const [eventoForm, setEventoForm] = useState<EventoFormData>(emptyEvento);
+   203→   203→
+   204→   204→  const [eventoDeleteOpen, setEventoDeleteOpen] = useState(false);
+   205→   205→  const [deletingEvento, setDeletingEvento] = useState<Evento | null>(null);
+   206→   206→
+   207→   207→  // ── Prenotazioni Tab State ─────────────────────────────────────────────────
+   208→   208→  const [prenotazioni, setPrenotazioni] = useState<Prenotazione[]>([]);
+   209→   209→  const [prenotazioneLoading, setPrenotazioneLoading] = useState(false);
+   210→   210→
+   211→   211→  const [prenotazioneDeleteOpen, setPrenotazioneDeleteOpen] = useState(false);
+   212→   212→  const [deletingPrenotazione, setDeletingPrenotazione] = useState<Prenotazione | null>(null);
+   213→   213→
+   214→   214→  // ── Data Fetching ─────────────────────────────────────────────────────────
+   215→   215→
+   216→   216→  const fetchCategorie = useCallback(async () => {
+   217→   217→    try {
+   218→   218→      const res = await fetch('/api/menu');
+   219→   219→      if (res.ok) {
+   220→   220→        const data = await res.json();
+   221→   221→        const cats: Categoria[] = data.categorie || data || [];
+   222→   222→        setCategorie(Array.isArray(cats) ? cats : []);
+   223→   223→      }
+   224→   224→    } catch {
+   225→   225→      // silent
+   226→   226→    }
+   227→   227→  }, []);
+   228→   228→
+   229→   229→  const fetchArticoli = useCallback(async () => {
+   230→   230→    setArticoloLoading(true);
+   231→   231→    try {
+   232→   232→      const res = await fetch('/api/admin/articoli');
+   233→   233→      if (res.ok) {
+   234→   234→        const data = await res.json();
+   235→   235→        setArticoli(Array.isArray(data) ? data : data.articoli || []);
+   236→   236→      }
+   237→   237→    } catch {
+   238→   238→      toast.error('Errore nel caricamento degli articoli');
+   239→   239→    } finally {
+   240→   240→      setArticoloLoading(false);
+   241→   241→    }
+   242→   242→  }, []);
+   243→   243→
+   244→   244→  const fetchEventi = useCallback(async () => {
+   245→   245→    setEventoLoading(true);
+   246→   246→    try {
+   247→   247→      const res = await fetch('/api/admin/eventi');
+   248→   248→      if (res.ok) {
+   249→   249→        const data = await res.json();
+   250→   250→        setEventi(Array.isArray(data) ? data : data.eventi || []);
+   251→   251→      }
+   252→   252→    } catch {
+   253→   253→      toast.error('Errore nel caricamento degli eventi');
+   254→   254→    } finally {
+   255→   255→      setEventoLoading(false);
+   256→   256→    }
+   257→   257→  }, []);
+   258→   258→
+   259→   259→  const fetchPrenotazioni = useCallback(async () => {
+   260→   260→    setPrenotazioneLoading(true);
+   261→   261→    try {
+   262→   262→      const res = await fetch('/api/admin/prenotazioni');
+   263→   263→      if (res.ok) {
+   264→   264→        const data = await res.json();
+   265→   265→        setPrenotazioni(Array.isArray(data) ? data : data.prenotazioni || []);
+   266→   266→      }
+   267→   267→    } catch {
+   268→   268→      toast.error('Errore nel caricamento delle prenotazioni');
+   269→   269→    } finally {
+   270→   270→      setPrenotazioneLoading(false);
+   271→   271→    }
+   272→   272→  }, []);
+   273→   273→
+   274→   274→  useEffect(() => {
+   275→   275→    if (open) {
+   276→   276→      fetchCategorie();
+   277→   277→      fetchArticoli();
+   278→   278→      fetchEventi();
+   279→   279→      fetchPrenotazioni();
+   280→   280→    }
+   281→   281→  }, [open, fetchCategorie, fetchArticoli, fetchEventi, fetchPrenotazioni]);
+   282→   282→
+   283→   283→  // ── Category name lookup ───────────────────────────────────────────────────
+   284→   284→
+   285→   285→  const getCategoryName = (categoriaId: string): string => {
+   286→   286→    const cat = categorie.find((c) => c.id === categoriaId);
+   287→   287→    return cat?.nome || '-';
+   288→   288→  };
+   289→   289→
+   290→   290→  // ── Articolo CRUD ─────────────────────────────────────────────────────────
+   291→   291→
+   292→   292→  const openArticoloCreate = () => {
+   293→   293→    setEditingArticolo(null);
+   294→   294→    setArticoloForm(emptyArticolo);
+   295→   295→    setArticoloDialogOpen(true);
+   296→   296→  };
+   297→   297→
+   298→   298→  const openArticoloEdit = (a: Articolo) => {
+   299→   299→    setEditingArticolo(a);
+   300→   300→    setArticoloForm({
+   301→   301→      nome: a.nome || '',
+   302→   302→      descrizione: a.descrizione || '',
+   303→   303→      categoriaId: a.categoriaId || '',
+   304→   304→      prezzo: a.prezzo || 0,
+   305→   305→      prezzoPromozionale: a.prezzoPromozionale != null ? String(a.prezzoPromozionale) : '',
+   306→   306→      eBestChoice: a.eBestChoice || false,
+   307→   307→      immagineUrl: a.immagineUrl || '',
+   308→   308→    });
+   309→   309→    setArticoloDialogOpen(true);
+   310→   310→  };
+   311→   311→
+   312→   312→  const saveArticolo = async () => {
+   313→   313→    const payload = {
+   314→   314→      ...articoloForm,
+   315→   315→      prezzoPromozionale: articoloForm.prezzoPromozionale
+   316→   316→        ? Number(articoloForm.prezzoPromozionale)
+   317→   317→        : null,
+   318→   318→    };
+   319→   319→    try {
+   320→   320→      const url = editingArticolo
+   321→   321→        ? `/api/admin/articoli/${editingArticolo.id}`
+   322→   322→        : '/api/admin/articoli';
+   323→   323→      const res = await fetch(url, {
+   324→   324→        method: editingArticolo ? 'PUT' : 'POST',
+   325→   325→        headers: { 'Content-Type': 'application/json' },
+   326→   326→        body: JSON.stringify(payload),
+   327→   327→      });
+   328→   328→      if (res.ok) {
+   329→   329→        toast.success(editingArticolo ? 'Articolo aggiornato' : 'Articolo creato');
+   330→   330→        setArticoloDialogOpen(false);
+   331→   331→        fetchArticoli();
+   332→   332→      } else {
+   333→   333→        toast.error('Errore nel salvataggio');
+   334→   334→      }
+   335→   335→    } catch {
+   336→   336→      toast.error('Errore di rete');
+   337→   337→    }
+   338→   338→  };
+   339→   339→
+   340→   340→  const confirmDeleteArticolo = async () => {
+   341→   341→    if (!deletingArticolo) return;
+   342→   342→    try {
+   343→   343→      const res = await fetch(`/api/admin/articoli/${deletingArticolo.id}`, { method: 'DELETE' });
+   344→   344→      if (res.ok) {
+   345→   345→        toast.success('Articolo eliminato');
+   346→   346→        setArticoloDeleteOpen(false);
+   347→   347→        setDeletingArticolo(null);
+   348→   348→        fetchArticoli();
+   349→   349→      } else {
+   350→   350→        toast.error('Errore nell\'eliminazione');
+   351→   351→      }
+   352→   352→    } catch {
+   353→   353→      toast.error('Errore di rete');
+   354→   354→    }
+   355→   355→  };
+   356→   356→
+   357→   357→  const toggleArticoloActive = async (a: Articolo) => {
+   358→   358→    try {
+   359→   359→      const res = await fetch(`/api/admin/articoli/${a.id}`, {
+   360→   360→        method: 'PUT',
+   361→   361→        headers: { 'Content-Type': 'application/json' },
+   362→   362→        body: JSON.stringify({ attivo: !a.attivo }),
+   363→   363→      });
+   364→   364→      if (res.ok) {
+   365→   365→        fetchArticoli();
+   366→   366→        toast.success(a.attivo ? 'Articolo disattivato' : 'Articolo attivato');
+   367→   367→      }
+   368→   368→    } catch {
+   369→   369→      toast.error('Errore');
+   370→   370→    }
+   371→   371→  };
+   372→   372→
+   373→   373→  // ── Evento CRUD ────────────────────────────────────────────────────────────
+   374→   374→
+   375→   375→  const openEventoCreate = () => {
+   376→   376→    setEditingEvento(null);
+   377→   377→    setEventoForm(emptyEvento);
+   378→   378→    setEventoDialogOpen(true);
+   379→   379→  };
+   380→   380→
+   381→   381→  const openEventoEdit = (e: Evento) => {
+   382→   382→    setEditingEvento(e);
+   383→   383→    setEventoForm({
+   384→   384→      titolo: e.titolo || '',
+   385→   385→      descrizione: e.descrizione || '',
+   386→   386→      descrizioneBreve: e.descrizioneBreve || '',
+   387→   387→      data: e.data ? e.data.split('T')[0] : '',
+   388→   388→      oraInizio: e.oraInizio || '',
+   389→   389→      oraFine: e.oraFine || '',
+   390→   390→      prezzo: e.prezzo || 0,
+   391→   391→      gratuito: e.gratuito || false,
+   392→   392→      graditaPrenotazione: e.graditaPrenotazione || false,
+   393→   393→      capacita: e.capacita || 50,
+   394→   394→      postiDisponibili: e.postiDisponibili || 50,
+   395→   395→      inEvidenza: e.inEvidenza || false,
+   396→   396→      immagineUrl: e.immagineUrl || '',
+   397→   397→    });
+   398→   398→    setEventoDialogOpen(true);
+   399→   399→  };
+   400→   400→
+   401→   401→  const saveEvento = async () => {
+   402→   402→    const payload = { ...eventoForm };
+   403→   403→    try {
+   404→   404→      const url = editingEvento
+   405→   405→        ? `/api/admin/eventi/${editingEvento.id}`
+   406→   406→        : '/api/admin/eventi';
+   407→   407→      const res = await fetch(url, {
+   408→   408→        method: editingEvento ? 'PUT' : 'POST',
+   409→   409→        headers: { 'Content-Type': 'application/json' },
+   410→   410→        body: JSON.stringify(payload),
+   411→   411→      });
+   412→   412→      if (res.ok) {
+   413→   413→        toast.success(editingEvento ? 'Evento aggiornato' : 'Evento creato');
+   414→   414→        setEventoDialogOpen(false);
+   415→   415→        fetchEventi();
+   416→   416→      } else {
+   417→   417→        toast.error('Errore nel salvataggio');
+   418→   418→      }
+   419→   419→    } catch {
+   420→   420→      toast.error('Errore di rete');
+   421→   421→    }
+   422→   422→  };
+   423→   423→
+   424→   424→  const confirmDeleteEvento = async () => {
+   425→   425→    if (!deletingEvento) return;
+   426→   426→    try {
+   427→   427→      const res = await fetch(`/api/admin/eventi/${deletingEvento.id}`, { method: 'DELETE' });
+   428→   428→      if (res.ok) {
+   429→   429→        toast.success('Evento eliminato');
+   430→   430→        setEventoDeleteOpen(false);
+   431→   431→        setDeletingEvento(null);
+   432→   432→        fetchEventi();
+   433→   433→      } else {
+   434→   434→        toast.error('Errore nell\'eliminazione');
+   435→   435→      }
+   436→   436→    } catch {
+   437→   437→      toast.error('Errore di rete');
+   438→   438→    }
+   439→   439→  };
+   440→   440→
+   441→   441→  const toggleEventoActive = async (e: Evento) => {
+   442→   442→    try {
+   443→   443→      const res = await fetch(`/api/admin/eventi/${e.id}`, {
+   444→   444→        method: 'PUT',
+   445→   445→        headers: { 'Content-Type': 'application/json' },
+   446→   446→        body: JSON.stringify({ attivo: !e.attivo }),
+   447→   447→      });
+   448→   448→      if (res.ok) {
+   449→   449→        fetchEventi();
+   450→   450→        toast.success(e.attivo ? 'Evento disattivato' : 'Evento attivato');
+   451→   451→      }
+   452→   452→    } catch {
+   453→   453→      toast.error('Errore');
+   454→   454→    }
+   455→   455→  };
+   456→   456→
+   457→   457→  // ── Prenotazione Actions ──────────────────────────────────────────────────
+   458→   458→
+   459→   459→  const changePrenotazioneStatus = async (p: Prenotazione, newStato: string) => {
+   460→   460→    try {
+   461→   461→      const res = await fetch(`/api/admin/prenotazioni/${p.id}`, {
+   462→   462→        method: 'PUT',
+   463→   463→        headers: { 'Content-Type': 'application/json' },
+   464→   464→        body: JSON.stringify({ stato: newStato }),
+   465→   465→      });
+   466→   466→      if (res.ok) {
+   467→   467→        toast.success('Stato aggiornato');
+   468→   468→        fetchPrenotazioni();
+   469→   469→      } else {
+   470→   470→        toast.error('Errore nell\'aggiornamento');
+   471→   471→      }
+   472→   472→    } catch {
+   473→   473→      toast.error('Errore di rete');
+   474→   474→    }
+   475→   475→  };
+   476→   476→
+   477→   477→  const confirmDeletePrenotazione = async () => {
+   478→   478→    if (!deletingPrenotazione) return;
+   479→   479→    try {
+   480→   480→      const res = await fetch(`/api/admin/prenotazioni/${deletingPrenotazione.id}`, {
+   481→   481→        method: 'DELETE',
+   482→   482→      });
+   483→   483→      if (res.ok) {
+   484→   484→        toast.success('Prenotazione eliminata');
+   485→   485→        setPrenotazioneDeleteOpen(false);
+   486→   486→        setDeletingPrenotazione(null);
+   487→   487→        fetchPrenotazioni();
+   488→   488→      } else {
+   489→   489→        toast.error('Errore nell\'eliminazione');
+   490→   490→      }
+   491→   491→    } catch {
+   492→   492→      toast.error('Errore di rete');
+   493→   493→    }
+   494→   494→  };
+   495→   495→
+   496→   496→  // ── Status badge helper ────────────────────────────────────────────────────
+   497→   497→
+   498→   498→  const statusBadge = (stato: string) => {
+   499→   499→    switch (stato) {
+   500→   500→      case 'confirmed':
+   501→   501→        return <Badge className="bg-emerald-600 text-white">Confermato</Badge>;
+   502→   502→      case 'cancelled':
+   503→   503→        return <Badge variant="destructive">Annullato</Badge>;
+   504→   504→      default:
+   505→   505→        return <Badge variant="secondary">In attesa</Badge>;
+   506→   506→    }
+   507→   507→  };
+   508→   508→
+   509→   509→  // ── Render ──────────────────────────────────────────────────────────────────
+   510→   510→
+   511→   511→  return (
+   512→   512→    <>
+   513→   513→      {/* Floating Admin Button */}
+   514→   514→      <Button
+   515→   515→        onClick={() => setOpen(true)}
+   516→   516→        size="icon"
+   517→   517→        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg"
+   518→   518→        aria-label="Apri pannello admin"
+   519→   519→      >
+   520→   520→        <Settings className="h-6 w-6" />
+   521→   521→      </Button>
+   522→   522→
+   523→   523→      {/* Sheet */}
+   524→   524→      <Sheet open={open} onOpenChange={setOpen}>
+   525→   525→        <SheetContent className="sm:max-w-[700px] overflow-y-auto p-0">
+   526→   526→          <SheetHeader className="p-6 pb-2">
+   527→   527→            <SheetTitle className="text-2xl font-bold">Admin Panel</SheetTitle>
+   528→   528→          </SheetHeader>
+   529→   529→
+   530→   530→          <Tabs defaultValue="menu" className="w-full px-6 pb-6">
+   531→   531→            <TabsList className="w-full">
+   532→   532→              <TabsTrigger value="menu" className="flex-1 gap-2">
+   533→   533→                <UtensilsCrossed className="h-4 w-4" />
+   534→   534→                <span className="hidden sm:inline">Menu</span>
+   535→   535→              </TabsTrigger>
+   536→   536→              <TabsTrigger value="eventi" className="flex-1 gap-2">
+   537→   537→                <CalendarDays className="h-4 w-4" />
+   538→   538→                <span className="hidden sm:inline">Eventi</span>
+   539→   539→              </TabsTrigger>
+   540→   540→              <TabsTrigger value="prenotazioni" className="flex-1 gap-2">
+   541→   541→                <ClipboardList className="h-4 w-4" />
+   542→   542→                <span className="hidden sm:inline">Prenotazioni</span>
+   543→   543→              </TabsTrigger>
+   544→   544→            </TabsList>
+   545→   545→
+   546→   546→            {/* ─── MENU TAB ──────────────────────────────────────────────── */}
+   547→   547→            <TabsContent value="menu" className="mt-4 space-y-4">
+   548→   548→              <div className="flex items-center justify-between">
+   549→   549→                <h3 className="text-lg font-semibold">Gestione Menu</h3>
+   550→   550→                <Button onClick={openArticoloCreate} size="sm" className="gap-1">
+   551→   551→                  <Plus className="h-4 w-4" />
+   552→   552→                  Aggiungi
+   553→   553→                </Button>
+   554→   554→              </div>
+   555→   555→
+   556→   556→              {articoloLoading ? (
+   557→   557→                <div className="flex justify-center py-12">
+   558→   558→                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+   559→   559→                </div>
+   560→   560→              ) : articoli.length === 0 ? (
+   561→   561→                <p className="text-center py-12 text-muted-foreground">
+   562→   562→                  Nessun articolo trovato
+   563→   563→                </p>
+   564→   564→              ) : (
+   565→   565→                <div className="rounded-md border">
+   566→   566→                  <Table>
+   567→   567→                    <TableHeader>
+   568→   568→                      <TableRow>
+   569→   569→                        <TableHead>Nome</TableHead>
+   570→   570→                        <TableHead>Categoria</TableHead>
+   571→   571→                        <TableHead>Prezzo</TableHead>
+   572→   572→                        <TableHead>Promo</TableHead>
+   573→   573→                        <TableHead>Best Choice</TableHead>
+   574→   574→                        <TableHead>Attivo</TableHead>
+   575→   575→                        <TableHead className="text-right">Azioni</TableHead>
+   576→   576→                      </TableRow>
+   577→   577→                    </TableHeader>
+   578→   578→                    <TableBody>
+   579→   579→                      {articoli.map((a) => (
+   580→   580→                        <TableRow key={a.id}>
+   581→   581→                          <TableCell className="font-medium">{a.nome}</TableCell>
+   582→   582→                          <TableCell>{getCategoryName(a.categoriaId)}</TableCell>
+   583→   583→                          <TableCell>{formatPrice(a.prezzo)}</TableCell>
+   584→   584→                          <TableCell>
+   585→   585→                            {a.prezzoPromozionale != null
+   586→   586→                              ? formatPrice(a.prezzoPromozionale)
+   587→   587→                              : '-'}
+   588→   588→                          </TableCell>
+   589→   589→                          <TableCell>
+   590→   590→                            {a.eBestChoice && (
+   591→   591→                              <Badge className="bg-amber-500 text-white">Best</Badge>
+   592→   592→                            )}
+   593→   593→                          </TableCell>
+   594→   594→                          <TableCell>
+   595→   595→                            <Switch
+   596→   596→                              checked={a.attivo}
+   597→   597→                              onCheckedChange={() => toggleArticoloActive(a)}
+   598→   598→                            />
+   599→   599→                          </TableCell>
+   600→   600→                          <TableCell className="text-right">
+   601→   601→                            <div className="flex justify-end gap-1">
+   602→   602→                              <Button
+   603→   603→                                variant="ghost"
+   604→   604→                                size="icon"
+   605→   605→                                className="h-8 w-8"
+   606→   606→                                onClick={() => openArticoloEdit(a)}
+   607→   607→                              >
+   608→   608→                                <Pencil className="h-4 w-4" />
+   609→   609→                              </Button>
+   610→   610→                              <Button
+   611→   611→                                variant="ghost"
+   612→   612→                                size="icon"
+   613→   613→                                className="h-8 w-8 text-destructive hover:text-destructive"
+   614→   614→                                onClick={() => {
+   615→   615→                                  setDeletingArticolo(a);
+   616→   616→                                  setArticoloDeleteOpen(true);
+   617→   617→                                }}
+   618→   618→                              >
+   619→   619→                                <Trash2 className="h-4 w-4" />
+   620→   620→                              </Button>
+   621→   621→                            </div>
+   622→   622→                          </TableCell>
+   623→   623→                        </TableRow>
+   624→   624→                      ))}
+   625→   625→                    </TableBody>
+   626→   626→                  </Table>
+   627→   627→                </div>
+   628→   628→              )}
+   629→   629→            </TabsContent>
+   630→   630→
+   631→   631→            {/* ─── EVENTI TAB ────────────────────────────────────────────── */}
+   632→   632→            <TabsContent value="eventi" className="mt-4 space-y-4">
+   633→   633→              <div className="flex items-center justify-between">
+   634→   634→                <h3 className="text-lg font-semibold">Gestione Eventi</h3>
+   635→   635→                <Button onClick={openEventoCreate} size="sm" className="gap-1">
+   636→   636→                  <Plus className="h-4 w-4" />
+   637→   637→                  Aggiungi
+   638→   638→                </Button>
+   639→   639→              </div>
+   640→   640→
+   641→   641→              {eventoLoading ? (
+   642→   642→                <div className="flex justify-center py-12">
+   643→   643→                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+   644→   644→                </div>
+   645→   645→              ) : eventi.length === 0 ? (
+   646→   646→                <p className="text-center py-12 text-muted-foreground">
+   647→   647→                  Nessun evento trovato
+   648→   648→                </p>
+   649→   649→              ) : (
+   650→   650→                <div className="rounded-md border">
+   651→   651→                  <Table>
+   652→   652→                    <TableHeader>
+   653→   653→                      <TableRow>
+   654→   654→                        <TableHead>Titolo</TableHead>
+   655→   655→                        <TableHead>Data</TableHead>
+   656→   656→                        <TableHead>Orario</TableHead>
+   657→   657→                        <TableHead>Prezzo</TableHead>
+   658→   658→                        <TableHead>Posti</TableHead>
+   659→   659→                        <TableHead>Evidenza</TableHead>
+   660→   660→                        <TableHead>Attivo</TableHead>
+   661→   661→                        <TableHead className="text-right">Azioni</TableHead>
+   662→   662→                      </TableRow>
+   663→   663→                    </TableHeader>
+   664→   664→                    <TableBody>
+   665→   665→                      {eventi.map((e) => (
+   666→   666→                        <TableRow key={e.id}>
+   667→   667→                          <TableCell className="font-medium">{e.titolo}</TableCell>
+   668→   668→                          <TableCell>{formatDate(e.data)}</TableCell>
+   669→   669→                          <TableCell>
+   670→   670→                            {e.oraInizio}
+   671→   671→                            {e.oraFine ? ` - ${e.oraFine}` : ''}
+   672→   672→                          </TableCell>
+   673→   673→                          <TableCell>
+   674→   674→                            {e.gratuito ? (
+   675→   675→                              <Badge className="bg-emerald-600 text-white">Gratuito</Badge>
+   676→   676→                            ) : (
+   677→   677→                              formatPrice(e.prezzo)
+   678→   678→                            )}
+   679→   679→                          </TableCell>
+   680→   680→                          <TableCell>
+   681→   681→                            {e.postiDisponibili}/{e.capacita}
+   682→   682→                          </TableCell>
+   683→   683→                          <TableCell>
+   684→   684→                            {e.inEvidenza && (
+   685→   685→                              <Badge className="bg-purple-600 text-white">Evidenza</Badge>
+   686→   686→                            )}
+   687→   687→                          </TableCell>
+   688→   688→                          <TableCell>
+   689→   689→                            <Switch
+   690→   690→                              checked={e.attivo}
+   691→   691→                              onCheckedChange={() => toggleEventoActive(e)}
+   692→   692→                            />
+   693→   693→                          </TableCell>
+   694→   694→                          <TableCell className="text-right">
+   695→   695→                            <div className="flex justify-end gap-1">
+   696→   696→                              <Button
+   697→   697→                                variant="ghost"
+   698→   698→                                size="icon"
+   699→   699→                                className="h-8 w-8"
+   700→   700→                                onClick={() => openEventoEdit(e)}
+   701→   701→                              >
+   702→   702→                                <Pencil className="h-4 w-4" />
+   703→   703→                              </Button>
+   704→   704→                              <Button
+   705→   705→                                variant="ghost"
+   706→   706→                                size="icon"
+   707→   707→                                className="h-8 w-8 text-destructive hover:text-destructive"
+   708→   708→                                onClick={() => {
+   709→   709→                                  setDeletingEvento(e);
+   710→   710→                                  setEventoDeleteOpen(true);
+   711→   711→                                }}
+   712→   712→                              >
+   713→   713→                                <Trash2 className="h-4 w-4" />
+   714→   714→                              </Button>
+   715→   715→                            </div>
+   716→   716→                          </TableCell>
+   717→   717→                        </TableRow>
+   718→   718→                      ))}
+   719→   719→                    </TableBody>
+   720→   720→                  </Table>
+   721→   721→                </div>
+   722→   722→              )}
+   723→   723→            </TabsContent>
+   724→   724→
+   725→   725→            {/* ─── PRENOTAZIONI TAB ───────────────────────────────────────── */}
+   726→   726→            <TabsContent value="prenotazioni" className="mt-4 space-y-4">
+   727→   727→              <div className="flex items-center justify-between">
+   728→   728→                <h3 className="text-lg font-semibold">Prenotazioni</h3>
+   729→   729→              </div>
+   730→   730→
+   731→   731→              {prenotazioneLoading ? (
+   732→   732→                <div className="flex justify-center py-12">
+   733→   733→                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+   734→   734→                </div>
+   735→   735→              ) : prenotazioni.length === 0 ? (
+   736→   736→                <p className="text-center py-12 text-muted-foreground">
+   737→   737→                  Nessuna prenotazione trovata
+   738→   738→                </p>
+   739→   739→              ) : (
+   740→   740→                <div className="rounded-md border">
+   741→   741→                  <Table>
+   742→   742→                    <TableHeader>
+   743→   743→                      <TableRow>
+   744→   744→                        <TableHead>Nome</TableHead>
+   745→   745→                        <TableHead>Cognome</TableHead>
+   746→   746→                        <TableHead>Data</TableHead>
+   747→   747→                        <TableHead>Ora</TableHead>
+   748→   748→                        <TableHead>Persone</TableHead>
+   749→   749→                        <TableHead>Telefono</TableHead>
+   750→   750→                        <TableHead>Stato</TableHead>
+   751→   751→                        <TableHead>Evento</TableHead>
+   752→   752→                        <TableHead className="text-right">Azioni</TableHead>
+   753→   753→                      </TableRow>
+   754→   754→                    </TableHeader>
+   755→   755→                    <TableBody>
+   756→   756→                      {prenotazioni.map((p) => (
+   757→   757→                        <TableRow key={p.id}>
+   758→   758→                          <TableCell className="font-medium">{p.nome}</TableCell>
+   759→   759→                          <TableCell>{p.cognome}</TableCell>
+   760→   760→                          <TableCell>{formatDate(p.data)}</TableCell>
+   761→   761→                          <TableCell>{p.ora}</TableCell>
+   762→   762→                          <TableCell>{p.persone}</TableCell>
+   763→   763→                          <TableCell>{p.telefono || '-'}</TableCell>
+   764→   764→                          <TableCell>
+   765→   765→                            <Select
+   766→   766→                              value={p.stato}
+   767→   767→                              onValueChange={(v) => changePrenotazioneStatus(p, v)}
+   768→   768→                            >
+   769→   769→                              <SelectTrigger className="w-[130px] h-8">
+   770→   770→                                <SelectValue />
+   771→   771→                              </SelectTrigger>
+   772→   772→                              <SelectContent>
+   773→   773→                                <SelectItem value="pending">In attesa</SelectItem>
+   774→   774→                                <SelectItem value="confirmed">Confermato</SelectItem>
+   775→   775→                                <SelectItem value="cancelled">Annullato</SelectItem>
+   776→   776→                              </SelectContent>
+   777→   777→                            </Select>
+   778→   778→                          </TableCell>
+   779→   779→                          <TableCell>
+   780→   780→                            {p.evento ? p.evento.titolo : '-'}
+   781→   781→                          </TableCell>
+   782→   782→                          <TableCell className="text-right">
+   783→   783→                            <Button
+   784→   784→                              variant="ghost"
+   785→   785→                              size="icon"
+   786→   786→                              className="h-8 w-8 text-destructive hover:text-destructive"
+   787→   787→                              onClick={() => {
+   788→   788→                                setDeletingPrenotazione(p);
+   789→   789→                                setPrenotazioneDeleteOpen(true);
+   790→   790→                              }}
+   791→   791→                            >
+   792→   792→                              <Trash2 className="h-4 w-4" />
+   793→   793→                            </Button>
+   794→   794→                          </TableCell>
+   795→   795→                        </TableRow>
+   796→   796→                      ))}
+   797→   797→                    </TableBody>
+   798→   798→                  </Table>
+   799→   799→                </div>
+   800→   800→              )}
+   801→   801→            </TabsContent>
+   802→   802→          </Tabs>
+   803→   803→        </SheetContent>
+   804→   804→      </Sheet>
+   805→   805→
+   806→   806→      {/* ─── Articolo Dialog ──────────────────────────────────────────────── */}
+   807→   807→      <Dialog open={articoloDialogOpen} onOpenChange={setArticoloDialogOpen}>
+   808→   808→        <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
+   809→   809→          <DialogHeader>
+   810→   810→            <DialogTitle>
+   811→   811→              {editingArticolo ? 'Modifica Articolo' : 'Nuovo Articolo'}
+   812→   812→            </DialogTitle>
+   813→   813→          </DialogHeader>
+   814→   814→          <div className="grid gap-4 py-2">
+   815→   815→            <div className="grid gap-2">
+   816→   816→              <Label htmlFor="art-nome">Nome</Label>
+   817→   817→              <Input
+   818→   818→                id="art-nome"
+   819→   819→                value={articoloForm.nome}
+   820→   820→                onChange={(e) =>
+   821→   821→                  setArticoloForm((f) => ({ ...f, nome: e.target.value }))
+   822→   822→                }
+   823→   823→              />
+   824→   824→            </div>
+   825→   825→            <div className="grid gap-2">
+   826→   826→              <Label htmlFor="art-descrizione">Descrizione</Label>
+   827→   827→              <Textarea
+   828→   828→                id="art-descrizione"
+   829→   829→                value={articoloForm.descrizione}
+   830→   830→                onChange={(e) =>
+   831→   831→                  setArticoloForm((f) => ({ ...f, descrizione: e.target.value }))
+   832→   832→                }
+   833→   833→                rows={3}
+   834→   834→              />
+   835→   835→            </div>
+   836→   836→            <div className="grid gap-2">
+   837→   837→              <Label htmlFor="art-categoria">Categoria</Label>
+   838→   838→              <Select
+   839→   839→                value={articoloForm.categoriaId}
+   840→   840→                onValueChange={(v) =>
+   841→   841→                  setArticoloForm((f) => ({ ...f, categoriaId: v }))
+   842→   842→                }
+   843→   843→              >
+   844→   844→                <SelectTrigger id="art-categoria">
+   845→   845→                  <SelectValue placeholder="Seleziona categoria" />
+   846→   846→                </SelectTrigger>
+   847→   847→                <SelectContent>
+   848→   848→                  {categorie.map((c) => (
+   849→   849→                    <SelectItem key={c.id} value={c.id}>
+   850→   850→                      {c.nome}
+   851→   851→                    </SelectItem>
+   852→   852→                  ))}
+   853→   853→                </SelectContent>
+   854→   854→              </Select>
+   855→   855→            </div>
+   856→   856→            <div className="grid grid-cols-2 gap-4">
+   857→   857→              <div className="grid gap-2">
+   858→   858→                <Label htmlFor="art-prezzo">Prezzo (€)</Label>
+   859→   859→                <Input
+   860→   860→                  id="art-prezzo"
+   861→   861→                  type="number"
+   862→   862→                  step="0.01"
+   863→   863→                  min="0"
+   864→   864→                  value={articoloForm.prezzo}
+   865→   865→                  onChange={(e) =>
+   866→   866→                    setArticoloForm((f) => ({
+   867→   867→                      ...f,
+   868→   868→                      prezzo: Number(e.target.value),
+   869→   869→                    }))
+   870→   870→                  }
+   871→   871→                />
+   872→   872→              </div>
+   873→   873→              <div className="grid gap-2">
+   874→   874→                <Label htmlFor="art-promo">Prezzo Promo (€)</Label>
+   875→   875→                <Input
+   876→   876→                  id="art-promo"
+   877→   877→                  type="number"
+   878→   878→                  step="0.01"
+   879→   879→                  min="0"
+   880→   880→                  placeholder="Opzionale"
+   881→   881→                  value={articoloForm.prezzoPromozionale}
+   882→   882→                  onChange={(e) =>
+   883→   883→                    setArticoloForm((f) => ({
+   884→   884→                      ...f,
+   885→   885→                      prezzoPromozionale: e.target.value,
+   886→   886→                    }))
+   887→   887→                  }
+   888→   888→                />
+   889→   889→              </div>
+   890→   890→            </div>
+   891→   891→            <div className="flex items-center gap-2">
+   892→   892→              <Checkbox
+   893→   893→                id="art-best"
+   894→   894→                checked={articoloForm.eBestChoice}
+   895→   895→                onCheckedChange={(checked) =>
+   896→   896→                  setArticoloForm((f) => ({
+   897→   897→                    ...f,
+   898→   898→                    eBestChoice: checked === true,
+   899→   899→                  }))
+   900→   900→                }
+   901→   901→              />
+   902→   902→              <Label htmlFor="art-best" className="cursor-pointer">
+   903→   903→                Best Choice
+   904→   904→              </Label>
+   905→   905→            </div>
+   906→   906→            <div className="grid gap-2">
+   907→   907→              <Label htmlFor="art-immagine">URL Immagine</Label>
+   908→   908→              <Input
+   909→   909→                id="art-immagine"
+   910→   910→                value={articoloForm.immagineUrl}
+   911→   911→                onChange={(e) =>
+   912→   912→                  setArticoloForm((f) => ({ ...f, immagineUrl: e.target.value }))
+   913→   913→                }
+   914→   914→                placeholder="https://..."
+   915→   915→              />
+   916→   916→            </div>
+   917→   917→          </div>
+   918→   918→          <DialogFooter>
+   919→   919→            <Button variant="outline" onClick={() => setArticoloDialogOpen(false)}>
+   920→   920→              Annulla
+   921→   921→            </Button>
+   922→   922→            <Button onClick={saveArticolo}>
+   923→   923→              {editingArticolo ? 'Salva' : 'Crea'}
+   924→   924→            </Button>
+   925→   925→          </DialogFooter>
+   926→   926→        </DialogContent>
+   927→   927→      </Dialog>
+   928→   928→
+   929→   929→      {/* ─── Articolo Delete Alert ────────────────────────────────────────── */}
+   930→   930→      <AlertDialog open={articoloDeleteOpen} onOpenChange={setArticoloDeleteOpen}>
+   931→   931→        <AlertDialogContent>
+   932→   932→          <AlertDialogHeader>
+   933→   933→            <AlertDialogTitle>Elimina Articolo</AlertDialogTitle>
+   934→   934→            <AlertDialogDescription>
+   935→   935→              Sei sicuro di voler eliminare &quot;{deletingArticolo?.nome}&quot;? Questa azione
+   936→   936→              non può essere annullata.
+   937→   937→            </AlertDialogDescription>
+   938→   938→          </AlertDialogHeader>
+   939→   939→          <AlertDialogFooter>
+   940→   940→            <AlertDialogCancel>Annulla</AlertDialogCancel>
+   941→   941→            <AlertDialogAction
+   942→   942→              onClick={confirmDeleteArticolo}
+   943→   943→              className="bg-destructive text-white hover:bg-destructive/90"
+   944→   944→            >
+   945→   945→              Elimina
+   946→   946→            </AlertDialogAction>
+   947→   947→          </AlertDialogFooter>
+   948→   948→        </AlertDialogContent>
+   949→   949→      </AlertDialog>
+   950→   950→
+   951→   951→      {/* ─── Evento Dialog ────────────────────────────────────────────────── */}
+   952→   952→      <Dialog open={eventoDialogOpen} onOpenChange={setEventoDialogOpen}>
+   953→   953→        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
+   954→   954→          <DialogHeader>
+   955→   955→            <DialogTitle>
+   956→   956→              {editingEvento ? 'Modifica Evento' : 'Nuovo Evento'}
+   957→   957→            </DialogTitle>
+   958→   958→          </DialogHeader>
+   959→   959→          <div className="grid gap-4 py-2">
+   960→   960→            <div className="grid gap-2">
+   961→   961→              <Label htmlFor="evt-titolo">Titolo</Label>
+   962→   962→              <Input
+   963→   963→                id="evt-titolo"
+   964→   964→                value={eventoForm.titolo}
+   965→   965→                onChange={(e) =>
+   966→   966→                  setEventoForm((f) => ({ ...f, titolo: e.target.value }))
+   967→   967→                }
+   968→   968→              />
+   969→   969→            </div>
+   970→   970→            <div className="grid gap-2">
+   971→   971→              <Label htmlFor="evt-desc-breve">Descrizione Breve</Label>
+   972→   972→              <Input
+   973→   973→                id="evt-desc-breve"
+   974→   974→                value={eventoForm.descrizioneBreve}
+   975→   975→                onChange={(e) =>
+   976→   976→                  setEventoForm((f) => ({ ...f, descrizioneBreve: e.target.value }))
+   977→   977→                }
+   978→   978→              />
+   979→   979→            </div>
+   980→   980→            <div className="grid gap-2">
+   981→   981→              <Label htmlFor="evt-descrizione">Descrizione</Label>
+   982→   982→              <Textarea
+   983→   983→                id="evt-descrizione"
+   984→   984→                value={eventoForm.descrizione}
+   985→   985→                onChange={(e) =>
+   986→   986→                  setEventoForm((f) => ({ ...f, descrizione: e.target.value }))
+   987→   987→                }
+   988→   988→                rows={3}
+   989→   989→              />
+   990→   990→            </div>
+   991→   991→            <div className="grid grid-cols-2 gap-4">
+   992→   992→              <div className="grid gap-2">
+   993→   993→                <Label htmlFor="evt-data">Data</Label>
+   994→   994→                <Input
+   995→   995→                  id="evt-data"
+   996→   996→                  type="date"
+   997→   997→                  value={eventoForm.data}
+   998→   998→                  onChange={(e) =>
+   999→   999→                    setEventoForm((f) => ({ ...f, data: e.target.value }))
+  1000→  1000→                  }
+  1001→  1001→                />
+  1002→  1002→              </div>
+  1003→  1003→              <div className="grid gap-2">
+  1004→  1004→                <Label htmlFor="evt-prezzo">Prezzo (€)</Label>
+  1005→  1005→                <Input
+  1006→  1006→                  id="evt-prezzo"
+  1007→  1007→                  type="number"
+  1008→  1008→                  step="0.01"
+  1009→  1009→                  min="0"
+  1010→  1010→                  value={eventoForm.prezzo}
+  1011→  1011→                  onChange={(e) =>
+  1012→  1012→                    setEventoForm((f) => ({
+  1013→  1013→                      ...f,
+  1014→  1014→                      prezzo: Number(e.target.value),
+  1015→  1015→                    }))
+  1016→  1016→                  }
+  1017→  1017→                  disabled={eventoForm.gratuito}
+  1018→  1018→                />
+  1019→  1019→              </div>
+  1020→  1020→            </div>
+  1021→  1021→            <div className="grid grid-cols-2 gap-4">
+  1022→  1022→              <div className="grid gap-2">
+  1023→  1023→                <Label htmlFor="evt-ora-inizio">Ora Inizio</Label>
+  1024→  1024→                <Input
+  1025→  1025→                  id="evt-ora-inizio"
+  1026→  1026→                  type="time"
+  1027→  1027→                  value={eventoForm.oraInizio}
+  1028→  1028→                  onChange={(e) =>
+  1029→  1029→                    setEventoForm((f) => ({ ...f, oraInizio: e.target.value }))
+  1030→  1030→                  }
+  1031→  1031→                />
+  1032→  1032→              </div>
+  1033→  1033→              <div className="grid gap-2">
+  1034→  1034→                <Label htmlFor="evt-ora-fine">Ora Fine</Label>
+  1035→  1035→                <Input
+  1036→  1036→                  id="evt-ora-fine"
+  1037→  1037→                  type="time"
+  1038→  1038→                  value={eventoForm.oraFine}
+  1039→  1039→                  onChange={(e) =>
+  1040→  1040→                    setEventoForm((f) => ({ ...f, oraFine: e.target.value }))
+  1041→  1041→                  }
+  1042→  1042→                />
+  1043→  1043→              </div>
+  1044→  1044→            </div>
+  1045→  1045→            <div className="grid grid-cols-2 gap-4">
+  1046→  1046→              <div className="grid gap-2">
+  1047→  1047→                <Label htmlFor="evt-capacita">Capacità</Label>
+  1048→  1048→                <Input
+  1049→  1049→                  id="evt-capacita"
+  1050→  1050→                  type="number"
+  1051→  1051→                  min="1"
+  1052→  1052→                  value={eventoForm.capacita}
+  1053→  1053→                  onChange={(e) =>
+  1054→  1054→                    setEventoForm((f) => ({
+  1055→  1055→                      ...f,
+  1056→  1056→                      capacita: Number(e.target.value),
+  1057→  1057→                    }))
+  1058→  1058→                  }
+  1059→  1059→                />
+  1060→  1060→              </div>
+  1061→  1061→              <div className="grid gap-2">
+  1062→  1062→                <Label htmlFor="evt-posti">Posti Disponibili</Label>
+  1063→  1063→                <Input
+  1064→  1064→                  id="evt-posti"
+  1065→  1065→                  type="number"
+  1066→  1066→                  min="0"
+  1067→  1067→                  value={eventoForm.postiDisponibili}
+  1068→  1068→                  onChange={(e) =>
+  1069→  1069→                    setEventoForm((f) => ({
+  1070→  1070→                      ...f,
+  1071→  1071→                      postiDisponibili: Number(e.target.value),
+  1072→  1072→                    }))
+  1073→  1073→                  }
+  1074→  1074→                />
+  1075→  1075→              </div>
+  1076→  1076→            </div>
+  1077→  1077→            <div className="flex flex-col gap-3">
+  1078→  1078→              <div className="flex items-center gap-2">
+  1079→  1079→                <Checkbox
+  1080→  1080→                  id="evt-gratuito"
+  1081→  1081→                  checked={eventoForm.gratuito}
+  1082→  1082→                  onCheckedChange={(checked) =>
+  1083→  1083→                    setEventoForm((f) => ({
+  1084→  1084→                      ...f,
+  1085→  1085→                      gratuito: checked === true,
+  1086→  1086→                    }))
+  1087→  1087→                  }
+  1088→  1088→                />
+  1089→  1089→                <Label htmlFor="evt-gratuito" className="cursor-pointer">
+  1090→  1090→                  Gratuito
+  1091→  1091→                </Label>
+  1092→  1092→              </div>
+  1093→  1093→              <div className="flex items-center gap-2">
+  1094→  1094→                <Checkbox
+  1095→  1095→                  id="evt-prenotazione"
+  1096→  1096→                  checked={eventoForm.graditaPrenotazione}
+  1097→  1097→                  onCheckedChange={(checked) =>
+  1098→  1098→                    setEventoForm((f) => ({
+  1099→  1099→                      ...f,
+  1100→  1100→                      graditaPrenotazione: checked === true,
+  1101→  1101→                    }))
+  1102→  1102→                  }
+  1103→  1103→                />
+  1104→  1104→                <Label htmlFor="evt-prenotazione" className="cursor-pointer">
+  1105→  1105→                  Gradita Prenotazione
+  1106→  1106→                </Label>
+  1107→  1107→              </div>
+  1108→  1108→              <div className="flex items-center gap-2">
+  1109→  1109→                <Checkbox
+  1110→  1110→                  id="evt-evidenza"
+  1111→  1111→                  checked={eventoForm.inEvidenza}
+  1112→  1112→                  onCheckedChange={(checked) =>
+  1113→  1113→                    setEventoForm((f) => ({
+  1114→  1114→                      ...f,
+  1115→  1115→                      inEvidenza: checked === true,
+  1116→  1116→                    }))
+  1117→  1117→                  }
+  1118→  1118→                />
+  1119→  1119→                <Label htmlFor="evt-evidenza" className="cursor-pointer">
+  1120→  1120→                  In Evidenza
+  1121→  1121→                </Label>
+  1122→  1122→              </div>
+  1123→  1123→            </div>
+  1124→  1124→            <div className="grid gap-2">
+  1125→  1125→              <Label htmlFor="evt-immagine">URL Immagine</Label>
+  1126→  1126→              <Input
+  1127→  1127→                id="evt-immagine"
+  1128→  1128→                value={eventoForm.immagineUrl}
+  1129→  1129→                onChange={(e) =>
+  1130→  1130→                  setEventoForm((f) => ({ ...f, immagineUrl: e.target.value }))
+  1131→  1131→                }
+  1132→  1132→                placeholder="https://..."
+  1133→  1133→              />
+  1134→  1134→            </div>
+  1135→  1135→          </div>
+  1136→  1136→          <DialogFooter>
+  1137→  1137→            <Button variant="outline" onClick={() => setEventoDialogOpen(false)}>
+  1138→  1138→              Annulla
+  1139→  1139→            </Button>
+  1140→  1140→            <Button onClick={saveEvento}>
+  1141→  1141→              {editingEvento ? 'Salva' : 'Crea'}
+  1142→  1142→            </Button>
+  1143→  1143→          </DialogFooter>
+  1144→  1144→        </DialogContent>
+  1145→  1145→      </Dialog>
+  1146→  1146→
+  1147→  1147→      {/* ─── Evento Delete Alert ──────────────────────────────────────────── */}
+  1148→  1148→      <AlertDialog open={eventoDeleteOpen} onOpenChange={setEventoDeleteOpen}>
+  1149→  1149→        <AlertDialogContent>
+  1150→  1150→          <AlertDialogHeader>
+  1151→  1151→            <AlertDialogTitle>Elimina Evento</AlertDialogTitle>
+  1152→  1152→            <AlertDialogDescription>
+  1153→  1153→              Sei sicuro di voler eliminare &quot;{deletingEvento?.titolo}&quot;? Questa azione
+  1154→  1154→              non può essere annullata.
+  1155→  1155→            </AlertDialogDescription>
+  1156→  1156→          </AlertDialogHeader>
+  1157→  1157→          <AlertDialogFooter>
+  1158→  1158→            <AlertDialogCancel>Annulla</AlertDialogCancel>
+  1159→  1159→            <AlertDialogAction
+  1160→  1160→              onClick={confirmDeleteEvento}
+  1161→  1161→              className="bg-destructive text-white hover:bg-destructive/90"
+  1162→  1162→            >
+  1163→  1163→              Elimina
+  1164→  1164→            </AlertDialogAction>
+  1165→  1165→          </AlertDialogFooter>
+  1166→  1166→        </AlertDialogContent>
+  1167→  1167→      </AlertDialog>
+  1168→  1168→
+  1169→  1169→      {/* ─── Prenotazione Delete Alert ────────────────────────────────────── */}
+  1170→  1170→      <AlertDialog open={prenotazioneDeleteOpen} onOpenChange={setPrenotazioneDeleteOpen}>
+  1171→  1171→        <AlertDialogContent>
+  1172→  1172→          <AlertDialogHeader>
+  1173→  1173→            <AlertDialogTitle>Elimina Prenotazione</AlertDialogTitle>
+  1174→  1174→            <AlertDialogDescription>
+  1175→  1175→              Sei sicuro di voler eliminare la prenotazione di &quot;
+  1176→  1176→              {deletingPrenotazione?.nome} {deletingPrenotazione?.cognome}&quot;? Questa
+  1177→  1177→              azione non può essere annullata.
+  1178→  1178→            </AlertDialogDescription>
+  1179→  1179→          </AlertDialogHeader>
+  1180→  1180→          <AlertDialogFooter>
+  1181→  1181→            <AlertDialogCancel>Annulla</AlertDialogCancel>
+  1182→  1182→            <AlertDialogAction
+  1183→  1183→              onClick={confirmDeletePrenotazione}
+  1184→  1184→              className="bg-destructive text-white hover:bg-destructive/90"
+  1185→  1185→            >
+  1186→  1186→              Elimina
+  1187→  1187→            </AlertDialogAction>
+  1188→  1188→          </AlertDialogFooter>
+  1189→  1189→        </AlertDialogContent>
+  1190→  1190→      </AlertDialog>
+  1191→  1191→    </>
+  1192→  1192→  );
+  1193→  1193→}
+  1194→  1194→
