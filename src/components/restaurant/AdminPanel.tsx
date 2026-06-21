@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Settings, Plus, Pencil, Trash2, UtensilsCrossed, CalendarDays,
   ClipboardList, FolderOpen, ShieldAlert, Building2, Footprints, Save,
+  Home, Users, Eye, EyeOff, UserCog, KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -28,12 +30,14 @@ interface Evento { id: string; titolo: string; descrizione: string; descrizioneB
 interface Prenotazione { id: string; nome: string; cognome: string; data: string; ora: string; persone: number; telefono: string; stato: string; evento?: { id: string; titolo: string } | null; }
 interface SiteInfoType { id: string; nomeLocale: string; slogan: string; chiSiamoTitolo: string; chiSiamoTesto: string; telefono: string; email: string; indirizzo: string; orariApertura: string; prenotazioniAttive: boolean; heroTitle: string; heroSubtitle: string; heroCTAText: string; primaryColor: string; }
 interface FooterInfoType { id: string; indirizzo: string; telefono: string; email: string; facebookUrl: string | null; instagramUrl: string | null; tiktokUrl: string | null; justeatUrl: string | null; deliverooUrl: string | null; glovoUrl: string | null; ubereatsUrl: string | null; }
+interface UserType { id: string; email: string; nome: string; cognome: string | null; ruolo: string; createdAt: string; permessi?: { id: string; puoGestireMenu: boolean; puoGestireFooter: boolean; puoGestireTemi: boolean; puoGestirePrenotazioni: boolean; puoGestireDatiAzienda: boolean; puoGestireProfili: boolean; puoGestireAnalytics: boolean; puoGestireSito: boolean; puoGestireEventi: boolean } | null; }
 
 interface ArtForm { nome: string; descrizione: string; categoriaId: string; prezzo: number; prezzoPromozionale: string; eBestChoice: boolean; immagineUrl: string; }
 interface EvtForm { titolo: string; descrizione: string; descrizioneBreve: string; data: string; oraInizio: string; oraFine: string; prezzo: number; gratuito: boolean; graditaPrenotazione: boolean; capacita: number; postiDisponibili: number; inEvidenza: boolean; immagineUrl: string; }
 
 const emptyArt: ArtForm = { nome: '', descrizione: '', categoriaId: '', prezzo: 0, prezzoPromozionale: '', eBestChoice: false, immagineUrl: '' };
 const emptyEvt: EvtForm = { titolo: '', descrizione: '', descrizioneBreve: '', data: '', oraInizio: '', oraFine: '', prezzo: 0, gratuito: false, graditaPrenotazione: false, capacita: 50, postiDisponibili: 50, inEvidenza: false, immagineUrl: '' };
+const emptyPermessi = { puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true, puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: false, puoGestireAnalytics: true, puoGestireSito: true, puoGestireEventi: true };
 
 const fp = (v: number | null | undefined) => (v == null || isNaN(v) ? '-' : `\u20AC ${v.toFixed(2)}`);
 const fd = (d: string) => (d ? new Date(d).toLocaleDateString('it-IT') : '-');
@@ -101,6 +105,18 @@ export default function AdminPanel() {
   const [fiF, setFiF] = useState<FooterInfoType | null>(null);
   const [fiLoad, setFiLoad] = useState(false);
 
+  // Utenti
+  const [utenti, setUtenti] = useState<UserType[]>([]);
+  const [utLoad, setUtLoad] = useState(false);
+  const [utDlg, setUtDlg] = useState(false);
+  const [editUt, setEditUt] = useState<UserType | null>(null);
+  const [utF, setUtF] = useState({ email: '', nome: '', cognome: '', password: '', ruolo: 'admin' });
+  const [utPermessi, setUtPermessi] = useState(emptyPermessi);
+  const [showPw, setShowPw] = useState(false);
+  const [utDel, setUtDel] = useState(false);
+  const [delUt, setDelUt] = useState<UserType | null>(null);
+  const [showPerm, setShowPerm] = useState<UserType | null>(null);
+
   // ── Fetches ────────────────────────────────────────────────────────
   const fCats = useCallback(async () => { try { const r = await fetch('/api/admin/categorie'); if (r.ok) setCats(await r.json()); } catch {} }, []);
   const fArt = useCallback(async () => { setArtLoad(true); try { const r = await fetch('/api/admin/articoli'); if (r.ok) setArticoli(await r.json()); } catch { toast.error('Errore articoli'); } finally { setArtLoad(false); } }, []);
@@ -109,13 +125,14 @@ export default function AdminPanel() {
   const fPren = useCallback(async () => { setPrenLoad(true); try { const r = await fetch('/api/admin/prenotazioni'); if (r.ok) setPren(await r.json()); } catch { toast.error('Errore prenotazioni'); } finally { setPrenLoad(false); } }, []);
   const fSi = useCallback(async () => { setSiLoad(true); try { const r = await fetch('/api/site-info'); if (r.ok) { const d = await r.json(); setSi(d); setSiF(d); } } catch {} finally { setSiLoad(false); } }, []);
   const fFi = useCallback(async () => { setFiLoad(true); try { const r = await fetch('/api/footer-info'); if (r.ok) { const d = await r.json(); setFi(d); setFiF(d); } } catch {} finally { setFiLoad(false); } }, []);
+  const fUt = useCallback(async () => { setUtLoad(true); try { const r = await fetch('/api/admin/utenti'); if (r.ok) setUtenti(await r.json()); } catch { toast.error('Errore utenti'); } finally { setUtLoad(false); } }, []);
 
   // Also fetch categories for the admin list
   const fCatList = useCallback(async () => { setCatLoad(true); try { const r = await fetch('/api/admin/categorie'); if (r.ok) setCatList(await r.json()); } catch {} finally { setCatLoad(false); } }, []);
 
   useEffect(() => {
-    if (open) { fCats(); fArt(); fAll(); fEvt(); fPren(); fSi(); fFi(); fCatList(); }
-  }, [open, fCats, fArt, fAll, fEvt, fPren, fSi, fFi, fCatList]);
+    if (open) { fCats(); fArt(); fAll(); fEvt(); fPren(); fSi(); fFi(); fCatList(); fUt(); }
+  }, [open, fCats, fArt, fAll, fEvt, fPren, fSi, fFi, fCatList, fUt]);
 
   const catName = (id: string) => cats.find(c => c.id === id)?.nome || '-';
   const spin = <div className="flex justify-center py-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
@@ -170,6 +187,44 @@ export default function AdminPanel() {
   // ── Footer Info ────────────────────────────────────────────────────
   const saveFi = async () => { if (!fiF) return; setFiLoad(true); const r = await crud('PUT', '/api/footer-info', fiF); if (r.ok) { toast.success('Footer salvato'); setFi(await r.json()); } else toast.error('Errore'); setFiLoad(false); };
 
+  // ── Utenti CRUD ──────────────────────────────────────────────────────
+  const openUtC = () => {
+    setEditUt(null);
+    setUtF({ email: '', nome: '', cognome: '', password: '', ruolo: 'admin' });
+    setUtPermessi(emptyPermessi);
+    setShowPw(false);
+    setUtDlg(true);
+  };
+  const openUtE = (u: UserType) => {
+    setEditUt(u);
+    setUtF({ email: u.email, nome: u.nome, cognome: u.cognome || '', password: '', ruolo: u.ruolo });
+    setUtPermessi(u.permessi ? {
+      puoGestireMenu: u.permessi.puoGestireMenu,
+      puoGestireFooter: u.permessi.puoGestireFooter,
+      puoGestireTemi: u.permessi.puoGestireTemi,
+      puoGestirePrenotazioni: u.permessi.puoGestirePrenotazioni,
+      puoGestireDatiAzienda: u.permessi.puoGestireDatiAzienda,
+      puoGestireProfili: u.permessi.puoGestireProfili,
+      puoGestireAnalytics: u.permessi.puoGestireAnalytics,
+      puoGestireSito: u.permessi.puoGestireSito,
+      puoGestireEventi: u.permessi.puoGestireEventi,
+    } : emptyPermessi);
+    setShowPw(false);
+    setUtDlg(true);
+  };
+  const saveUt = async () => {
+    if (!utF.email || !utF.nome) { toast.error('Email e nome sono obbligatori'); return; }
+    if (!editUt && !utF.password) { toast.error('La password \u00E8 obbligatoria per un nuovo utente'); return; }
+    const body: Record<string, unknown> = { ...utF, cognome: utF.cognome || null, permessi: utPermessi };
+    if (editUt && !utF.password) delete body.password;
+    const r = await crud(editUt ? 'PUT' : 'POST', api('/api/admin/utenti', editUt?.id), editUt ? { id: editUt.id, ...body } : body);
+    if (r.ok) { toast.success(editUt ? 'Utente aggiornato' : 'Utente creato'); setUtDlg(false); fUt(); } else {
+      const err = await r.json().catch(() => ({}));
+      toast.error(err.error || 'Errore');
+    }
+  };
+  const delUtFn = async () => { if (!delUt) return; const r = await crud('DELETE', api('/api/admin/utenti', delUt.id)); if (r.ok) { toast.success('Utente eliminato'); setUtDel(false); setDelUt(null); fUt(); } else { const err = await r.json().catch(() => ({})); toast.error(err.error || 'Errore'); } };
+
   const statoB = (s: string) => s === 'confirmed' ? <Badge className="bg-emerald-600 text-white">Confermato</Badge> : s === 'cancelled' ? <Badge variant="destructive">Annullato</Badge> : <Badge variant="secondary">In attesa</Badge>;
 
   // ── Render ─────────────────────────────────────────────────────────
@@ -179,7 +234,14 @@ export default function AdminPanel() {
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="sm:max-w-[820px] overflow-y-auto p-0">
-          <SheetHeader className="p-6 pb-2"><SheetTitle className="text-2xl font-bold">Pannello Admin</SheetTitle></SheetHeader>
+          <SheetHeader className="p-6 pb-2 flex flex-row items-center justify-between">
+            <SheetTitle className="text-2xl font-bold">Pannello Admin</SheetTitle>
+            <Link href="/" onClick={() => setOpen(false)}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Home className="h-4 w-4" /> Homepage
+              </Button>
+            </Link>
+          </SheetHeader>
 
           <Tabs defaultValue="menu" className="w-full px-6 pb-6">
             <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-gray-100 p-1">
@@ -190,6 +252,7 @@ export default function AdminPanel() {
               <TabsTrigger value="prenotazioni" className="flex-1 gap-1.5 text-xs sm:text-sm min-w-0"><ClipboardList className="h-3.5 w-3.5" /><span className="hidden sm:inline">Prenotazioni</span></TabsTrigger>
               <TabsTrigger value="sito" className="flex-1 gap-1.5 text-xs sm:text-sm min-w-0"><Building2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Info Sito</span></TabsTrigger>
               <TabsTrigger value="footer" className="flex-1 gap-1.5 text-xs sm:text-sm min-w-0"><Footprints className="h-3.5 w-3.5" /><span className="hidden sm:inline">Footer</span></TabsTrigger>
+              <TabsTrigger value="utenti" className="flex-1 gap-1.5 text-xs sm:text-sm min-w-0"><Users className="h-3.5 w-3.5" /><span className="hidden sm:inline">Utenti</span></TabsTrigger>
             </TabsList>
 
             {/* ═══ MENU ═══════════════════════════════════════════════════════ */}
@@ -312,6 +375,32 @@ export default function AdminPanel() {
               )}
             </TabsContent>
 
+            {/* ═══ UTENTI ═══════════════════════════════════════════════════════ */}
+            <TabsContent value="utenti" className="mt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Gestione Utenti</h3>
+                <Button onClick={openUtC} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Nuovo Utente</Button>
+              </div>
+              {utLoad ? spin : !utenti.length ? <p className="text-center py-12 text-muted-foreground">Nessun utente</p> : (
+                <div className="rounded-md border overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Cognome</TableHead><TableHead>Email</TableHead><TableHead>Ruolo</TableHead><TableHead>Creato</TableHead><TableHead className="text-right">Azioni</TableHead></TableRow></TableHeader><TableBody>
+                  {utenti.map(u => (<TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.nome}</TableCell>
+                    <TableCell>{u.cognome || '-'}</TableCell>
+                    <TableCell className="text-sm">{u.email}</TableCell>
+                    <TableCell><Badge variant={u.ruolo === 'admin' ? 'default' : 'secondary'} className={u.ruolo === 'admin' ? 'bg-red-700 text-white' : ''}>{u.ruolo}</Badge></TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{fd(u.createdAt)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowPerm(u)} title="Permessi"><KeyRound className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openUtE(u)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDelUt(u); setUtDel(true); }}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>))}
+                </TableBody></Table></div>
+              )}
+            </TabsContent>
+
           </Tabs>
         </SheetContent>
       </Sheet>
@@ -391,6 +480,72 @@ export default function AdminPanel() {
       <AlertDialog open={allDel} onOpenChange={setAllDel}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Elimina Allergene</AlertDialogTitle><AlertDialogDescription>Eliminare &quot;{delAll?.nome}&quot;? Sar\u00E0 rimosso da tutti i piatti collegati.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={delAllFn} className="bg-destructive text-white hover:bg-destructive/90">Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={evtDel} onOpenChange={setEvtDel}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Elimina Evento</AlertDialogTitle><AlertDialogDescription>Eliminare &quot;{delEvt?.titolo}&quot;?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={delEvtFn} className="bg-destructive text-white hover:bg-destructive/90">Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={prenDel} onOpenChange={setPrenDel}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Elimina Prenotazione</AlertDialogTitle><AlertDialogDescription>Eliminare la prenotazione di &quot;{delPren?.nome} {delPren?.cognome}&quot;?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={delPrenFn} className="bg-destructive text-white hover:bg-destructive/90">Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+
+      {/* ═══ UTENTE DIALOG ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={utDlg} onOpenChange={setUtDlg}><DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>{editUt ? 'Modifica Utente' : 'Nuovo Utente'}</DialogTitle></DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid gap-2"><Label>Nome *</Label><Input value={utF.nome} onChange={e => setUtF({ ...utF, nome: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>Cognome</Label><Input value={utF.cognome} onChange={e => setUtF({ ...utF, cognome: e.target.value })} /></div>
+          </div>
+          <div className="grid gap-2"><Label>Email *</Label><Input type="email" value={utF.email} onChange={e => setUtF({ ...utF, email: e.target.value })} /></div>
+          <div className="grid gap-2">
+            <Label>{editUt ? 'Nuova Password (lascia vuoto per non cambiare)' : 'Password *'}</Label>
+            <div className="relative">
+              <Input type={showPw ? 'text' : 'password'} value={utF.password} onChange={e => setUtF({ ...utF, password: e.target.value })} placeholder={editUt ? 'Nuova password...' : 'Password...'} />
+              <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPw(!showPw)}>{showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label>Ruolo</Label>
+            <Select value={utF.ruolo} onValueChange={v => setUtF({ ...utF, ruolo: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="editor">Editor</SelectItem>
+                <SelectItem value="viewer">Viewer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="border-t pt-4">
+            <button type="button" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => { const dlg = document.getElementById('perm-section'); dlg?.classList.toggle('hidden'); }}>
+              <UserCog className="h-4 w-4" /> Permessi Utente
+            </button>
+            <div id="perm-section" className="hidden mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {Object.entries(utPermessi).map(([key, val]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <Checkbox checked={val} onCheckedChange={v => setUtPermessi({ ...utPermessi, [key]: v === true })} />
+                  <Label className="text-xs cursor-pointer">{key.replace('puoGestire', '')}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <DialogFooter><Button variant="outline" onClick={() => setUtDlg(false)}>Annulla</Button><Button onClick={saveUt}>{editUt ? 'Salva' : 'Crea Utente'}</Button></DialogFooter>
+      </DialogContent></Dialog>
+
+      {/* ═══ PERMESSI VIEW DIALOG ══════════════════════════════════════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={!!showPerm} onOpenChange={() => setShowPerm(null)}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader><DialogTitle>Permessi: {showPerm?.nome} {showPerm?.cognome}</DialogTitle></DialogHeader>
+          {showPerm?.permessi ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
+              {Object.entries(showPerm.permessi).filter(([k]) => k !== 'id').map(([key, val]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <div className={`h-3 w-3 rounded-full ${val ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                  <span className="text-sm">{key.replace('puoGestire', '')}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground py-4 text-center">Nessun permesso configurato</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══ UTENTE DELETE ═════════════════════════════════════════════════════════════════════════════════════════════════════════════ */}
+      <AlertDialog open={utDel} onOpenChange={setUtDel}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Elimina Utente</AlertDialogTitle><AlertDialogDescription>Eliminare l&apos;utente &quot;{delUt?.nome} {delUt?.cognome}&quot; ({delUt?.email})? Questa azione non pu\u00F2 essere annullata.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={delUtFn} className="bg-destructive text-white hover:bg-destructive/90">Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </>
   );
 }
