@@ -26,7 +26,7 @@ export default function Hero() {
   };
 
   const scrollToMenu = () => {
-    document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+    window.location.href = '/menu';
   };
 
   return (

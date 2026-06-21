@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Menu, X, Phone, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import Link from 'next/link';
 
 interface SiteInfo {
   nomeLocale: string;
@@ -12,7 +13,7 @@ interface SiteInfo {
 
 const navLinks = [
   { label: 'Home', href: '#home' },
-  { label: 'Menu', href: '#menu' },
+  { label: 'Menu', href: '/menu', isPage: true },
   { label: 'Eventi', href: '#eventi' },
   { label: 'Chi Siamo', href: '#chisiamo' },
   { label: 'Contatti', href: '#contatti' },
@@ -35,7 +36,11 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleNav = (href: string) => {
+  const handleNav = (href: string, isPage?: boolean) => {
+    if (isPage) {
+      window.location.href = href;
+      return;
+    }
     const el = document.querySelector(href);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
@@ -72,19 +77,33 @@ export default function Header() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <button
-                key={link.href}
-                onClick={() => handleNav(link.href)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 ${
-                  scrolled
-                    ? 'text-gray-700 hover:text-red-700 hover:bg-red-50'
-                    : 'text-white/90 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {link.label}
-              </button>
-            ))}
+            {navLinks.map((link) =>
+              link.isPage ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 ${
+                    scrolled
+                      ? 'text-gray-700 hover:text-red-700 hover:bg-red-50'
+                      : 'text-white/90 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <button
+                  key={link.href}
+                  onClick={() => handleNav(link.href)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 ${
+                    scrolled
+                      ? 'text-gray-700 hover:text-red-700 hover:bg-red-50'
+                      : 'text-white/90 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {link.label}
+                </button>
+              )
+            )}
             <Button
               size="sm"
               onClick={() => handleNav('#prenota')}
@@ -119,15 +138,25 @@ export default function Header() {
                   Menu
                 </SheetTitle>
                 <nav className="flex flex-col gap-2">
-                  {navLinks.map((link) => (
-                    <button
-                      key={link.href}
-                      onClick={() => handleNav(link.href)}
-                      className="text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-700 font-medium transition-colors"
-                    >
-                      {link.label}
-                    </button>
-                  ))}
+                  {navLinks.map((link) =>
+                    link.isPage ? (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-700 font-medium transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <button
+                        key={link.href}
+                        onClick={() => handleNav(link.href)}
+                        className="text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-700 font-medium transition-colors"
+                      >
+                        {link.label}
+                      </button>
+                    )
+                  )}
                   <Button
                     onClick={() => handleNav('#prenota')}
                     className="mt-4 bg-red-700 hover:bg-red-800 text-white rounded-full"
