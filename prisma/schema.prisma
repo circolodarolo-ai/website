@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Categoria {
+  id        String     @id @default(cuid())
+  nome      String     @unique
+  icona     String?
+  ordine    Int        @default(0)
+  attiva    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  articoli  Articolo[]
+}
+
+model Articolo {
+  id                 String              @id @default(cuid())
+  nome               String
+  descrizione        String?
+  categoriaId        String
+  prezzo             Float
+  prezzoPromozionale Float?
+  eBestChoice        Boolean             @default(false)
+  attivo             Boolean             @default(true)
+  immagineUrl        String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  allergeni          AllergeneArticolo[]
+  categoria          Categoria           @relation(fields: [categoriaId], references: [id])
+}
+
+model Allergene {
+  id          String              @id @default(cuid())
+  nome        String              @unique
+  icona       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  articoli    AllergeneArticolo[]
+}
+
+model AllergeneArticolo {
+  id          String    @id @default(cuid())
+  articoloId  String
+  allergeneId String
+  articolo    Articolo  @relation(fields: [articoloId], references: [id], onDelete: Cascade)
+  allergene   Allergene @relation(fields: [allergeneId], references: [id], onDelete: Cascade)
+  @@unique([articoloId, allergeneId])
+}
+
+model Evento {
+  id               String         @id @default(cuid())
+  titolo           String
+  descrizione      String
+  descrizioneBreve String
+  immagineUrl      String?
+  data             DateTime
+  oraInizio        String
+  oraFine          String
+  prezzo           Float          @default(0)
+  gratuito         Boolean        @default(false)
+  graditaPrenotazione Boolean     @default(false)
+  capacita         Int            @default(0)
+  postiDisponibili Int            @default(0)
+  inEvidenza       Boolean        @default(false)
+  attivo           Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  prenotazioni     Prenotazione[]
+}
+
+model Prenotazione {
+  id        String    @id @default(cuid())
+  nome      String
+  cognome   String
+  email     String
+  telefono  String
+  data      String
+  ora       String
+  persone   Int
+  note      String?
+  stato     String    @default("pending")
+  eventoId  String?
+  evento    Evento?   @relation(fields: [eventoId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model SiteInfo {
+  id               String   @id @default(cuid())
+  nomeLocale       String   @default("La Bella Italia")
+  slogan           String   @default("Autentica Cucina Italiana dal 1985")
+  chiSiamoTitolo   String   @default("Chi Siamo")
+  chiSiamoTesto    String   @default("Da tre generazioni portiamo in tavola i sapori autentici della tradizione italiana...")
+  telefono         String   @default("+39 06 1234567")
+  email            String   @default("info@labellaitalia.it")
+  indirizzo        String   @default("Via Roma 42, 00100 Roma (RM)")
+  orariApertura    String   @default("Mar-Dom: 12:00-14:30, 19:00-23:00")
+  prenotazioniAttive Boolean @default(true)
+  heroTitle        String   @default("Autentica Cucina Italiana")
+  heroSubtitle     String   @default("Tradizione, passione e sapori genuini nel cuore di Roma")
+  heroCTAText      String   @default("Prenota un Tavolo")
+  primaryColor     String   @default("#b91c1c")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model FooterInfo {
+  id           String   @id @default(cuid())
+  indirizzo    String   @default("Via Roma 42, 00100 Roma (RM)")
+  telefono     String   @default("+39 06 1234567")
+  email        String   @default("info@labellaitalia.it")
+  facebookUrl  String?
+  instagramUrl String?
+  tiktokUrl    String?
+  justeatUrl   String?
+  deliverooUrl String?
+  glovoUrl     String?
+  ubereatsUrl  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
