@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import BannerContainer from './BannerContainer';
 
 interface Evento {
   id: string;
@@ -80,6 +81,9 @@ export default function EventiSection() {
             Serate speciali, laboratori e degustazioni per vivere esperienze uniche
           </p>
         </div>
+
+        {/* Banner Top - only shown if user accepted marketing cookies */}
+        <BannerContainer pagina="eventi" posizione="top" />
 
         {/* Events Grid */}
         <div className="grid md:grid-cols-2 gap-6">
@@ -157,6 +161,9 @@ export default function EventiSection() {
             </Card>
           ))}
         </div>
+
+        {/* Banner Bottom */}
+        <BannerContainer pagina="eventi" posizione="bottom" />
       </div>
     </section>
   );

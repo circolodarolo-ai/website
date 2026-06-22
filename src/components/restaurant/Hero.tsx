@@ -8,18 +8,42 @@ interface SiteInfo {
   heroTitle: string;
   heroSubtitle: string;
   heroCTAText: string;
+  heroImageUrl: string | null;
+  heroOverlayOpacity: number;
   primaryColor?: string;
+}
+
+interface SiteImage {
+  id: string;
+  url: string;
+  titolo: string | null;
+  ordine: number;
 }
 
 export default function Hero() {
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
+  const [heroImages, setHeroImages] = useState<SiteImage[]>([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     fetch('/api/site-info')
       .then((r) => r.json())
       .then(setSiteInfo)
       .catch(() => {});
+    fetch('/api/site-images?sezione=hero')
+      .then((r) => r.json())
+      .then((imgs) => { if (imgs.length > 0) setHeroImages(imgs); })
+      .catch(() => {});
   }, []);
+
+  // Auto-rotate slideshow if multiple hero images
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [heroImages.length]);
 
   const scrollToPrenota = () => {
     document.getElementById('prenota')?.scrollIntoView({ behavior: 'smooth' });
@@ -29,21 +53,62 @@ export default function Hero() {
     window.location.href = '/menu';
   };
 
+  const bgImage = heroImages.length > 0
+    ? heroImages[currentSlide]?.url
+    : siteInfo?.heroImageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&q=80';
+
+  const overlayOpacity = siteInfo?.heroOverlayOpacity ?? 0.5;
+
   return (
     <section
       id="home"
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&q=80)',
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
-      </div>
+      {/* Background with slideshow */}
+      {heroImages.length > 1 ? (
+        heroImages.map((img, i) => (
+          <div
+            key={img.id}
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000"
+            style={{
+              backgroundImage: `url(${img.url})`,
+              opacity: i === currentSlide ? 1 : 0,
+              zIndex: i === currentSlide ? 1 : 0,
+            }}
+          >
+            <div
+              className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"
+              style={{ opacity: overlayOpacity / 0.5 * 0.7 }}
+            />
+          </div>
+        ))
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${bgImage})` }}
+        >
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"
+            style={{ opacity: overlayOpacity / 0.5 * 0.7 }}
+          />
+        </div>
+      )}
+
+      {/* Slide indicators */}
+      {heroImages.length > 1 && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+          {heroImages.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentSlide(i)}
+              className={`w-2.5 h-2.5 rounded-full transition-all ${
+                i === currentSlide ? 'bg-white w-8' : 'bg-white/40 hover:bg-white/60'
+              }`}
+              aria-label={`Slide ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
@@ -66,7 +131,8 @@ export default function Hero() {
             <Button
               size="lg"
               onClick={scrollToPrenota}
-              className="bg-red-700 hover:bg-red-800 text-white text-lg px-8 py-6 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105"
+              className="text-white text-lg px-8 py-6 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105"
+              style={{ backgroundColor: siteInfo?.primaryColor || '#b91c1c' }}
             >
               {siteInfo?.heroCTAText || 'Prenota un Tavolo'}
             </Button>
@@ -83,7 +149,7 @@ export default function Hero() {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce z-10">
         <button
           onClick={scrollToMenu}
           className="text-white/60 hover:text-white transition-colors"

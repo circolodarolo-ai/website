@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Settings, X, Menu, UtensilsCrossed, PartyPopper, Palette, FileText, Map, Building2, ShieldCheck, CalendarDays, Users } from 'lucide-react';
+import { Settings, X, Menu, UtensilsCrossed, PartyPopper, Palette, FileText, Map, Building2, ShieldCheck, CalendarDays, Users, BarChart3, Megaphone } from 'lucide-react';
 import LoginDialog from './LoginDialog';
 import AdminMenu from './AdminMenu';
 import AdminTheme from './AdminTheme';
@@ -16,8 +16,10 @@ import AdminCompanyData from './AdminCompanyData';
 import AdminEventi from './AdminEventi';
 import AdminPrenotazioni from './AdminPrenotazioni';
 import AdminUsers from './AdminUsers';
+import AdminAnalytics from './AdminAnalytics';
+import AdminBanners from './AdminBanners';
 
-type Section = 'menu' | 'eventi' | 'temi' | 'site-info' | 'footer' | 'company-data' | 'cookie-privacy' | 'prenotazioni' | 'users';
+type Section = 'menu' | 'eventi' | 'temi' | 'site-info' | 'footer' | 'company-data' | 'cookie-privacy' | 'prenotazioni' | 'users' | 'analytics' | 'banners';
 
 interface NavItem {
   id: Section;
@@ -37,6 +39,8 @@ const navItems: NavItem[] = [
   { id: 'cookie-privacy', label: 'Cookie e Privacy', icon: <ShieldCheck className="h-5 w-5" />, group: 'AZIENDA', permission: 'puoGestireDatiAzienda' },
   { id: 'prenotazioni', label: 'Prenotazioni', icon: <CalendarDays className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestirePrenotazioni' },
   { id: 'users', label: 'Profili Utenti', icon: <Users className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestireProfili' },
+  { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestireAnalytics' },
+  { id: 'banners', label: 'Banner Pubblicitari', icon: <Megaphone className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestireSito' },
 ];
 
 export default function AdminPanel() {
@@ -128,6 +132,8 @@ export default function AdminPanel() {
       case 'cookie-privacy': return <AdminCompanyData initialTab="cookie" />;
       case 'prenotazioni': return <AdminPrenotazioni />;
       case 'users': return <AdminUsers />;
+      case 'analytics': return <AdminAnalytics />;
+      case 'banners': return <AdminBanners />;
       default: return <AdminMenu />;
     }
   };

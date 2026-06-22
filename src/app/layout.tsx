@@ -31,6 +31,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.__cookieConsent = (function() {
+                try { return JSON.parse(localStorage.getItem('cookie-consent') || 'null'); } catch(e) { return null; }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-foreground`}
       >

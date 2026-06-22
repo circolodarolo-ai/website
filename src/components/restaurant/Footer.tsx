@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   MapPin,
   Phone,
@@ -174,10 +175,12 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} {siteInfo?.nomeLocale || 'La Bella Tavola'}. Tutti i diritti riservati.
           </p>
           <div className="flex gap-4 text-xs text-gray-500">
-            <button onClick={() => document.getElementById('cookie-settings')?.click()}>
+            <Link href="/cookie-policy" className="hover:text-white transition-colors">
               Cookie Policy
-            </button>
-            <span>Privacy Policy</span>
+            </Link>
+            <Link href="/privacy-policy" className="hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
           </div>
         </div>
       </div>
