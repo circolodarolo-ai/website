@@ -7,7 +7,6 @@ export async function GET() {
     oggi.setHours(0, 0, 0, 0);
 
     const eventi = await db.evento.findMany({
-      where: { attivo: true },
       orderBy: [
         { inEvidenza: 'desc' },
         { data: 'asc' },

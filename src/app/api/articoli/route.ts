@@ -13,8 +13,8 @@ export async function GET() {
       },
       orderBy: { createdAt: 'asc' },
       include: {
-        categoria: true,
-        allergeni: { include: { allergene: true } },
+        Categoria: true,
+        AllergeneArticolo: { include: { Allergene: true } },
       },
     });
     return NextResponse.json(articoli);

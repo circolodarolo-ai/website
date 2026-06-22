@@ -8,8 +8,17 @@ export async function GET(request: NextRequest) {
     const posizione = searchParams.get('posizione');
 
     const where: Record<string, unknown> = { attivo: true };
-    if (pagina) where.pagina = pagina;
     if (posizione) where.posizione = posizione;
+    // The DB stores pages as a comma-separated string in 'pagine' field.
+    // We use 'contains' to match if the requested page is in the list.
+    // Also return banners with no page restriction (pagine is null/empty).
+    if (pagina) {
+      where.OR = [
+        { pagine: { contains: pagina } },
+        { pagine: null },
+        { pagine: '' },
+      ];
+    }
 
     const banners = await db.bannerPubblicitario.findMany({
       where,

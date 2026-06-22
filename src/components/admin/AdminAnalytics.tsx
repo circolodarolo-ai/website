@@ -38,6 +38,12 @@ interface AnalyticsRow {
   avgMonthlyVisits?: number;
 }
 
+interface HourlyRow {
+  hour: number;
+  visits: number;
+  label: string;
+}
+
 interface AnalyticsEventRow {
   id: string;
   sessionId: string;
@@ -51,9 +57,10 @@ interface AnalyticsEventRow {
   timestamp: string;
 }
 
-type RangeType = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'events';
+type RangeType = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'events';
 
 const RANGE_LABELS: Record<RangeType, string> = {
+  hourly: 'Orario',
   daily: 'Giornaliero',
   weekly: 'Settimanale',
   monthly: 'Mensile',
@@ -64,6 +71,8 @@ const RANGE_LABELS: Record<RangeType, string> = {
 export default function AdminAnalytics() {
   const [range, setRange] = useState<RangeType>('daily');
   const [data, setData] = useState<AnalyticsRow[]>([]);
+  const [hourlyData, setHourlyData] = useState<HourlyRow[]>([]);
+  const [hourlyMeta, setHourlyMeta] = useState<{ date: string; totalVisits: number; peakHour: number } | null>(null);
   const [events, setEvents] = useState<AnalyticsEventRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -87,6 +96,10 @@ export default function AdminAnalytics() {
 
       if (range === 'events') {
         setEvents(json.data || []);
+      } else if (range === 'hourly') {
+        setHourlyData(json.data || []);
+        setHourlyMeta(json.meta || null);
+        setTotal(json.data?.length || 0);
       } else {
         setData(json.data || []);
       }
@@ -110,8 +123,11 @@ export default function AdminAnalytics() {
   };
 
   // Summary stats from daily data
-  const totalVisits = data.reduce((s, r) => s + (r.totalVisits || 0), 0);
+  const totalVisits = range === 'hourly'
+    ? hourlyData.reduce((s, r) => s + r.visits, 0)
+    : data.reduce((s, r) => s + (r.totalVisits || 0), 0);
   const totalUnique = data.reduce((s, r) => s + (r.uniqueVisitors || 0), 0);
+  const peakHourVisits = hourlyData.length > 0 ? Math.max(...hourlyData.map(h => h.visits)) : 0;
 
   return (
     <div>
@@ -156,6 +172,7 @@ export default function AdminAnalytics() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="hourly">Orario</SelectItem>
               <SelectItem value="daily">Giornaliero</SelectItem>
               <SelectItem value="weekly">Settimanale</SelectItem>
               <SelectItem value="monthly">Mensile</SelectItem>
@@ -164,7 +181,7 @@ export default function AdminAnalytics() {
             </SelectContent>
           </Select>
         </div>
-        {range !== 'yearly' && (
+        {(range === 'hourly' || range !== 'yearly') && (
           <>
             <div className="space-y-1">
               <Label className="text-xs text-gray-500">Da</Label>
@@ -186,6 +203,48 @@ export default function AdminAnalytics() {
         <div className="text-center py-16 text-gray-400">
           <BarChart3 className="h-8 w-8 mx-auto mb-2 animate-pulse" />
           <p>Caricamento dati...</p>
+        </div>
+      ) : range === 'hourly' ? (
+        <div className="bg-white border rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead>Fascia Oraria</TableHead>
+                  <TableHead className="text-right">Visite</TableHead>
+                  <TableHead className="text-right">Percentuale</TableHead>
+                  <TableHead>Distribuzione</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {hourlyData.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-400">Nessun dato orario disponibile</TableCell></TableRow>
+                ) : hourlyData.map((h) => (
+                  <TableRow key={h.hour} className={h.hour === hourlyMeta?.peakHour && h.visits > 0 ? 'bg-red-50' : ''}>
+                    <TableCell className="font-medium">{h.label}</TableCell>
+                    <TableCell className="text-right font-semibold">{h.visits.toLocaleString('it-IT')}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      {totalVisits > 0 ? ((h.visits / totalVisits) * 100).toFixed(1) : '0.0'}%
+                    </TableCell>
+                    <TableCell className="w-40">
+                      <div className="w-full bg-gray-100 rounded-full h-2.5">
+                        <div
+                          className="h-2.5 rounded-full bg-red-600 transition-all"
+                          style={{ width: `${peakHourVisits > 0 ? (h.visits / peakHourVisits) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {hourlyMeta && (
+            <div className="px-5 py-3 bg-gray-50 border-t text-sm text-gray-600">
+              Dati del {hourlyMeta.date} — Totale visite: <strong>{hourlyMeta.totalVisits}</strong> —
+              Ora di punta: <strong>{hourlyMeta.peakHour.toString().padStart(2, '0')}:00</strong>
+            </div>
+          )}
         </div>
       ) : range === 'events' ? (
         <div className="bg-white border rounded-xl overflow-hidden">
