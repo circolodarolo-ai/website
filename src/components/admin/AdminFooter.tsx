@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save } from 'lucide-react';
 
 interface FooterInfoData {
-  id: string; indirizzo: string; telefono: string; email: string;
+  id: string; indirizzo: string; telefono: string;
   facebookUrl: string | null; instagramUrl: string | null; twitterUrl: string | null;
   linkedinUrl: string | null; whatsappUrl: string | null; tiktokUrl: string | null;
   justeatUrl: string | null; deliverooUrl: string | null; glovoUrl: string | null; ubereatsUrl: string | null;
@@ -79,10 +79,7 @@ export default function AdminFooter() {
                 <Label>Telefono</Label>
                 <Input value={footer.telefono} onChange={e => setFooter({ ...footer, telefono: e.target.value })} />
               </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input value={footer.email} onChange={e => setFooter({ ...footer, email: e.target.value })} />
-              </div>
+  
             </div>
             <Button onClick={save} disabled={saving}>
               <Save className="mr-2 h-4 w-4" />{saving ? 'Salvataggio...' : 'Salva Indirizzo'}

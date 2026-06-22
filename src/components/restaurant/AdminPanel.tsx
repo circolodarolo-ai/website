@@ -23,13 +23,13 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // ─── Types ──────────────────────────────────────────────────────────
-interface Categoria { id: string; nome: string; icona: string | null; ordine: number; attiva: boolean; _count?: { articoli: number }; }
+interface Categoria { id: string; nome: string; ordine: number; attiva: boolean; _count?: { articoli: number }; }
 interface Allergene { id: string; nome: string; icona: string | null; _count?: { articoli: number }; }
 interface Articolo { id: string; nome: string; descrizione: string; categoriaId: string; prezzo: number; prezzoPromozionale: number | null; eBestChoice: boolean; attivo: boolean; immagineUrl: string | null; categoria?: { id: string; nome: string }; }
 interface Evento { id: string; titolo: string; descrizione: string; descrizioneBreve: string; data: string; oraInizio: string; oraFine: string; prezzo: number; gratuito: boolean; graditaPrenotazione: boolean; capacita: number; postiDisponibili: number; inEvidenza: boolean; attivo: boolean; immagineUrl: string | null; }
-interface Prenotazione { id: string; nome: string; cognome: string; data: string; ora: string; persone: number; telefono: string; stato: string; evento?: { id: string; titolo: string } | null; }
-interface SiteInfoType { id: string; nomeLocale: string; slogan: string; chiSiamoTitolo: string; chiSiamoTesto: string; telefono: string; email: string; indirizzo: string; orariApertura: string; prenotazioniAttive: boolean; heroTitle: string; heroSubtitle: string; heroCTAText: string; primaryColor: string; }
-interface FooterInfoType { id: string; indirizzo: string; telefono: string; email: string; facebookUrl: string | null; instagramUrl: string | null; tiktokUrl: string | null; justeatUrl: string | null; deliverooUrl: string | null; glovoUrl: string | null; ubereatsUrl: string | null; }
+interface Reservation { id: string; nome: string; cognome: string; data: string; ora: string; persone: number; telefono: string; stato: string; evento?: { id: string; titolo: string } | null; }
+interface SiteInfoType { id: string; nomeLocale: string; slogan: string; chiSiamoTitolo: string; chiSiamoTesto: string; telefono: string; email: string; prenotazioniAttive: boolean; heroTitle: string; heroSubtitle: string; heroCTAText: string; primaryColor: string; }
+interface FooterInfoType { id: string; indirizzo: string; telefono: string; facebookUrl: string | null; instagramUrl: string | null; tiktokUrl: string | null; justeatUrl: string | null; deliverooUrl: string | null; glovoUrl: string | null; ubereatsUrl: string | null; }
 interface UserType { id: string; email: string; nome: string; cognome: string | null; ruolo: string; createdAt: string; permessi?: { id: string; puoGestireMenu: boolean; puoGestireFooter: boolean; puoGestireTemi: boolean; puoGestirePrenotazioni: boolean; puoGestireDatiAzienda: boolean; puoGestireProfili: boolean; puoGestireAnalytics: boolean; puoGestireSito: boolean; puoGestireEventi: boolean } | null; }
 
 interface ArtForm { nome: string; descrizione: string; categoriaId: string; prezzo: number; prezzoPromozionale: string; eBestChoice: boolean; immagineUrl: string; }
@@ -67,7 +67,7 @@ export default function AdminPanel() {
   const [catLoad, setCatLoad] = useState(false);
   const [catDlg, setCatDlg] = useState(false);
   const [editCat, setEditCat] = useState<Categoria | null>(null);
-  const [catF, setCatF] = useState({ nome: '', icona: '', ordine: 0, attiva: true });
+  const [catF, setCatF] = useState({ nome: '', ordine: 0, attiva: true });
   const [catDel, setCatDel] = useState(false);
   const [delCat, setDelCat] = useState<Categoria | null>(null);
 
@@ -90,10 +90,10 @@ export default function AdminPanel() {
   const [delEvt, setDelEvt] = useState<Evento | null>(null);
 
   // Prenotazioni
-  const [pren, setPren] = useState<Prenotazione[]>([]);
+  const [pren, setPren] = useState<Reservation[]>([]);
   const [prenLoad, setPrenLoad] = useState(false);
   const [prenDel, setPrenDel] = useState(false);
-  const [delPren, setDelPren] = useState<Prenotazione | null>(null);
+  const [delPren, setDelPren] = useState<Reservation | null>(null);
 
   // Site Info
   const [si, setSi] = useState<SiteInfoType | null>(null);
@@ -149,8 +149,8 @@ export default function AdminPanel() {
   const togArt = async (a: Articolo) => { await crud('PUT', api('/api/admin/articoli', a.id), { id: a.id, attivo: !a.attivo }); fArt(); };
 
   // ── Categoria CRUD ─────────────────────────────────────────────────
-  const openCatC = () => { setEditCat(null); setCatF({ nome: '', icona: '', ordine: catList.length, attiva: true }); setCatDlg(true); };
-  const openCatE = (c: Categoria) => { setEditCat(c); setCatF({ nome: c.nome, icona: c.icona || '', ordine: c.ordine, attiva: c.attiva }); setCatDlg(true); };
+  const openCatC = () => { setEditCat(null); setCatF({ nome: '', ordine: catList.length, attiva: true }); setCatDlg(true); };
+  const openCatE = (c: Categoria) => { setEditCat(c); setCatF({ nome: c.nome, ordine: c.ordine, attiva: c.attiva }); setCatDlg(true); };
   const saveCat = async () => {
     const r = await crud(editCat ? 'PUT' : 'POST', api('/api/admin/categorie', editCat?.id), editCat ? { id: editCat.id, ...catF } : catF);
     if (r.ok) { toast.success(editCat ? 'Aggiornata' : 'Creata'); setCatDlg(false); fCatList(); fCats(); } else toast.error('Errore');
@@ -178,7 +178,7 @@ export default function AdminPanel() {
   const togEvt = async (e: Evento) => { await crud('PUT', api('/api/admin/eventi', e.id), { id: e.id, attivo: !e.attivo }); fEvt(); };
 
   // ── Prenotazione ───────────────────────────────────────────────────
-  const chgPren = async (p: Prenotazione, s: string) => { const r = await crud('PUT', api('/api/admin/prenotazioni', p.id), { id: p.id, stato: s }); if (r.ok) { toast.success('Stato aggiornato'); fPren(); } else toast.error('Errore'); };
+  const chgPren = async (p: Reservation, s: string) => { const r = await crud('PUT', api('/api/admin/prenotazioni', p.id), { id: p.id, stato: s }); if (r.ok) { toast.success('Stato aggiornato'); fPren(); } else toast.error('Errore'); };
   const delPrenFn = async () => { if (!delPren) return; const r = await crud('DELETE', api('/api/admin/prenotazioni', delPren.id)); if (r.ok) { toast.success('Eliminata'); setPrenDel(false); setDelPren(null); fPren(); } else toast.error('Errore'); };
 
   // ── Site Info ──────────────────────────────────────────────────────
@@ -269,8 +269,8 @@ export default function AdminPanel() {
             <TabsContent value="categorie" className="mt-4 space-y-4">
               <div className="flex items-center justify-between"><h3 className="text-lg font-semibold">Gestione Categorie</h3><Button onClick={openCatC} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Aggiungi</Button></div>
               {catLoad ? spin : !catList.length ? <p className="text-center py-12 text-muted-foreground">Nessuna categoria</p> : (
-                <div className="rounded-md border"><Table><TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Icona</TableHead><TableHead>Ordine</TableHead><TableHead>Piatti</TableHead><TableHead>Attiva</TableHead><TableHead className="text-right">Azioni</TableHead></TableRow></TableHeader><TableBody>
-                  {catList.map(c => (<TableRow key={c.id}><TableCell className="font-medium">{c.nome}</TableCell><TableCell>{c.icona || '-'}</TableCell><TableCell>{c.ordine}</TableCell><TableCell>{c._count?.articoli ?? 0}</TableCell><TableCell><Switch checked={c.attiva} onCheckedChange={() => togCat(c)} /></TableCell><TableCell className="text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openCatE(c)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDelCat(c); setCatDel(true); }}><Trash2 className="h-4 w-4" /></Button></div></TableCell></TableRow>))}
+                <div className="rounded-md border"><Table><TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Ordine</TableHead><TableHead>Piatti</TableHead><TableHead>Attiva</TableHead><TableHead className="text-right">Azioni</TableHead></TableRow></TableHeader><TableBody>
+                  {catList.map(c => (<TableRow key={c.id}><TableCell className="font-medium">{c.nome}</TableCell><TableCell>{c.ordine}</TableCell><TableCell>{c._count?.articoli ?? 0}</TableCell><TableCell><Switch checked={c.attiva} onCheckedChange={() => togCat(c)} /></TableCell><TableCell className="text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openCatE(c)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDelCat(c); setCatDel(true); }}><Trash2 className="h-4 w-4" /></Button></div></TableCell></TableRow>))}
                 </TableBody></Table></div>
               )}
             </TabsContent>
@@ -318,8 +318,7 @@ export default function AdminPanel() {
                       <div className="grid gap-2"><Label>Telefono</Label><Input value={siF.telefono} onChange={e => setSiF({ ...siF!, telefono: e.target.value })} /></div>
                       <div className="grid gap-2"><Label>Email</Label><Input value={siF.email} onChange={e => setSiF({ ...siF!, email: e.target.value })} /></div>
                     </div>
-                    <div className="grid gap-2"><Label>Indirizzo</Label><Input value={siF.indirizzo} onChange={e => setSiF({ ...siF!, indirizzo: e.target.value })} /></div>
-                    <div className="grid gap-2"><Label>Orari di Apertura</Label><Input value={siF.orariApertura} onChange={e => setSiF({ ...siF!, orariApertura: e.target.value })} /></div>
+
                     <div className="flex items-center gap-2"><Switch checked={siF.prenotazioniAttive} onCheckedChange={v => setSiF({ ...siF!, prenotazioniAttive: v })} /><Label>Prenotazioni attive</Label></div>
                     <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Impostazioni Hero</p></div>
                     <div className="grid gap-2"><Label>Titolo Hero</Label><Input value={siF.heroTitle} onChange={e => setSiF({ ...siF!, heroTitle: e.target.value })} /></div>
@@ -352,7 +351,6 @@ export default function AdminPanel() {
                     <div className="grid gap-2"><Label>Indirizzo</Label><Input value={fiF.indirizzo} onChange={e => setFiF({ ...fiF!, indirizzo: e.target.value })} /></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="grid gap-2"><Label>Telefono</Label><Input value={fiF.telefono} onChange={e => setFiF({ ...fiF!, telefono: e.target.value })} /></div>
-                      <div className="grid gap-2"><Label>Email</Label><Input value={fiF.email} onChange={e => setFiF({ ...fiF!, email: e.target.value })} /></div>
                     </div>
                     <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Social Media</p></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -428,7 +426,7 @@ export default function AdminPanel() {
         <DialogHeader><DialogTitle>{editCat ? 'Modifica Categoria' : 'Nuova Categoria'}</DialogTitle></DialogHeader>
         <div className="grid gap-4 py-2">
           <div className="grid gap-2"><Label>Nome</Label><Input value={catF.nome} onChange={e => setCatF({ ...catF, nome: e.target.value })} /></div>
-          <div className="grid gap-2"><Label>Icona (emoji o testo)</Label><Input value={catF.icona} onChange={e => setCatF({ ...catF, icona: e.target.value })} placeholder="🍝" /></div>
+
           <div className="grid gap-2"><Label>Ordine</Label><Input type="number" min="0" value={catF.ordine} onChange={e => setCatF({ ...catF, ordine: Number(e.target.value) })} /></div>
           <div className="flex items-center gap-2"><Switch checked={catF.attiva} onCheckedChange={v => setCatF({ ...catF, attiva: v })} /><Label>Attiva</Label></div>
         </div>

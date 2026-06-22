@@ -16,7 +16,7 @@ import { Plus, Trash2, Upload, Save, ImageIcon } from 'lucide-react';
 
 interface SiteInfoData {
   id: string; nomeLocale: string; slogan: string; chiSiamoTitolo: string; chiSiamoTesto: string;
-  telefono: string; email: string; indirizzo: string; orariApertura: string; prenotazioniAttive: boolean;
+  telefono: string; email: string; prenotazioniAttive: boolean;
   heroTitle: string; heroSubtitle: string; heroCTAText: string; primaryColor: string;
   chiSiamoImageUrl: string | null; logoUrl: string | null; faviconUrl: string | null;
   heroImageUrl: string | null; heroOverlayOpacity: number;

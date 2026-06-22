@@ -14,7 +14,6 @@ import {
 interface FooterInfo {
   indirizzo: string;
   telefono: string;
-  email: string;
   facebookUrl?: string;
   instagramUrl?: string;
   tiktokUrl?: string;
@@ -26,7 +25,7 @@ interface FooterInfo {
 
 interface SiteInfo {
   nomeLocale: string;
-  orariApertura: string;
+  orariApertura?: string;
 }
 
 const deliveryLinks = [
@@ -79,15 +78,7 @@ export default function Footer() {
                   {footerInfo?.telefono || '+39 02 1234 5678'}
                 </a>
               </div>
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-red-400 flex-shrink-0" />
-                <a
-                  href={`mailto:${footerInfo?.email || ''}`}
-                  className="text-sm hover:text-white transition-colors"
-                >
-                  {footerInfo?.email || 'info@labellatavola.it'}
-                </a>
-              </div>
+
             </div>
           </div>
 
@@ -100,7 +91,7 @@ export default function Footer() {
                 <div className="text-sm">
                   <p className="text-white font-medium mb-1">Orari di Apertura</p>
                   <p className="text-gray-400 whitespace-pre-line">
-                    {siteInfo?.orariApertura || 'Mar-Dom: 12:00-14:30, 19:00-23:00'}
+                    {siteInfo?.orariApertura || footerInfo?.orariApertura || 'Mar-Dom: 12:00-14:30, 19:00-23:00'}
                   </p>
                 </div>
               </div>

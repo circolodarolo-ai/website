@@ -8,14 +8,14 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Trash2, CalendarDays, Users, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
-interface Prenotazione {
+interface Reservation {
   id: string; nome: string; cognome: string; email: string; telefono: string;
   data: string; ora: string; persone: number; note: string | null; stato: string;
   eventoId: string | null; evento: { titolo: string } | null; createdAt: string;
 }
 
 export default function AdminPrenotazioni() {
-  const [prenotazioni, setPrenotazioni] = useState<Prenotazione[]>([]);
+  const [prenotazioni, setPrenotazioni] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {

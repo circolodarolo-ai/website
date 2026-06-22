@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prenotazione = await db.prenotazione.create({
+    const prenotazione = await db.reservation.create({
       data: {
         nome: body.nome,
         cognome: body.cognome,
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const prenotazioni = await db.prenotazione.findMany({
+    const prenotazioni = await db.reservation.findMany({
       orderBy: { createdAt: 'desc' },
       include: { evento: true },
     });

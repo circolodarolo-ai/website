@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
     const categoria = await db.categoria.create({
       data: {
         nome: body.nome,
-        icona: body.icona || null,
         ordine: body.ordine != null ? parseInt(body.ordine) : 0,
         attiva: body.attiva !== undefined ? body.attiva : true,
       },
