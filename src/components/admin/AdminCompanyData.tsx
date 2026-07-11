@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Save, Building2 } from 'lucide-react';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface CompanyDataFull {
   id?: string;
@@ -29,7 +30,7 @@ export default function AdminCompanyData() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/company-data');
+      const res = await adminadminadminFetch('/api/admin/company-data');
       const json = await res.json();
       setData({ ...defaults, ...json });
     } catch {
@@ -43,7 +44,7 @@ export default function AdminCompanyData() {
   const save = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/company-data', {
+      const res = await adminadminadminFetch('/api/admin/company-data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

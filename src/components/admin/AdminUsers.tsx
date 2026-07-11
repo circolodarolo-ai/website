@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Plus, Pencil, Trash2, Shield, Save } from 'lucide-react';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface Permesso {
   puoGestireMenu: boolean;
@@ -65,7 +66,7 @@ export default function AdminUsers() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/users');
+      const res = await adminFetch('/api/admin/users');
       if (!res.ok) { setUsers([]); return; }
       setUsers(await res.json());
     } catch { setUsers([]); }

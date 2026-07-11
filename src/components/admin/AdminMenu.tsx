@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Upload, ImageIcon } from 'lucide-react';
+import { adminFetch } from '@/lib/admin-fetch';
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface Categoria {
@@ -57,10 +58,10 @@ export default function AdminMenu() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [catRes, artRes, allRes] = await Promise.all([
-        fetch('/api/admin/categorie'),
-        fetch('/api/admin/articoli'),
-        fetch('/api/admin/allergeni'),
+            const [catRes, artRes, allRes] = await Promise.all([
+        adminadminFetch('/api/admin/categorie'),
+        adminadminFetch('/api/admin/articoli'),
+        adminadminFetch('/api/admin/allergeni'),
       ]);
       setCategorie(await catRes.json());
       setArticoli(await artRes.json());
@@ -79,7 +80,7 @@ export default function AdminMenu() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
+      const res = await adminFetch('/api/admin/upload-image', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error); return null; }
       return data.url as string;
@@ -266,7 +267,7 @@ export default function AdminMenu() {
                         onCheckedChange={async (v) => {
                           setCategorie(prev => prev.map(c => c.id === cat.id ? { ...c, attiva: v } : c));
                           try {
-                            const res = await fetch('/api/admin/categorie', {
+                            const res = await adminFetch('/api/admin/categorie', {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ id: cat.id, attiva: v }),
@@ -343,7 +344,7 @@ export default function AdminMenu() {
                         onCheckedChange={async (v) => {
                           setArticoli(prev => prev.map(a => a.id === art.id ? { ...a, attivo: v } : a));
                           try {
-                            const res = await fetch('/api/admin/articoli', {
+                            const res = await adminFetch('/api/admin/articoli', {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ id: art.id, attivo: v }),
