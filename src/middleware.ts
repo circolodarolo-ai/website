@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://pagead2.googlesyndication.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://flagcdn.com https://*.googleapis.com https://pagead2.googlesyndication.com https://images.unsplash.com https://*.unsplash.com", https://pagead2.googlesyndication.com",
+      "img-src 'self' data: blob: https://flagcdn.com https://*.googleapis.com       "img-src 'self' data: blob: https://flagcdn.com https://*.googleapis.com https://pagead2.googlesyndication.com https://images.unsplash.com https://*.unsplash.com",https://pagead2.googlesyndication.com",
       "connect-src 'self' https://api.mymemory.translated.net https://translate.googleapis.com https://ip-api.com",
       "frame-src https://pagead2.googlesyndication.com",
       "object-src 'none'",
