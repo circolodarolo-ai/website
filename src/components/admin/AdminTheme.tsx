@@ -1,6 +1,5 @@
 'use client';
 
-import { adminFetch } from '@/lib/admin-fetch';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Plus, Trash2, Upload, Save, ImageIcon, Check, ChevronDown, Search, Clock, MapPin, Euro } from 'lucide-react';
+
+// Helper: fetch con token admin (auto-contenuto, nessun import esterno)
+function af(url: string, opts?: RequestInit) {
+  const t = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  return fetch(url, { ...opts, headers: { ...(opts?.headers || {}), ...(t ? { Authorization: `Bearer ${t}` } : {}) } });
+}
 
 // ── Font Configuration ──
 const FONT_LIST = [
@@ -155,7 +160,7 @@ export default function AdminTheme() {
     try {
       const [infoRes, imgRes] = await Promise.all([
         fetch('/api/site-info'),
-        adminFetch(`/api/admin/images?sezione=${selectedSection}`),
+        af(`/api/admin/images?sezione=${selectedSection}`),
       ]);
       const infoData = await infoRes.json();
       setSiteInfo((infoRes.ok && infoData?.id) ? infoData : null);
@@ -191,7 +196,7 @@ export default function AdminTheme() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
+      const res = await af('/api/admin/upload-image', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error); return null; }
       return data.url as string;
@@ -203,7 +208,7 @@ export default function AdminTheme() {
   const saveImage = async () => {
     if (!imgForm.url) { toast.error('URL immagine obbligatorio'); return; }
     try {
-      const res = await adminFetch('/api/admin/images', {
+      const res = await af('/api/admin/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...imgForm, sezione: selectedSection }),
@@ -217,7 +222,7 @@ export default function AdminTheme() {
 
   const deleteImage = async (id: string) => {
     try {
-      const res = await adminFetch(`/api/admin/images?id=${id}`, { method: 'DELETE' });
+      const res = await af(`/api/admin/images?id=${id}`, { method: 'DELETE' });
       if (!res.ok) { toast.error('Errore'); return; }
       toast.success('Immagine eliminata');
       fetchData();
