@@ -5,9 +5,14 @@ export async function GET() {
   try {
     const categorie = await db.categoria.findMany({
       orderBy: { ordine: 'asc' },
-      include: { _count: { select: { articoli: true } } },
+      include: { _count: { select: { Articolo: true } } },
     });
-    return NextResponse.json(categorie);
+    // Remap _count.Articolo → _count.articoli for frontend compatibility
+    const mapped = categorie.map(c => ({
+      ...c,
+      _count: { articoli: c._count.Articolo },
+    }));
+    return NextResponse.json(mapped);
   } catch {
     return NextResponse.json({ error: 'Errore nel recupero' }, { status: 500 });
   }
@@ -18,9 +23,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const categoria = await db.categoria.create({
       data: {
+        id: crypto.randomUUID(),
         nome: body.nome,
         ordine: body.ordine != null ? parseInt(body.ordine) : 0,
         attiva: body.attiva !== undefined ? body.attiva : true,
+        updatedAt: new Date(),
       },
     });
     return NextResponse.json(categoria, { status: 201 });
@@ -38,6 +45,7 @@ export async function PUT(request: NextRequest) {
       data: {
         ...data,
         ordine: data.ordine != null ? parseInt(data.ordine) : undefined,
+        updatedAt: new Date(),
       },
     });
     return NextResponse.json(categoria);

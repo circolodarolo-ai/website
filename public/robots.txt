@@ -1,14 +1,24 @@
 User-agent: Googlebot
 Allow: /
+Disallow: /api/
+Disallow: /admin
 
 User-agent: Bingbot
 Allow: /
+Disallow: /api/
+Disallow: /admin
 
 User-agent: Twitterbot
 Allow: /
+Disallow: /api/
 
 User-agent: facebookexternalhit
 Allow: /
+Disallow: /api/
 
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /admin
+
+Sitemap: https://www.labellatavola.it/sitemap.xml

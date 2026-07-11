@@ -14,8 +14,8 @@ interface LoginDialogProps {
 }
 
 export default function LoginDialog({ open, onOpenChange, onLoginSuccess }: LoginDialogProps) {
-  const [email, setEmail] = useState('admin@labellaitalia.it');
-  const [password, setPassword] = useState('admin');
+  const [email, setEmail] = useState('admin@labellatavola.it');
+  const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 

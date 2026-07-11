@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { createToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     const user = await db.user.findUnique({
       where: { email },
-      include: { permessi: true },
+      include: { Permission: true },
     });
 
     if (!user) {
@@ -24,15 +25,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Credenziali non valide' }, { status: 401 });
     }
 
-    // Create a simple base64 token (email:ruolo:timestamp)
-    const tokenData = JSON.stringify({ userId: user.id, email: user.email, ruolo: user.ruolo, ts: Date.now() });
-    const token = Buffer.from(tokenData).toString('base64');
+    // Crea JWT firmato
+    const token = await createToken({ id: user.id, email: user.email, ruolo: user.ruolo });
 
     const { password: _, ...userWithoutPassword } = user;
 
     return NextResponse.json({ token, user: userWithoutPassword });
-  } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json({ error: 'Errore nel login', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+  } catch {
+    console.error('Login error');
+    return NextResponse.json({ error: 'Errore nel login' }, { status: 500 });
   }
 }

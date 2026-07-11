@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Star } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useI18n } from '@/lib/i18n-context';
+import { useDbTranslation } from '@/hooks/useDbTranslation';
 
 interface Articolo {
   id: string;
@@ -11,12 +14,12 @@ interface Articolo {
   prezzoPromozionale: number | null;
   eBestChoice: boolean;
   immagineUrl: string | null;
-  categoria: { nome: string };
+  Categoria: { nome: string };
 }
 
 // Food gradient backgrounds for cards without images
 const foodGradients = [
-  'linear-gradient(135deg, #b91c1c 0%, #f97316 100%)',
+  'linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%)',
   'linear-gradient(135deg, #059669 0%, #34d399 100%)',
   'linear-gradient(135deg, #d97706 0%, #fbbf24 100%)',
   'linear-gradient(135deg, #7c3aed 0%, #c084fc 100%)',
@@ -35,6 +38,9 @@ const foodEmojis: Record<string, string> = {
 };
 
 export default function SpecialitaCarousel() {
+  const { t } = useI18n();
+  const dbTr = useDbTranslation();
+  const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [articoli, setArticoli] = useState<Articolo[]>([]);
@@ -47,6 +53,17 @@ export default function SpecialitaCarousel() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (articoli.length === 0) return;
+    const texts: Record<string, string | null | undefined> = {};
+    for (const art of articoli) {
+      texts[`specialita.${art.id}.nome`] = art.nome;
+      texts[`specialita.${art.id}.desc`] = art.descrizione;
+      texts[`specialita.${art.id}.cat`] = art.Categoria?.nome;
+    }
+    dbTr.register(texts);
+  }, [articoli, dbTr.register]);
 
   const goToPrevious = () => {
     if (isAnimating || articoli.length === 0) return;
@@ -97,21 +114,21 @@ export default function SpecialitaCarousel() {
     <section id="specialita" className="py-20 px-4 bg-white overflow-hidden">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-4">
-          <span className="text-red-700 font-semibold text-sm uppercase tracking-wider">
-            Da non perdere
+          <span className="text-[var(--primary)] font-semibold text-sm uppercase tracking-wider">
+            {t('specialita.subtitle')}
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
-            Le Nostre Specialità
+            {t('specialita.title')}
           </h2>
           <p className="text-gray-500 mt-3 max-w-xl mx-auto">
-            Scopri i piatti più amati dai nostri clienti e le offerte speciali del momento
+            {t('specialita.description')}
           </p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center items-center h-[420px]">
-          <Loader2 className="h-8 w-8 text-red-700 animate-spin" />
+          <Loader2 className="h-8 w-8 text-[var(--primary)] animate-spin" />
         </div>
       ) : (
         <>
@@ -121,14 +138,23 @@ export default function SpecialitaCarousel() {
               {articoli.map((articolo, index) => {
                 const itemClass = getItemClass(index);
                 const gradient = foodGradients[index % foodGradients.length];
-                const emoji = foodEmojis[articolo.categoria?.nome] || '🍽️';
+                const emoji = foodEmojis[articolo.Categoria?.nome] || '🍽️';
 
                 return (
                   <div key={articolo.id} className={`step-content-item ${itemClass}`}>
-                    <div className="card-content">
+                    <div
+                      className="card-content cursor-pointer"
+                      onClick={() => router.push(`/menu#art-${articolo.id}`)}
+                    >
                       {/* Image area */}
-                      <div className="card-image" style={{ background: gradient }}>
-                        {!articolo.immagineUrl && (
+                      <div className="card-image" style={{ background: articolo.immagineUrl ? 'transparent' : gradient }}>
+                        {articolo.immagineUrl ? (
+                          <img
+                            src={articolo.immagineUrl}
+                            alt={dbTr.t('specialita.' + articolo.id + '.nome', articolo.nome)}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <span className="text-7xl drop-shadow-lg">{emoji}</span>
                           </div>
@@ -137,17 +163,17 @@ export default function SpecialitaCarousel() {
                         <div className="badges">
                           {articolo.eBestChoice && (
                             <span className="badge badge-best-choice flex items-center gap-1">
-                              <Star className="h-3 w-3 fill-current" /> Best Choice
+                              <Star className="h-3 w-3 fill-current" /> {t('specialita.bestChoice')}
                             </span>
                           )}
                           {isPromo(articolo) && (
-                            <span className="badge badge-promo">Promo</span>
+                            <span className="badge badge-promo">{t('specialita.promo')}</span>
                           )}
                         </div>
                         {/* Category tag */}
                         <div className="absolute bottom-3 left-3">
                           <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium rounded-full">
-                            {articolo.categoria?.nome}
+                            {dbTr.t('specialita.' + articolo.id + '.cat', articolo.Categoria?.nome)}
                           </span>
                         </div>
                       </div>
@@ -155,9 +181,9 @@ export default function SpecialitaCarousel() {
                       {/* Info */}
                       <div className="card-info">
                         <div>
-                          <div className="card-title">{articolo.nome}</div>
+                          <div className="card-title">{dbTr.t('specialita.' + articolo.id + '.nome', articolo.nome)}</div>
                           {articolo.descrizione && (
-                            <div className="card-description">{articolo.descrizione}</div>
+                            <div className="card-description">{dbTr.t('specialita.' + articolo.id + '.desc', articolo.descrizione)}</div>
                           )}
                         </div>
                         <div className="card-footer">
@@ -181,14 +207,14 @@ export default function SpecialitaCarousel() {
             <button
               className="nav-button nav-button-prev"
               onClick={goToPrevious}
-              aria-label="Precedente"
+              aria-label={t('specialita.precedente')}
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               className="nav-button nav-button-next"
               onClick={goToNext}
-              aria-label="Successivo"
+              aria-label={t('specialita.successivo')}
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -201,7 +227,7 @@ export default function SpecialitaCarousel() {
                 key={index}
                 className={`indicator ${index === activeIndex ? 'active' : ''}`}
                 onClick={() => goToSlide(index)}
-                aria-label={`Vai alla slide ${index + 1}`}
+                aria-label={t('specialita.vaiAllaSlide', { n: String(index + 1) })}
               />
             ))}
           </div>
@@ -310,7 +336,7 @@ export default function SpecialitaCarousel() {
           background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         }
         .badge-promo {
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          background: var(--primary);
         }
         .card-info {
           padding: 16px;
@@ -402,7 +428,7 @@ export default function SpecialitaCarousel() {
         .indicator.active {
           width: 30px;
           border-radius: 5px;
-          background: #b91c1c;
+          background: var(--primary);
         }
       `}</style>
     </section>

@@ -6,7 +6,7 @@ export async function GET() {
     let info = await db.siteInfo.findFirst();
     if (!info) {
       info = await db.siteInfo.create({
-        data: { id: 'default' },
+        data: { id: 'default', updatedAt: new Date() },
       });
     }
     return NextResponse.json(info);
@@ -21,13 +21,45 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
+    const id = body.id || 'default';
+
+    // Estrae solo i campi validi del modello SiteInfo
+    const {
+      nomeLocale, slogan, chiSiamoTitolo, chiSiamoTesto,
+      chiSiamoImageUrl, logoUrl, faviconUrl, telefono, email,
+      prenotazioniAttive, heroTitle, heroSubtitle, heroCTAText,
+      heroImageUrl, heroOverlayOpacity, specialitaTitle, specialitaSubtitle,
+      seoCanonical, seoDescription, seoKeywords, seoOgDescription,
+      seoOgImage, seoOgTitle, seoRobots, seoTitle, seoTwitterCard,
+      primaryColor, primaryForeground, secondaryColor,
+      footerBgColor, footerTextColor, sectionBgColor,
+      socialBtnColor, settingsBtnColor, prenotaBtnColor, prenotaSectionBgColor,
+      orarioPranzoInizio, orarioPranzoFine, orarioCenaInizio, orarioCenaFine,
+      headingFont, bodyFont,
+      ...rest
+    } = body;
+    const data = {
+      nomeLocale, slogan, chiSiamoTitolo, chiSiamoTesto,
+      chiSiamoImageUrl, logoUrl, faviconUrl, telefono, email,
+      prenotazioniAttive, heroTitle, heroSubtitle, heroCTAText,
+      heroImageUrl, heroOverlayOpacity, specialitaTitle, specialitaSubtitle,
+      seoCanonical, seoDescription, seoKeywords, seoOgDescription,
+      seoOgImage, seoOgTitle, seoRobots, seoTitle, seoTwitterCard,
+      primaryColor, primaryForeground, secondaryColor,
+      footerBgColor, footerTextColor, sectionBgColor,
+      socialBtnColor, settingsBtnColor, prenotaBtnColor, prenotaSectionBgColor,
+      orarioPranzoInizio, orarioPranzoFine, orarioCenaInizio, orarioCenaFine,
+      headingFont, bodyFont,
+    };
+
     const info = await db.siteInfo.upsert({
-      where: { id: body.id || 'default' },
-      update: body,
-      create: { id: 'default', ...body },
+      where: { id },
+      update: data,
+      create: { id: 'default', ...data, updatedAt: new Date() },
     });
     return NextResponse.json(info);
   } catch (error) {
+    console.error('site-info PUT error:', error);
     return NextResponse.json(
       { error: 'Errore nell\'aggiornamento' },
       { status: 500 }

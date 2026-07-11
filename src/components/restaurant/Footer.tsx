@@ -1,35 +1,57 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useI18n } from '@/lib/i18n-context';
+import { useDbTranslation } from '@/hooks/useDbTranslation';
 import {
   MapPin,
   Phone,
-  Mail,
   Clock,
   Facebook,
   Instagram,
+  Twitter,
+  Linkedin,
   ExternalLink,
 } from 'lucide-react';
 
 interface FooterInfo {
-  indirizzo: string;
-  telefono: string;
-  facebookUrl?: string;
-  instagramUrl?: string;
-  tiktokUrl?: string;
-  justeatUrl?: string;
-  deliverooUrl?: string;
-  glovoUrl?: string;
-  ubereatsUrl?: string;
+  id: string;
+  indirizzo: string | null;
+  telefono: string | null;
+  citta: string | null;
+  cap: string | null;
+  provincia: string | null;
+  latitudine: number | null;
+  longitudine: number | null;
+  orariApertura: string | null;
+  giorniChiusura: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  twitterUrl: string | null;
+  linkedinUrl: string | null;
+  whatsappUrl: string | null;
+  tiktokUrl: string | null;
+  justeatUrl: string | null;
+  deliverooUrl: string | null;
+  glovoUrl: string | null;
+  ubereatsUrl: string | null;
 }
 
 interface SiteInfo {
   nomeLocale: string;
-  orariApertura?: string;
 }
 
-const deliveryLinks = [
+const socialLinks: { key: keyof FooterInfo; icon: typeof Facebook; hoverColor: string }[] = [
+  { key: 'facebookUrl', icon: Facebook, hoverColor: 'hover:bg-blue-600' },
+  { key: 'instagramUrl', icon: Instagram, hoverColor: 'hover:bg-pink-600' },
+  { key: 'twitterUrl', icon: Twitter, hoverColor: 'hover:bg-gray-500' },
+  { key: 'linkedinUrl', icon: Linkedin, hoverColor: 'hover:bg-blue-700' },
+  { key: 'whatsappUrl', icon: Phone, hoverColor: 'hover:bg-green-600' },
+  { key: 'tiktokUrl', icon: Twitter, hoverColor: 'hover:bg-black' },
+];
+
+const deliveryLinks: { key: keyof FooterInfo; label: string; color: string }[] = [
   { key: 'justeatUrl', label: 'Just Eat', color: 'hover:text-orange-500' },
   { key: 'deliverooUrl', label: 'Deliveroo', color: 'hover:text-teal-500' },
   { key: 'glovoUrl', label: 'Glovo', color: 'hover:text-yellow-500' },
@@ -37,6 +59,8 @@ const deliveryLinks = [
 ];
 
 export default function Footer() {
+  const { t } = useI18n();
+  const dbTr = useDbTranslation();
   const [footerInfo, setFooterInfo] = useState<FooterInfo | null>(null);
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
 
@@ -52,62 +76,141 @@ export default function Footer() {
       .catch(() => {});
   }, []);
 
-  const activeDelivery = deliveryLinks.filter(
-    (d) => footerInfo && (footerInfo as Record<string, unknown>)[d.key]
+  useEffect(() => {
+    if (footerInfo && siteInfo) {
+      dbTr.register({
+        'footer.nomeLocale': siteInfo.nomeLocale,
+        'footer.indirizzo': footerInfo.indirizzo,
+        'footer.citta': footerInfo.citta,
+        'footer.orari': footerInfo.orariApertura,
+        'footer.giorniChiusuraTesto': footerInfo.giorniChiusura,
+      });
+    }
+  }, [footerInfo, siteInfo, dbTr]);
+
+  const activeSocial = socialLinks.filter(
+    (s) => footerInfo && footerInfo[s.key]
   );
 
+  const activeDelivery = deliveryLinks.filter(
+    (d) => footerInfo && footerInfo[d.key]
+  );
+
+  const mapSrc = useMemo(() => {
+    if (!footerInfo) return '';
+    if (footerInfo.latitudine && footerInfo.longitudine) {
+      return `https://maps.google.com/maps?q=${footerInfo.latitudine},${footerInfo.longitudine}&z=16&output=embed`;
+    }
+    const fullAddr = [footerInfo.indirizzo, footerInfo.cap, footerInfo.citta, footerInfo.provincia].filter(Boolean).join(', ');
+    if (!fullAddr) return '';
+    return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddr)}&z=16&output=embed`;
+  }, [footerInfo]);
+
+  const fullAddress = [
+    dbTr.t('footer.indirizzo', footerInfo?.indirizzo),
+    footerInfo?.cap,
+    dbTr.t('footer.citta', footerInfo?.citta),
+    footerInfo?.provincia && `(${footerInfo.provincia})`,
+  ].filter(Boolean).join(', ');
+
   return (
-    <footer id="contatti" className="bg-gray-900 text-gray-300">
-      <div className="max-w-6xl mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-3 gap-10">
-          {/* Restaurant Info */}
-          <div>
-            <h3 className="text-xl font-bold text-white mb-4">
-              {siteInfo?.nomeLocale || 'La Bella Tavola'}
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 mt-0.5 text-red-400 flex-shrink-0" />
-                <span className="text-sm">{footerInfo?.indirizzo || 'Via Roma 123, 20121 Milano'}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-red-400 flex-shrink-0" />
-                <a
-                  href={`tel:${footerInfo?.telefono || ''}`}
-                  className="text-sm hover:text-white transition-colors"
-                >
-                  {footerInfo?.telefono || '+39 02 1234 5678'}
-                </a>
-              </div>
-
+    <footer id="contatti" style={{ backgroundColor: 'var(--footer-bg)', color: 'var(--footer-text)' }}>
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        {/* Top: Map left + Content right */}
+        <div className="grid md:grid-cols-[280px_1fr] gap-10 items-start">
+          {/* Map - square, left side */}
+          {mapSrc && (
+            <div className="aspect-square rounded-2xl overflow-hidden border border-white/10 shadow-lg order-first md:order-first">
+              <iframe
+                title={t('footer.mappaTitolo')}
+                src={mapSrc}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="w-full h-full grayscale hover:grayscale-0 transition-all duration-500"
+              />
             </div>
-          </div>
+          )}
 
-          {/* Hours & Delivery */}
-          <div>
-            <h3 className="text-xl font-bold text-white mb-4">Orari &amp; Delivery</h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <Clock className="h-4 w-4 mt-0.5 text-red-400 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="text-white font-medium mb-1">Orari di Apertura</p>
-                  <p className="text-gray-400 whitespace-pre-line">
-                    {siteInfo?.orariApertura || footerInfo?.orariApertura || 'Mar-Dom: 12:00-14:30, 19:00-23:00'}
-                  </p>
-                </div>
+          {/* Content columns */}
+          <div className="grid sm:grid-cols-2 gap-8">
+            {/* Column 1: Info + Schedule */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-3">
+                  {dbTr.t('footer.nomeLocale', siteInfo?.nomeLocale || 'Il Nostro Ristorante')}
+                </h3>
+                {fullAddress && (
+                  <div className="flex items-start gap-2.5 mb-2">
+                    <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 opacity-60" />
+                    <span className="text-sm leading-relaxed">{fullAddress}</span>
+                  </div>
+                )}
+                {footerInfo?.telefono && (
+                  <div className="flex items-center gap-2.5">
+                    <Phone className="h-4 w-4 flex-shrink-0 opacity-60" />
+                    <a href={`tel:${footerInfo.telefono}`} className="text-sm hover:text-white transition-colors">
+                      {footerInfo.telefono}
+                    </a>
+                  </div>
+                )}
               </div>
+
+              {(footerInfo?.orariApertura || footerInfo?.giorniChiusura) && (
+                <div>
+                  <div className="flex items-start gap-2.5">
+                    <Clock className="h-4 w-4 mt-0.5 flex-shrink-0 opacity-60" />
+                    <div className="text-sm leading-relaxed">
+                      {footerInfo?.orariApertura && (
+                        <p className="whitespace-pre-line">{dbTr.t('footer.orari', footerInfo.orariApertura)}</p>
+                      )}
+                      {footerInfo?.giorniChiusura && (
+                        <p className="mt-2">
+                          <span className="font-semibold">{t('footer.giorniChiusura')}</span>{' '}
+                          {dbTr.t('footer.giorniChiusuraTesto', footerInfo.giorniChiusura)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Column 2: Social + Delivery */}
+            <div className="space-y-6">
+              {activeSocial.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-3">{t('footer.social')}</h4>
+                  <div className="flex flex-wrap gap-2.5">
+                    {activeSocial.map((s) => (
+                      <a
+                        key={s.key}
+                        href={footerInfo![s.key] as string}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white/60 ${s.hoverColor} hover:text-white transition-all`}
+                      >
+                        <s.icon className="h-4 w-4" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {activeDelivery.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm text-white font-medium mb-2">Ordina online</p>
+                <div>
+                  <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-3">{t('footer.ordinaOnline')}</h4>
                   <div className="flex flex-wrap gap-2">
                     {activeDelivery.map((d) => (
                       <a
                         key={d.key}
-                        href={(footerInfo as Record<string, unknown>)[d.key] as string}
+                        href={footerInfo![d.key] as string}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 rounded-full text-xs font-medium text-gray-400 ${d.color} hover:bg-gray-700 transition-colors`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 rounded-full text-xs font-medium text-white/70 ${d.color} hover:bg-white/15 transition-colors`}
                       >
                         <ExternalLink className="h-3 w-3" />
                         {d.label}
@@ -118,68 +221,23 @@ export default function Footer() {
               )}
             </div>
           </div>
-
-          {/* Social */}
-          <div>
-            <h3 className="text-xl font-bold text-white mb-4">Seguici</h3>
-            <div className="flex gap-3 mb-6">
-              {footerInfo?.facebookUrl && (
-                <a
-                  href={footerInfo.facebookUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-gray-400 hover:bg-blue-600 hover:text-white transition-all"
-                >
-                  <Facebook className="h-5 w-5" />
-                </a>
-              )}
-              {footerInfo?.instagramUrl && (
-                <a
-                  href={footerInfo.instagramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-gray-400 hover:bg-pink-600 hover:text-white transition-all"
-                >
-                  <Instagram className="h-5 w-5" />
-                </a>
-              )}
-            </div>
-
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Chiuso il lunedì. Per gruppi superiori a 10 persone, vi preghiamo di contattarci
-              direttamente per organizzare al meglio la vostra serata.
-            </p>
-          </div>
         </div>
 
-        {/* Map */}
-        <div className="mt-10 rounded-xl overflow-hidden border border-gray-700 shadow-lg">
-          <iframe
-            title="Posizione del ristorante"
-            src="https://maps.google.com/maps?q=Via+Roma+123+Milano+Italia&t=&z=15&ie=UTF8&iwloc=&output=embed"
-            width="100%"
-            height="250"
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            className="w-full grayscale hover:grayscale-0 transition-all duration-500"
-          />
-        </div>
+
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-gray-800">
+      <div className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p className="text-xs text-gray-500">
-            &copy; {new Date().getFullYear()} {siteInfo?.nomeLocale || 'La Bella Tavola'}. Tutti i diritti riservati.
+          <p className="text-xs text-white/40">
+            &copy; {new Date().getFullYear()} {dbTr.t('footer.nomeLocale', siteInfo?.nomeLocale || 'Il Nostro Ristorante')}. {t('footer.diritti')}
           </p>
-          <div className="flex gap-4 text-xs text-gray-500">
-            <Link href="/cookie-policy" className="hover:text-white transition-colors">
-              Cookie Policy
+          <div className="flex gap-4 text-xs text-white/40">
+            <Link href="/cookie-policy" className="hover:text-white/70 transition-colors">
+              {t('footer.cookie')}
             </Link>
-            <Link href="/privacy-policy" className="hover:text-white transition-colors">
-              Privacy Policy
+            <Link href="/privacy-policy" className="hover:text-white/70 transition-colors">
+              {t('footer.privacy')}
             </Link>
           </div>
         </div>

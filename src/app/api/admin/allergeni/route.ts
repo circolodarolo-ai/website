@@ -5,10 +5,16 @@ export async function GET() {
   try {
     const allergeni = await db.allergene.findMany({
       orderBy: { nome: 'asc' },
-      include: { _count: { select: { articoli: true } } },
+      include: { _count: { select: { AllergeneArticolo: true } } },
     });
-    return NextResponse.json(allergeni);
-  } catch {
+    // Remap for frontend compatibility
+    const mapped = allergeni.map(a => ({
+      ...a,
+      _count: { articoli: a._count.AllergeneArticolo },
+    }));
+    return NextResponse.json(mapped);
+  } catch (error) {
+    console.error('Allergeni GET error:', error);
     return NextResponse.json({ error: 'Errore nel recupero' }, { status: 500 });
   }
 }
@@ -18,12 +24,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const allergene = await db.allergene.create({
       data: {
+        id: crypto.randomUUID(),
         nome: body.nome,
         icona: body.icona || null,
+        updatedAt: new Date(),
       },
     });
     return NextResponse.json(allergene, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error('Allergeni POST error:', error);
     return NextResponse.json({ error: 'Errore nella creazione' }, { status: 500 });
   }
 }
@@ -34,10 +43,11 @@ export async function PUT(request: NextRequest) {
     const { id, ...data } = body;
     const allergene = await db.allergene.update({
       where: { id },
-      data,
+      data: { ...data, updatedAt: new Date() },
     });
     return NextResponse.json(allergene);
-  } catch {
+  } catch (error) {
+    console.error('Allergeni PUT error:', error);
     return NextResponse.json({ error: 'Errore nell\'aggiornamento' }, { status: 500 });
   }
 }
@@ -49,7 +59,8 @@ export async function DELETE(request: NextRequest) {
     if (!id) return NextResponse.json({ error: 'ID richiesto' }, { status: 400 });
     await db.allergene.delete({ where: { id } });
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error('Allergeni DELETE error:', error);
     return NextResponse.json({ error: 'Errore nell\'eliminazione' }, { status: 500 });
   }
 }

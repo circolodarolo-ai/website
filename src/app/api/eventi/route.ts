@@ -7,18 +7,21 @@ export async function GET() {
     oggi.setHours(0, 0, 0, 0);
 
     const eventi = await db.evento.findMany({
+      where: { attivo: true },
       orderBy: [
         { inEvidenza: 'desc' },
         { data: 'asc' },
       ],
     });
 
-    const eventiFuturi = eventi.filter((e) => {
+    // Include: all recurring events + all future non-recurring events
+    const eventiVisibili = eventi.filter((e) => {
+      if (e.ricorrente) return true;
       const dataEvento = new Date(e.data);
       return dataEvento >= oggi;
     });
 
-    return NextResponse.json(eventiFuturi);
+    return NextResponse.json(eventiVisibili);
   } catch (error) {
     console.error('Errore nel recupero eventi:', error);
     return NextResponse.json(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,42 +13,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prenotazione = await db.reservation.create({
-      data: {
-        nome: body.nome,
-        cognome: body.cognome,
-        email: body.email,
-        telefono: body.telefono,
-        data: body.data,
-        ora: body.ora,
-        persone: parseInt(body.persone),
-        note: body.note || null,
-        stato: 'pending',
-        eventoId: body.eventoId || null,
-      },
-    });
+    const id = randomUUID();
+    const now = new Date();
+
+    const baseData = {
+      id,
+      nome: body.nome,
+      cognome: body.cognome,
+      email: body.email,
+      telefono: body.telefono,
+      data: body.data,
+      ora: body.ora,
+      persone: parseInt(body.persone),
+      note: body.note || null,
+      stato: 'pending' as const,
+      eventoId: body.eventoId || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Primo tentativo: con tipologia
+    let prenotazione;
+    try {
+      prenotazione = await db.reservation.create({
+        data: { ...baseData, tipologia: body.tipologia || 'ristorante' },
+      });
+    } catch (firstErr) {
+      // Secondo tentativo: senza tipologia (colonna potrebbe non esistere)
+      console.warn('Tentativo con tipologia fallito, riprovo senza:', firstErr);
+      try {
+        prenotazione = await db.reservation.create({
+          data: baseData,
+        });
+      } catch {
+        return NextResponse.json(
+          { error: 'Errore nella creazione della prenotazione' },
+          { status: 500 }
+        );
+      }
+    }
 
     return NextResponse.json(prenotazione, { status: 201 });
-  } catch (error) {
-    console.error('Errore nella prenotazione:', error);
+  } catch {
     return NextResponse.json(
-      { error: 'Errore nella creazione della prenotazione' },
+      { error: 'Errore nella prenotazione' },
       { status: 500 }
     );
   }
 }
 
-export async function GET() {
-  try {
-    const prenotazioni = await db.reservation.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: { evento: true },
-    });
-    return NextResponse.json(prenotazioni);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Errore nel recupero delle prenotazioni' },
-      { status: 500 }
-    );
-  }
-}
+// GET rimosso — le prenotazioni sono accessibili solo via /api/admin/prenotazioni (protetto da auth)

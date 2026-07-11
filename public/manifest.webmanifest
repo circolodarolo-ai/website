@@ -1,0 +1,16 @@
+{
+  "name": "La Bella Tavola",
+  "short_name": "Bella Tavola",
+  "description": "Autentica cucina italiana nel cuore di Milano",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

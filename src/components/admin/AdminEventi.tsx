@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,22 +8,35 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Upload, Save, ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, Save, ImageIcon, Repeat } from 'lucide-react';
+
+const GIORNI_SETTIMANA = [
+  { value: 'lunedì', label: 'Lun' },
+  { value: 'martedì', label: 'Mar' },
+  { value: 'mercoledì', label: 'Mer' },
+  { value: 'giovedì', label: 'Gio' },
+  { value: 'venerdì', label: 'Ven' },
+  { value: 'sabato', label: 'Sab' },
+  { value: 'domenica', label: 'Dom' },
+];
 
 interface Evento {
   id: string; titolo: string; descrizione: string; descrizioneBreve: string;
   immagineUrl: string | null; data: string; oraInizio: string; oraFine: string;
   prezzo: number; gratuito: boolean; graditaPrenotazione: boolean;
   capacita: number; postiDisponibili: number; inEvidenza: boolean; attivo: boolean;
+  ricorrente: boolean; giorniRicorrenza: string | null;
   prenotazioni: { id: string }[];
 }
 
 const emptyForm = {
   titolo: '', descrizione: '', descrizioneBreve: '', immagineUrl: '',
   data: '', oraInizio: '', oraFine: '', prezzo: '0', gratuito: false,
-  graditaPrenotazione: false, capacita: '0', postiDisponibili: '0', inEvidenza: false, attivo: true,
+  graditaPrenotazione: false, capacita: '0', postiDisponibili: '0',
+  inEvidenza: false, attivo: true, ricorrente: false, giorniRicorrenza: [] as string[],
 };
 
 export default function AdminEventi() {
@@ -33,6 +46,7 @@ export default function AdminEventi() {
   const [editing, setEditing] = useState<Evento | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -58,7 +72,9 @@ export default function AdminEventi() {
         prezzo: String(evento.prezzo), gratuito: evento.gratuito,
         graditaPrenotazione: evento.graditaPrenotazione,
         capacita: String(evento.capacita), postiDisponibili: String(evento.postiDisponibili),
-        inEvidenza: evento.inEvidenza, attivo: evento.attivo,
+        inEvidenza: evento.inEvidenza, attivo: evento.attivo ?? true,
+        ricorrente: evento.ricorrente || false,
+        giorniRicorrenza: evento.giorniRicorrenza ? evento.giorniRicorrenza.split(',').map((g: string) => g.trim()) : [],
       });
     } else {
       setEditing(null);
@@ -68,8 +84,16 @@ export default function AdminEventi() {
   };
 
   const saveEvento = async () => {
-    if (!form.titolo.trim() || !form.data || !form.oraInizio || !form.oraFine) {
-      toast.error('Compila titolo, data e orari');
+    if (!form.titolo.trim() || !form.oraInizio || !form.oraFine) {
+      toast.error('Compila titolo e orari');
+      return;
+    }
+    if (!form.ricorrente && !form.data) {
+      toast.error('Compila la data');
+      return;
+    }
+    if (form.ricorrente && form.giorniRicorrenza.length === 0) {
+      toast.error('Seleziona almeno un giorno di ricorrenza');
       return;
     }
     try {
@@ -79,7 +103,7 @@ export default function AdminEventi() {
         descrizione: form.descrizione,
         descrizioneBreve: form.descrizioneBreve,
         immagineUrl: form.immagineUrl || null,
-        data: new Date(form.data).toISOString(),
+        data: form.data || new Date().toISOString().split('T')[0],
         oraInizio: form.oraInizio,
         oraFine: form.oraFine,
         prezzo: parseFloat(form.prezzo) || 0,
@@ -89,6 +113,8 @@ export default function AdminEventi() {
         postiDisponibili: parseInt(form.postiDisponibili) || 0,
         inEvidenza: form.inEvidenza,
         attivo: form.attivo,
+        ricorrente: form.ricorrente,
+        giorniRicorrenza: form.ricorrente ? form.giorniRicorrenza.join(', ') : null,
       };
       const res = await fetch('/api/admin/eventi', {
         method: editing ? 'PUT' : 'POST',
@@ -111,6 +137,23 @@ export default function AdminEventi() {
     } catch { toast.error('Errore'); }
   };
 
+  const formatGiorni = (giorni: string | null) => {
+    if (!giorni) return '';
+    return giorni.split(',').map(g => {
+      const found = GIORNI_SETTIMANA.find(d => d.value === g.trim());
+      return found ? found.label : g.trim();
+    }).join(', ');
+  };
+
+  const toggleGiorno = (giorno: string) => {
+    setForm(prev => ({
+      ...prev,
+      giorniRicorrenza: prev.giorniRicorrenza.includes(giorno)
+        ? prev.giorniRicorrenza.filter(g => g !== giorno)
+        : [...prev.giorniRicorrenza, giorno],
+    }));
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -124,7 +167,7 @@ export default function AdminEventi() {
             <TableRow>
               <TableHead className="w-16">Immagine</TableHead>
               <TableHead>Titolo</TableHead>
-              <TableHead>Data</TableHead>
+              <TableHead>Data / Ricorrenza</TableHead>
               <TableHead>Prezzo</TableHead>
               <TableHead>Prenotazioni</TableHead>
               <TableHead>Stato</TableHead>
@@ -145,13 +188,42 @@ export default function AdminEventi() {
                   <div className="font-medium">{ev.titolo}</div>
                   <div className="text-xs text-gray-500">{ev.oraInizio} - {ev.oraFine}</div>
                 </TableCell>
-                <TableCell>{new Date(ev.data).toLocaleDateString('it-IT')}</TableCell>
+                <TableCell>
+                  {ev.ricorrente ? (
+                    <div>
+                      <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50 gap-1">
+                        <Repeat className="h-3 w-3" /> {formatGiorni(ev.giorniRicorrenza)}
+                      </Badge>
+                    </div>
+                  ) : (
+                    <span>{new Date(ev.data).toLocaleDateString('it-IT')}</span>
+                  )}
+                </TableCell>
                 <TableCell>{ev.gratuito ? <Badge variant="secondary">Gratuito</Badge> : `€${ev.prezzo.toFixed(2)}`}</TableCell>
                 <TableCell><Badge variant="outline">{ev.prenotazioni?.length || 0}</Badge></TableCell>
                 <TableCell>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-wrap">
                     {ev.inEvidenza && <Badge style={{ background: '#f59e0b', color: '#fff' }}>★</Badge>}
-                    <Badge variant={ev.attivo ? 'default' : 'secondary'}>{ev.attivo ? 'Attivo' : 'Inattivo'}</Badge>
+                    <Switch
+                      checked={ev.attivo ?? true}
+                      onCheckedChange={async (v) => {
+                        setEventi(prev => prev.map(e => e.id === ev.id ? { ...e, attivo: v } : e));
+                        try {
+                          const res = await fetch('/api/admin/eventi', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: ev.id, attivo: v }),
+                          });
+                          if (!res.ok) {
+                            setEventi(prev => prev.map(e => e.id === ev.id ? { ...e, attivo: !v } : e));
+                            toast.error("Errore nell'aggiornamento");
+                          }
+                        } catch {
+                          setEventi(prev => prev.map(e => e.id === ev.id ? { ...e, attivo: !v } : e));
+                          toast.error("Errore nell'aggiornamento");
+                        }
+                      }}
+                    />
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
@@ -166,19 +238,27 @@ export default function AdminEventi() {
 
       {/* ─── Dialog ─── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl flex flex-col max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>{editing ? 'Modifica Evento' : 'Nuovo Evento'}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-2 max-h-[60vh] overflow-y-auto">
+          <div className="grid gap-4 py-2 overflow-y-auto flex-1 min-h-0 pr-1">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Titolo *</Label>
                 <Input value={form.titolo} onChange={e => setForm({ ...form, titolo: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Data *</Label>
-                <Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} />
+                <Label>{form.ricorrente ? 'Data Inizio' : 'Data *'}</Label>
+                <Input
+                  type="date"
+                  value={form.data}
+                  onChange={e => setForm({ ...form, data: e.target.value })}
+                  disabled={form.ricorrente}
+                />
+                {form.ricorrente && (
+                  <p className="text-xs text-gray-400">La data viene impostata automaticamente per gli eventi ricorrenti.</p>
+                )}
               </div>
             </div>
             <div className="space-y-2">
@@ -189,6 +269,38 @@ export default function AdminEventi() {
               <Label>Descrizione</Label>
               <Textarea value={form.descrizione} onChange={e => setForm({ ...form, descrizione: e.target.value })} rows={3} />
             </div>
+
+            {/* ── Ricorrenza ── */}
+            <div className="rounded-lg border p-4 space-y-3 bg-gray-50">
+              <div className="flex items-center gap-2">
+                <Switch checked={form.ricorrente} onCheckedChange={v => setForm({ ...form, ricorrente: v, giorniRicorrenza: v ? (form.giorniRicorrenza.length > 0 ? form.giorniRicorrenza : ['giovedì']) : [] })} />
+                <Label className="font-medium flex items-center gap-1.5">
+                  <Repeat className="h-4 w-4" /> Evento Ricorrente
+                </Label>
+              </div>
+              {form.ricorrente && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">Seleziona i giorni in cui si ripete l&apos;evento:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {GIORNI_SETTIMANA.map(giorno => (
+                      <button
+                        key={giorno.value}
+                        type="button"
+                        className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                          form.giorniRicorrenza.includes(giorno.value)
+                            ? 'bg-purple-600 text-white border-purple-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-purple-50 hover:border-purple-300'
+                        }`}
+                        onClick={() => toggleGiorno(giorno.value)}
+                      >
+                        {giorno.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Ora Inizio *</Label>
@@ -239,8 +351,12 @@ export default function AdminEventi() {
               <Label>Immagine</Label>
               <div className="flex gap-2">
                 <Input value={form.immagineUrl} onChange={e => setForm({ ...form, immagineUrl: e.target.value })} />
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={async (e) => {
                     const file = e.target.files?.[0]; if (!file) return;
                     setUploading(true);
                     const fd = new FormData(); fd.append('file', file);
@@ -250,11 +366,12 @@ export default function AdminEventi() {
                       if (res.ok) setForm(f => ({ ...f, immagineUrl: data.url }));
                     } catch { toast.error('Errore'); }
                     setUploading(false);
-                  }} />
-                  <Button type="button" variant="outline" disabled={uploading}>
-                    {uploading ? '...' : <Upload className="h-4 w-4" />}
-                  </Button>
-                </label>
+                    e.target.value = '';
+                  }}
+                />
+                <Button type="button" variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+                  {uploading ? '...' : <Upload className="h-4 w-4" />}
+                </Button>
               </div>
               {form.immagineUrl && <img src={form.immagineUrl} alt="Preview" className="w-32 h-32 object-cover rounded-lg border" />}
             </div>

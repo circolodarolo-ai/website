@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Allergene {
@@ -195,6 +194,30 @@ model CompanyData {
   adSenseSlotTop           String?
 }
 
+model I18nSettings {
+  id                String   @id @default("default")
+  multilinguaAttivo Boolean  @default(false)
+  enAttivo          Boolean  @default(false)
+  frAttivo          Boolean  @default(false)
+  deAttivo          Boolean  @default(false)
+  esAttivo          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model TranslationCache {
+  id              String   @id
+  chiave          String
+  locale          String
+  testoOriginale  String
+  testoTradotto   String
+  sezione         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([chiave, locale])
+}
+
 model Evento {
   id                  String        @id
   titolo              String
@@ -212,6 +235,9 @@ model Evento {
   location            String?
   incluso             String?
   infoAggiuntive      String?
+  attivo              Boolean       @default(true)
+  ricorrente          Boolean       @default(false)
+  giorniRicorrenza    String?
   inEvidenza          Boolean       @default(false)
   nuovo               Boolean       @default(false)
   createdAt           DateTime      @default(now())
@@ -260,6 +286,9 @@ model Permission {
   updatedAt              DateTime
   puoGestireSito         Boolean  @default(true)
   puoGestireEventi       Boolean  @default(true)
+  puoGestireCookiePrivacy Boolean @default(true)
+  puoGestireBanners     Boolean  @default(true)
+  puoGestireMultilingua Boolean  @default(true)
   User                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -272,6 +301,7 @@ model Reservation {
   data      String
   ora       String
   persone   Int
+  tipologia  String   @default("ristorante")
   note      String?
   stato     String   @default("pending")
   createdAt DateTime @default(now())
@@ -324,6 +354,20 @@ model SiteInfo {
   seoTwitterCard     String?  @default("summary_large_image")
   primaryColor       String?  @default("#ea580c")
   primaryForeground  String?  @default("#ffffff")
+  secondaryColor     String?  @default("#0d9488")
+  footerBgColor      String?  @default("#111827")
+  footerTextColor    String?  @default("#d1d5db")
+  sectionBgColor     String?  @default("#f9fafb")
+  socialBtnColor     String?  @default("#ea580c")
+  settingsBtnColor   String?  @default("#dc2626")
+  prenotaBtnColor       String?  @default("#ea580c")
+  prenotaSectionBgColor String?  @default("#ea580c")
+  orarioPranzoInizio    String?  @default("12:00")
+  orarioPranzoFine      String?  @default("14:30")
+  orarioCenaInizio      String?  @default("19:00")
+  orarioCenaFine        String?  @default("22:30")
+  headingFont           String?  @default("Playfair Display")
+  bodyFont           String?  @default("Inter")
 }
 
 model User {

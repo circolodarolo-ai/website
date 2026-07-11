@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Save } from 'lucide-react';
@@ -80,10 +79,6 @@ export default function AdminSiteInfo() {
                 <Label>Telefono</Label>
                 <Input value={siteInfo.telefono} onChange={e => setSiteInfo({ ...siteInfo, telefono: e.target.value })} />
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={siteInfo.prenotazioniAttive} onCheckedChange={v => setSiteInfo({ ...siteInfo, prenotazioniAttive: v })} />
-              <Label>Prenotazioni Attive</Label>
             </div>
             <Button onClick={() => save(siteInfo)} disabled={saving}>
               <Save className="mr-2 h-4 w-4" />{saving ? 'Salvataggio...' : 'Salva'}

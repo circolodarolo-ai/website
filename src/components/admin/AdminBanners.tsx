@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,15 +58,33 @@ export default function AdminBanners() {
   const [editing, setEditing] = useState<Banner | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [delBanner, setDelBanner] = useState<Banner | null>(false as unknown as Banner);
+  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/banners');
+      if (!res.ok) {
+        console.error('[AdminBanners] fetchData error:', res.status);
+        toast.error('Errore nel caricamento banner');
+        setBanners([]);
+        return;
+      }
       const data = await res.json();
+      if (!Array.isArray(data)) {
+        console.error('[AdminBanners] fetchData: response is not an array', data);
+        setBanners([]);
+        return;
+      }
       setBanners(data);
-    } catch { toast.error('Errore nel caricamento'); }
+    } catch (err) {
+      console.error('[AdminBanners] fetchData error:', err);
+      toast.error('Errore nel caricamento');
+      setBanners([]);
+    }
     setLoading(false);
   }, []);
 
@@ -76,16 +94,34 @@ export default function AdminBanners() {
   const openEdit = (b: Banner) => { setForm({ tipo: b.tipo, posizione: b.posizione, sponsorNome: b.sponsorNome, sponsorLogo: b.sponsorLogo || '', sponsorUrl: b.sponsorUrl, titolo: b.titolo || '', descrizione: b.descrizione || '', ctaTesto: b.ctaTesto || '', ctaUrl: b.ctaUrl || '', immagineUrl: b.immagineUrl || '', coloreSfondo: b.coloreSfondo || '#f3f4f6', attivo: b.attivo, ordine: b.ordine, pagine: b.pagine || '' }); setEditing(b); setDlgOpen(true); };
 
   const save = async () => {
+    setFormError('');
+    if (!form.sponsorNome.trim()) {
+      setFormError('Il nome dello sponsor e obbligatorio');
+      return;
+    }
+    setSaving(true);
     try {
-      const url = editing ? '/api/admin/banners' : '/api/admin/banners';
+      const url = '/api/admin/banners';
       const method = editing ? 'PUT' : 'POST';
       const body = editing ? { ...form, id: editing.id } : form;
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!res.ok) { toast.error('Errore'); return; }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        const msg = errData?.error || `Errore ${res.status}`;
+        setFormError(msg);
+        console.error('[AdminBanners] Save failed:', res.status, errData);
+        return;
+      }
       toast.success(editing ? 'Banner aggiornato' : 'Banner creato');
       setDlgOpen(false);
       fetchData();
-    } catch { toast.error('Errore'); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Errore di rete';
+      setFormError(msg);
+      console.error('[AdminBanners] Save error:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const deleteBanner = async () => {
@@ -225,15 +261,20 @@ export default function AdminBanners() {
               <Label>Immagine</Label>
               <div className="flex gap-2">
                 <Input value={form.immagineUrl} onChange={e => setForm({ ...form, immagineUrl: e.target.value })} />
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={async (e) => {
                     const file = e.target.files?.[0]; if (!file) return;
                     const url = await uploadImage(file); if (url) setForm({ ...form, immagineUrl: url });
-                  }} />
-                  <Button type="button" variant="outline" disabled={uploading}>
-                    {uploading ? '...' : <Upload className="h-4 w-4" />}
-                  </Button>
-                </label>
+                    e.target.value = '';
+                  }}
+                />
+                <Button type="button" variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+                  {uploading ? '...' : <Upload className="h-4 w-4" />}
+                </Button>
               </div>
               {form.immagineUrl && <img src={form.immagineUrl} alt="preview" className="w-full max-h-32 object-cover rounded-lg border" />}
             </div>
@@ -255,9 +296,14 @@ export default function AdminBanners() {
               <Label>Attivo</Label>
             </div>
           </div>
+          {formError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+              {formError}
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDlgOpen(false)}>Annulla</Button>
-            <Button onClick={save}>Salva</Button>
+            <Button variant="outline" onClick={() => setDlgOpen(false)} disabled={saving}>Annulla</Button>
+            <Button onClick={save} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

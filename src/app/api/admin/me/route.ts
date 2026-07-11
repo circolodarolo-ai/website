@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,16 +10,11 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
-
-    // Token expiry check (24 hours)
-    if (Date.now() - decoded.ts > 24 * 60 * 60 * 1000) {
-      return NextResponse.json({ error: 'Token scaduto' }, { status: 401 });
-    }
+    const payload = await verifyToken(token);
 
     const user = await db.user.findUnique({
-      where: { id: decoded.userId },
-      include: { permessi: true },
+      where: { id: payload.userId },
+      include: { Permission: true },
     });
 
     if (!user) {
@@ -27,8 +23,7 @@ export async function GET(request: NextRequest) {
 
     const { password: _, ...userWithoutPassword } = user;
     return NextResponse.json(userWithoutPassword);
-  } catch (error) {
-    console.error('Me GET error:', error);
-    return NextResponse.json({ error: 'Token non valido' }, { status: 401 });
+  } catch {
+    return NextResponse.json({ error: 'Token non valido o scaduto' }, { status: 401 });
   }
 }

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/i18n-context';
+import { useDbTranslation } from '@/hooks/useDbTranslation';
 
 interface SiteInfo {
   heroTitle: string;
@@ -10,7 +12,6 @@ interface SiteInfo {
   heroCTAText: string;
   heroImageUrl: string | null;
   heroOverlayOpacity: number;
-  primaryColor?: string;
 }
 
 interface SiteImage {
@@ -21,6 +22,8 @@ interface SiteImage {
 }
 
 export default function Hero() {
+  const { t } = useI18n();
+  const dbTr = useDbTranslation();
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
   const [heroImages, setHeroImages] = useState<SiteImage[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -35,6 +38,17 @@ export default function Hero() {
       .then((imgs) => { if (imgs.length > 0) setHeroImages(imgs); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (siteInfo) {
+      dbTr.register({
+        'hero.title': siteInfo.heroTitle,
+        'hero.subtitle': siteInfo.heroSubtitle,
+        'hero.cta': siteInfo.heroCTAText,
+        'hero.slogan': (siteInfo as any).slogan,
+      });
+    }
+  }, [siteInfo]);
 
   // Auto-rotate slideshow if multiple hero images
   useEffect(() => {
@@ -115,26 +129,26 @@ export default function Hero() {
         <div className="space-y-6 animate-in fade-in duration-1000">
           <div className="inline-block">
             <span className="px-4 py-1.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white/90 text-sm font-medium">
-              Dal 1985 nel cuore di Milano
+              {t('hero.badge')}
             </span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white leading-tight tracking-tight">
-            {siteInfo?.heroTitle || 'Autentica Cucina Italiana'}
+            {dbTr.t('hero.title', siteInfo?.heroTitle) || t('hero.defaultTitle')}
           </h1>
 
           <p className="text-lg sm:text-xl md:text-2xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-            {siteInfo?.heroSubtitle || 'Tradizione, passione e sapori genuini'}
+            {dbTr.t('hero.subtitle', siteInfo?.heroSubtitle) || t('hero.defaultSubtitle')}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          {/* CTA buttons — sospesi */}
+          {/* <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Button
               size="lg"
               onClick={scrollToPrenota}
-              className="text-white text-lg px-8 py-6 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105"
-              style={{ backgroundColor: siteInfo?.primaryColor || '#b91c1c' }}
+              className="text-white text-lg px-8 py-6 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 bg-[var(--primary)] hover:opacity-90"
             >
-              {siteInfo?.heroCTAText || 'Prenota un Tavolo'}
+              {dbTr.t('hero.cta', siteInfo?.heroCTAText) || t('hero.defaultCTA')}
             </Button>
             <Button
               size="lg"
@@ -142,9 +156,9 @@ export default function Hero() {
               onClick={scrollToMenu}
               className="border-white/40 text-white hover:bg-white/10 text-lg px-8 py-6 rounded-full backdrop-blur-sm hover:scale-105 transition-all"
             >
-              Scopri il Menu
+              {t('hero.scopriMenu')}
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -153,7 +167,7 @@ export default function Hero() {
         <button
           onClick={scrollToMenu}
           className="text-white/60 hover:text-white transition-colors"
-          aria-label="Scorri verso il basso"
+          aria-label={t('hero.scrollDown')}
         >
           <ChevronDown className="h-8 w-8" />
         </button>

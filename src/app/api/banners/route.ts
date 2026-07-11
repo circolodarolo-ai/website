@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,23 +8,35 @@ export async function GET(request: NextRequest) {
     const pagina = searchParams.get('pagina');
     const posizione = searchParams.get('posizione');
 
-    const where: Record<string, unknown> = { attivo: true };
-    if (posizione) where.posizione = posizione;
-    // The DB stores pages as a comma-separated string in 'pagine' field.
-    // We use 'contains' to match if the requested page is in the list.
-    // Also return banners with no page restriction (pagine is null/empty).
-    if (pagina) {
-      where.OR = [
-        { pagine: { contains: pagina } },
-        { pagine: null },
-        { pagine: '' },
-      ];
+    // Costruisci la clausola WHERE con tipizzazione corretta per Prisma
+    const conditions: Prisma.BannerPubblicitarioWhereInput[] = [
+      { attivo: true },
+    ];
+
+    if (posizione) {
+      conditions.push({ posizione });
     }
+
+    if (pagina) {
+      conditions.push({
+        OR: [
+          { pagine: { contains: pagina } },
+          { pagine: null },
+          { pagine: '' },
+        ],
+      });
+    }
+
+    const where: Prisma.BannerPubblicitarioWhereInput = { AND: conditions };
+
+    console.log('[Banners public GET]', { pagina, posizione, where: JSON.stringify(where) });
 
     const banners = await db.bannerPubblicitario.findMany({
       where,
       orderBy: [{ ordine: 'asc' }, { createdAt: 'desc' }],
     });
+
+    console.log('[Banners public GET] Found', banners.length, 'banners');
     return NextResponse.json(banners);
   } catch (error) {
     console.error('Banners public GET error:', error);

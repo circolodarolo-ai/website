@@ -21,10 +21,13 @@ interface Permesso {
   puoGestireAnalytics: boolean;
   puoGestireSito: boolean;
   puoGestireEventi: boolean;
+  puoGestireCookiePrivacy: boolean;
+  puoGestireBanners: boolean;
+  puoGestireMultilingua: boolean;
 }
 
 interface UserRecord {
-  id: string; email: string; nome: string; cognome: string | null; ruolo: string; permessi: Permesso | null;
+  id: string; email: string; nome: string; cognome: string | null; ruolo: string; Permission: Permesso | null;
 }
 
 const PERM_LABELS: Record<keyof Permesso, string> = {
@@ -37,6 +40,9 @@ const PERM_LABELS: Record<keyof Permesso, string> = {
   puoGestireAnalytics: 'Analytics',
   puoGestireSito: 'Info Sito',
   puoGestireEventi: 'Eventi',
+  puoGestireCookiePrivacy: 'Cookie & Privacy',
+  puoGestireBanners: 'Banner Pubblicitari',
+  puoGestireMultilingua: 'Multilingua',
 };
 
 const PERM_KEYS = Object.keys(PERM_LABELS) as (keyof Permesso)[];
@@ -52,6 +58,7 @@ export default function AdminUsers() {
       puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true,
       puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: false,
       puoGestireAnalytics: true, puoGestireSito: true, puoGestireEventi: true,
+      puoGestireCookiePrivacy: true, puoGestireBanners: true, puoGestireMultilingua: true,
     } as Permesso,
   });
 
@@ -73,10 +80,11 @@ export default function AdminUsers() {
       setForm({
         nome: user.nome, cognome: user.cognome || '', email: user.email,
         password: '', ruolo: user.ruolo,
-        permessi: user.permessi || {
+        permessi: user.Permission || {
           puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true,
           puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: false,
           puoGestireAnalytics: true, puoGestireSito: true, puoGestireEventi: true,
+          puoGestireCookiePrivacy: true, puoGestireBanners: true, puoGestireMultilingua: true,
         },
       });
     } else {
@@ -87,6 +95,7 @@ export default function AdminUsers() {
           puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true,
           puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: false,
           puoGestireAnalytics: true, puoGestireSito: true, puoGestireEventi: true,
+          puoGestireCookiePrivacy: true, puoGestireBanners: true, puoGestireMultilingua: true,
         },
       });
     }
@@ -156,9 +165,9 @@ export default function AdminUsers() {
                 <TableCell>{user.email}</TableCell>
                 <TableCell><Badge variant={user.ruolo === 'superadmin' ? 'default' : 'secondary'}>{user.ruolo}</Badge></TableCell>
                 <TableCell>
-                  {user.permessi && (
+                  {user.Permission && (
                     <div className="flex flex-wrap gap-1">
-                      {PERM_KEYS.filter(k => user.permessi![k]).map(k => (
+                      {PERM_KEYS.filter(k => user.Permission![k]).map(k => (
                         <Badge key={k} variant="outline" className="text-xs">{PERM_LABELS[k]}</Badge>
                       ))}
                     </div>

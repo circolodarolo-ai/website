@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ interface Allergene {
 }
 interface Articolo {
   id: string; nome: string; descrizione: string | null; categoriaId: string; prezzo: number;
-  prezzoPromozionale: number | null; eBestChoice: boolean; attivo: boolean; immagineUrl: string | null;
+  prezzoPromozionale: number | null; eBestChoice: boolean; eSurgelato: boolean; attivo: boolean; immagineUrl: string | null;
   categoria: Categoria; allergeni: { allergene: Allergene }[];
 }
 
@@ -44,9 +44,10 @@ export default function AdminMenu() {
   const [editingArt, setEditingArt] = useState<Articolo | null>(null);
   const [artForm, setArtForm] = useState({
     nome: '', descrizione: '', categoriaId: '', prezzo: '', prezzoPromozionale: '',
-    eBestChoice: false, attivo: true, immagineUrl: '', selectedAllergeni: [] as string[],
+    eBestChoice: false, eSurgelato: false, attivo: true, immagineUrl: '', selectedAllergeni: [] as string[],
   });
   const [uploadingImage, setUploadingImage] = useState(false);
+  const artFileInputRef = useRef<HTMLInputElement>(null);
 
   const [allDialogOpen, setAllDialogOpen] = useState(false);
   const [editingAll, setEditingAll] = useState<Allergene | null>(null);
@@ -133,14 +134,14 @@ export default function AdminMenu() {
       setArtForm({
         nome: art.nome, descrizione: art.descrizione || '', categoriaId: art.categoriaId,
         prezzo: String(art.prezzo), prezzoPromozionale: art.prezzoPromozionale ? String(art.prezzoPromozionale) : '',
-        eBestChoice: art.eBestChoice, attivo: art.attivo, immagineUrl: art.immagineUrl || '',
+        eBestChoice: art.eBestChoice, eSurgelato: art.eSurgelato, attivo: art.attivo, immagineUrl: art.immagineUrl || '',
         selectedAllergeni: art.allergeni.map(a => a.allergene.id),
       });
     } else {
       setEditingArt(null);
       setArtForm({
         nome: '', descrizione: '', categoriaId: categorie[0]?.id || '',
-        prezzo: '', prezzoPromozionale: '', eBestChoice: false, attivo: true, immagineUrl: '',
+        prezzo: '', prezzoPromozionale: '', eBestChoice: false, eSurgelato: false, attivo: true, immagineUrl: '',
         selectedAllergeni: [],
       });
     }
@@ -161,6 +162,7 @@ export default function AdminMenu() {
         prezzo: artForm.prezzo,
         prezzoPromozionale: artForm.prezzoPromozionale || null,
         eBestChoice: artForm.eBestChoice,
+        eSurgelato: artForm.eSurgelato,
         attivo: artForm.attivo,
         immagineUrl: artForm.immagineUrl || null,
         allergeneIds: artForm.selectedAllergeni,
@@ -259,7 +261,26 @@ export default function AdminMenu() {
                     <TableCell>{cat.ordine}</TableCell>
                     <TableCell><Badge variant="secondary">{cat._count?.articoli || 0}</Badge></TableCell>
                     <TableCell>
-                      <Switch checked={cat.attiva} disabled />
+                      <Switch
+                        checked={cat.attiva}
+                        onCheckedChange={async (v) => {
+                          setCategorie(prev => prev.map(c => c.id === cat.id ? { ...c, attiva: v } : c));
+                          try {
+                            const res = await fetch('/api/admin/categorie', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ id: cat.id, attiva: v }),
+                            });
+                            if (!res.ok) {
+                              setCategorie(prev => prev.map(c => c.id === cat.id ? { ...c, attiva: !v } : c));
+                              toast.error('Errore nell\'aggiornamento');
+                            }
+                          } catch {
+                            setCategorie(prev => prev.map(c => c.id === cat.id ? { ...c, attiva: !v } : c));
+                            toast.error('Errore nell\'aggiornamento');
+                          }
+                        }}
+                      />
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => openCatDialog(cat)}><Pencil className="h-4 w-4" /></Button>
@@ -304,7 +325,10 @@ export default function AdminMenu() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{art.nome}</div>
-                      {art.eBestChoice && <Badge className="mt-1" variant="default" style={{ background: '#f59e0b', color: '#fff' }}>★ Best</Badge>}
+                      <div className="flex gap-1 mt-1">
+                        {art.eBestChoice && <Badge className="text-xs" variant="default" style={{ background: '#f59e0b', color: '#fff' }}>★ Best</Badge>}
+                        {art.eSurgelato && <Badge className="text-xs" variant="outline" style={{ borderColor: '#93c5fd', color: '#2563eb' }}>❄️ Surgelato</Badge>}
+                      </div>
                     </TableCell>
                     <TableCell>{art.categoria.nome}</TableCell>
                     <TableCell>
@@ -313,7 +337,28 @@ export default function AdminMenu() {
                         <span className="ml-2 text-green-600 line-through">€{art.prezzoPromozionale.toFixed(2)}</span>
                       )}
                     </TableCell>
-                    <TableCell><Switch checked={art.attivo} disabled /></TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={art.attivo}
+                        onCheckedChange={async (v) => {
+                          setArticoli(prev => prev.map(a => a.id === art.id ? { ...a, attivo: v } : a));
+                          try {
+                            const res = await fetch('/api/admin/articoli', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ id: art.id, attivo: v }),
+                            });
+                            if (!res.ok) {
+                              setArticoli(prev => prev.map(a => a.id === art.id ? { ...a, attivo: !v } : a));
+                              toast.error("Errore nell'aggiornamento");
+                            }
+                          } catch {
+                            setArticoli(prev => prev.map(a => a.id === art.id ? { ...a, attivo: !v } : a));
+                            toast.error("Errore nell'aggiornamento");
+                          }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => openArtDialog(art)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => deleteArt(art.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
@@ -392,11 +437,11 @@ export default function AdminMenu() {
 
       {/* ─── Articolo Dialog ─── */}
       <Dialog open={artDialogOpen} onOpenChange={setArtDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl flex flex-col max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>{editingArt ? 'Modifica Articolo' : 'Nuovo Articolo'}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-4 py-2 overflow-y-auto flex-1 min-h-0 pr-1">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nome *</Label>
@@ -426,10 +471,14 @@ export default function AdminMenu() {
                 <Input type="number" step="0.01" value={artForm.prezzoPromozionale} onChange={e => setArtForm({ ...artForm, prezzoPromozionale: e.target.value })} placeholder="10.00" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="flex items-center gap-2">
                 <Switch checked={artForm.eBestChoice} onCheckedChange={v => setArtForm({ ...artForm, eBestChoice: v })} />
                 <Label>Best Choice</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={artForm.eSurgelato} onCheckedChange={v => setArtForm({ ...artForm, eSurgelato: v })} />
+                <Label>Surgelato</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch checked={artForm.attivo} onCheckedChange={v => setArtForm({ ...artForm, attivo: v })} />
@@ -442,17 +491,22 @@ export default function AdminMenu() {
               <Label>Immagine</Label>
               <div className="flex gap-2 items-center">
                 <Input value={artForm.immagineUrl} onChange={e => setArtForm({ ...artForm, immagineUrl: e.target.value })} placeholder="URL immagine o carica un file" />
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={artFileInputRef}
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     const url = await handleImageUpload(file, 'articolo');
                     if (url) setArtForm(f => ({ ...f, immagineUrl: url }));
-                  }} />
-                  <Button type="button" variant="outline" disabled={uploadingImage}>
-                    {uploadingImage ? '...' : <Upload className="h-4 w-4" />}
-                  </Button>
-                </label>
+                    e.target.value = '';
+                  }}
+                />
+                <Button type="button" variant="outline" disabled={uploadingImage} onClick={() => artFileInputRef.current?.click()}>
+                  {uploadingImage ? '...' : <Upload className="h-4 w-4" />}
+                </Button>
               </div>
               {artForm.immagineUrl && (
                 <img src={artForm.immagineUrl} alt="Preview" className="w-32 h-32 object-cover rounded-lg border" />
@@ -464,25 +518,29 @@ export default function AdminMenu() {
               <Label>Allergeni</Label>
               <div className="flex flex-wrap gap-2">
                 {allergeni.map(all => (
-                  <label key={all.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer hover:bg-gray-50">
-                    <Checkbox
-                      checked={artForm.selectedAllergeni.includes(all.id)}
-                      onCheckedChange={checked => {
-                        const sel = checked
-                          ? [...artForm.selectedAllergeni, all.id]
-                          : artForm.selectedAllergeni.filter(a => a !== all.id);
-                        setArtForm({ ...artForm, selectedAllergeni: sel });
-                      }}
-                    />
+                  <div
+                    key={all.id}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      const id = all.id;
+                      setArtForm(prev => ({
+                        ...prev,
+                        selectedAllergeni: prev.selectedAllergeni.includes(id)
+                          ? prev.selectedAllergeni.filter(a => a !== id)
+                          : [...prev.selectedAllergeni, id],
+                      }));
+                    }}
+                  >
+                    <Checkbox checked={artForm.selectedAllergeni.includes(all.id)} />
                     <span>{all.icona || '⚠️'} {all.nome}</span>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setArtDialogOpen(false)}>Annulla</Button>
-            <Button onClick={saveArt}>Salva</Button>
+            <Button type="button" onClick={saveArt}>Salva</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -496,7 +554,19 @@ export default function AdminMenu() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Icona Emoji</Label>
-              <Input value={allForm.icona} onChange={e => setAllForm({ ...allForm, icona: e.target.value })} placeholder="🥜" />
+              <Input value={allForm.icona} onChange={e => setAllForm({ ...allForm, icona: e.target.value })} placeholder="Clicca un\'emoji qui sotto o digita" />
+              <div className="flex flex-wrap gap-1.5 mt-2 max-h-40 overflow-y-auto rounded-md border p-2 bg-gray-50">
+                {['⚠️','🥜','🌾','🥛','🥚','🐟','🦐','🐟','🌰','🫘','🫐','🍎','🍊','🍋','🥝','🍌','🍇','🍓','🍑','🍒','🫑','🌽','🥕','🧅','🧄','🥬','🥦','🍄','🫒','🍖','🍗','🧈','🧀','🍯','🦀','🐙','🦪','🌭','🍕','🧁','🎂','🍰','🍪','🍫','🍬','🍩','🍦','🧊','❄️','❄','🫧','💧','🌱','🌿','☘️','🍀','🌸','🌺','🌻','🌹','🍀','🟢','🟡','🔴','🔵','⚪','⚫','🟠','🟣','🔶','🔷'].map(emoji => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className={`text-xl p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer ${allForm.icona === emoji ? 'bg-blue-100 ring-2 ring-blue-400' : ''}`}
+                    onClick={() => setAllForm({ ...allForm, icona: emoji })}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Nome *</Label>

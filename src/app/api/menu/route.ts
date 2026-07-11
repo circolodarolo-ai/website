@@ -7,19 +7,31 @@ export async function GET() {
       where: { attiva: true },
       orderBy: { ordine: 'asc' },
       include: {
-        articoli: {
+        Articolo: {
           where: { attivo: true },
           orderBy: { createdAt: 'asc' },
           include: {
-            allergeni: {
-              include: { allergene: true },
+            AllergeneArticolo: {
+              include: { Allergene: true },
             },
           },
         },
       },
     });
 
-    return NextResponse.json(categorie);
+    // Remap to match frontend interface expectations
+    const mapped = categorie.map(c => ({
+      ...c,
+      articoli: c.Articolo.map(a => ({
+        ...a,
+        allergeni: a.AllergeneArticolo.map(aa => ({
+          id: aa.id,
+          allergene: aa.Allergene,
+        })),
+      })),
+    }));
+
+    return NextResponse.json(mapped);
   } catch (error) {
     console.error('Errore nel recupero del menu:', error);
     return NextResponse.json(

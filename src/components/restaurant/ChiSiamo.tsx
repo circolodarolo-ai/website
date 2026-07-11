@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Heart, Award, Leaf, Clock } from 'lucide-react';
+import { useI18n } from '@/lib/i18n-context';
+import { useDbTranslation } from '@/hooks/useDbTranslation';
 
 interface SiteInfo {
   chiSiamoTitolo: string;
@@ -18,32 +20,35 @@ interface SiteImage {
   ordine: number;
 }
 
-const values = [
-  {
-    icon: Heart,
-    title: 'Passione',
-    description: 'Ogni piatto è preparato con amore e dedizione, come la tradizione insegna',
-  },
-  {
-    icon: Leaf,
-    title: 'Ingredienti Freschi',
-    description: 'Selezioniamo ogni giorno i migliori prodotti dai mercati locali',
-  },
-  {
-    icon: Award,
-    title: 'Tradizione dal 1985',
-    description: 'Quasi 40 anni di storia culinaria tramandata di generazione in generazione',
-  },
-  {
-    icon: Clock,
-    title: 'Ricette Autentiche',
-    description: 'Rispettiamo le ricette originali italiane con un tocco di creatività',
-  },
+const valueIcons = [Heart, Leaf, Award, Clock];
+const valueKeys = [
+  { titleKey: 'chiSiamo.valore1Titolo', descKey: 'chiSiamo.valore1Desc' },
+  { titleKey: 'chiSiamo.valore2Titolo', descKey: 'chiSiamo.valore2Desc' },
+  { titleKey: 'chiSiamo.valore3Titolo', descKey: 'chiSiamo.valore3Desc' },
+  { titleKey: 'chiSiamo.valore4Titolo', descKey: 'chiSiamo.valore4Desc' },
 ];
 
 export default function ChiSiamo() {
+  const { t } = useI18n();
+  const dbTr = useDbTranslation();
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
   const [images, setImages] = useState<SiteImage[]>([]);
+
+  const values = valueKeys.map((vk, i) => ({
+    icon: valueIcons[i],
+    title: t(vk.titleKey),
+    description: t(vk.descKey),
+  }));
+
+  useEffect(() => {
+    if (siteInfo) {
+      dbTr.register({
+        'chisiamo.title': siteInfo.chiSiamoTitolo,
+        'chisiamo.text': siteInfo.chiSiamoTesto,
+        'chisiamo.subtitle': (siteInfo as any).specialitaTitle,
+      });
+    }
+  }, [siteInfo]);
 
   useEffect(() => {
     fetch('/api/site-info')
@@ -61,11 +66,11 @@ export default function ChiSiamo() {
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <span className="text-red-700 font-semibold text-sm uppercase tracking-wider">
-            La Nostra Storia
+          <span className="text-[var(--primary)] font-semibold text-sm uppercase tracking-wider">
+            {t('chiSiamo.subtitle')}
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
-            {siteInfo?.chiSiamoTitolo || 'Chi Siamo'}
+            {dbTr.t('chisiamo.title', siteInfo?.chiSiamoTitolo) || t('chiSiamo.defaultTitle')}
           </h2>
         </div>
 
@@ -75,8 +80,7 @@ export default function ChiSiamo() {
             {/* Text */}
             <div className="text-center md:text-left">
               <p className="text-gray-600 text-lg leading-relaxed">
-                {siteInfo?.chiSiamoTesto ||
-                  "Dal 1985, La Bella Tavola porta in tavola l'autentica tradizione culinaria italiana. La nostra passione per la cucina e l'amore per gli ingredienti freschi e di qualità si riflette in ogni piatto che prepariamo."}
+                {dbTr.t('chisiamo.text', siteInfo?.chiSiamoTesto) || t('chiSiamo.defaultText')}
               </p>
             </div>
 
@@ -85,7 +89,7 @@ export default function ChiSiamo() {
               <div className="rounded-2xl overflow-hidden shadow-xl">
                 <img
                   src={siteInfo.chiSiamoImageUrl}
-                  alt="Chi Siamo"
+                  alt={t('chiSiamo.defaultTitle')}
                   className="w-full h-64 md:h-80 object-cover"
                 />
               </div>
@@ -96,7 +100,7 @@ export default function ChiSiamo() {
         {/* Image Gallery from SiteImage */}
         {images.length > 0 && (
           <div className="mb-16">
-            <h3 className="text-xl font-semibold text-gray-800 text-center mb-6">La Nostra Galleria</h3>
+            <h3 className="text-xl font-semibold text-gray-800 text-center mb-6">{t('chiSiamo.galleria')}</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {images.map((img) => (
                 <div
@@ -126,10 +130,10 @@ export default function ChiSiamo() {
           {values.map((v) => (
             <div
               key={v.title}
-              className="text-center p-6 rounded-2xl bg-gray-50 hover:bg-red-50 transition-colors group"
+              className="text-center p-6 rounded-2xl bg-gray-50 hover:bg-[var(--primary)]/5 transition-colors group"
             >
-              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-red-200 transition-colors">
-                <v.icon className="h-7 w-7 text-red-700" />
+              <div className="w-14 h-14 bg-[var(--primary)]/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-[var(--primary)]/15 transition-colors">
+                <v.icon className="h-7 w-7 text-[var(--primary)]" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">{v.title}</h3>
               <p className="text-sm text-gray-500 leading-relaxed">{v.description}</p>

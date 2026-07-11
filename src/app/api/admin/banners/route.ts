@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { randomUUID } from 'crypto';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: [{ ordine: 'asc' }, { createdAt: 'desc' }],
     });
+    console.log('[AdminBanners GET] Found', banners.length, 'banners');
     return NextResponse.json(banners);
   } catch (error) {
     console.error('Admin Banners GET error:', error);
@@ -27,6 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const banner = await db.bannerPubblicitario.create({
       data: {
+        id: randomUUID(),
         tipo: body.tipo || 'adsense',
         posizione: body.posizione || 'top',
         sponsorNome: body.sponsorNome || '',
@@ -41,6 +44,8 @@ export async function POST(request: NextRequest) {
         attivo: body.attivo !== undefined ? body.attivo : true,
         ordine: body.ordine ?? 0,
         pagine: body.pagine || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     });
     return NextResponse.json(banner, { status: 201 });
@@ -55,7 +60,13 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, createdAt, updatedAt, ...data } = body;
     if (!id) return NextResponse.json({ error: 'ID richiesto' }, { status: 400 });
-    const banner = await db.bannerPubblicitario.update({ where: { id }, data });
+    const banner = await db.bannerPubblicitario.update({
+      where: { id },
+      data: {
+        ...data,
+        updatedAt: new Date(),
+      },
+    });
     return NextResponse.json(banner);
   } catch (error) {
     console.error('Admin Banners PUT error:', error);
@@ -68,6 +79,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID richiesto' }, { status: 400 });
+    console.log('[AdminBanners DELETE] id:', id);
     await db.bannerPubblicitario.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -6,7 +6,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  reactStrictMode: false,
+  reactStrictMode: true,
+  poweredByHeader: false,
   allowedDevOrigins: ["preview-*.space-z.ai"],
 };
 

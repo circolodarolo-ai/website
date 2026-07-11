@@ -198,16 +198,16 @@ export default function AdminPanel() {
   const openUtE = (u: UserType) => {
     setEditUt(u);
     setUtF({ email: u.email, nome: u.nome, cognome: u.cognome || '', password: '', ruolo: u.ruolo });
-    setUtPermessi(u.permessi ? {
-      puoGestireMenu: u.permessi.puoGestireMenu,
-      puoGestireFooter: u.permessi.puoGestireFooter,
-      puoGestireTemi: u.permessi.puoGestireTemi,
-      puoGestirePrenotazioni: u.permessi.puoGestirePrenotazioni,
-      puoGestireDatiAzienda: u.permessi.puoGestireDatiAzienda,
-      puoGestireProfili: u.permessi.puoGestireProfili,
-      puoGestireAnalytics: u.permessi.puoGestireAnalytics,
-      puoGestireSito: u.permessi.puoGestireSito,
-      puoGestireEventi: u.permessi.puoGestireEventi,
+    setUtPermessi(u.Permission ? {
+      puoGestireMenu: u.Permission.puoGestireMenu,
+      puoGestireFooter: u.Permission.puoGestireFooter,
+      puoGestireTemi: u.Permission.puoGestireTemi,
+      puoGestirePrenotazioni: u.Permission.puoGestirePrenotazioni,
+      puoGestireDatiAzienda: u.Permission.puoGestireDatiAzienda,
+      puoGestireProfili: u.Permission.puoGestireProfili,
+      puoGestireAnalytics: u.Permission.puoGestireAnalytics,
+      puoGestireSito: u.Permission.puoGestireSito,
+      puoGestireEventi: u.Permission.puoGestireEventi,
     } : emptyPermessi);
     setShowPw(false);
     setUtDlg(true);

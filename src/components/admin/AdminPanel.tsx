@@ -6,20 +6,22 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Settings, X, Menu, UtensilsCrossed, PartyPopper, Palette, FileText, Map, Building2, ShieldCheck, CalendarDays, Users, BarChart3, Megaphone } from 'lucide-react';
+import { Settings, X, Menu, UtensilsCrossed, PartyPopper, Palette, FileText, Map, Building2, ShieldCheck, CalendarDays, Users, BarChart3, Megaphone, ArrowLeft, Globe } from 'lucide-react';
 import LoginDialog from './LoginDialog';
 import AdminMenu from './AdminMenu';
 import AdminTheme from './AdminTheme';
 import AdminSiteInfo from './AdminSiteInfo';
 import AdminFooter from './AdminFooter';
 import AdminCompanyData from './AdminCompanyData';
+import AdminCookiePrivacy from './AdminCookiePrivacy';
 import AdminEventi from './AdminEventi';
 import AdminPrenotazioni from './AdminPrenotazioni';
 import AdminUsers from './AdminUsers';
 import AdminAnalytics from './AdminAnalytics';
 import AdminBanners from './AdminBanners';
+import AdminMultilingua from './AdminMultilingua';
 
-type Section = 'menu' | 'eventi' | 'temi' | 'site-info' | 'footer' | 'company-data' | 'cookie-privacy' | 'prenotazioni' | 'users' | 'analytics' | 'banners';
+type Section = 'menu' | 'eventi' | 'temi' | 'site-info' | 'footer' | 'company-data' | 'cookie-privacy' | 'prenotazioni' | 'users' | 'analytics' | 'banners' | 'multilingua';
 
 interface NavItem {
   id: Section;
@@ -36,11 +38,12 @@ const navItems: NavItem[] = [
   { id: 'site-info', label: 'Info Sito e SEO', icon: <FileText className="h-5 w-5" />, group: 'ASPETTO', permission: 'puoGestireSito' },
   { id: 'footer', label: 'Footer', icon: <Map className="h-5 w-5" />, group: 'ASPETTO', permission: 'puoGestireFooter' },
   { id: 'company-data', label: 'Dati Azienda', icon: <Building2 className="h-5 w-5" />, group: 'AZIENDA', permission: 'puoGestireDatiAzienda' },
-  { id: 'cookie-privacy', label: 'Cookie e Privacy', icon: <ShieldCheck className="h-5 w-5" />, group: 'AZIENDA', permission: 'puoGestireDatiAzienda' },
+  { id: 'cookie-privacy', label: 'Cookie e Privacy', icon: <ShieldCheck className="h-5 w-5" />, group: 'LEGALE', permission: 'puoGestireCookiePrivacy' },
   { id: 'prenotazioni', label: 'Prenotazioni', icon: <CalendarDays className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestirePrenotazioni' },
   { id: 'users', label: 'Profili Utenti', icon: <Users className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestireProfili' },
   { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestireAnalytics' },
-  { id: 'banners', label: 'Banner Pubblicitari', icon: <Megaphone className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestireSito' },
+  { id: 'banners', label: 'Banner Pubblicitari', icon: <Megaphone className="h-5 w-5" />, group: 'GESTIONE', permission: 'puoGestireBanners' },
+  { id: 'multilingua', label: 'Multilingua', icon: <Globe className="h-5 w-5" />, group: 'ASPETTO', permission: 'puoGestireMultilingua' },
 ];
 
 export default function AdminPanel() {
@@ -48,6 +51,8 @@ export default function AdminPanel() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [userPermissions, setUserPermissions] = useState<Record<string, boolean> | null>(null);
+  const [userName, setUserName] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('');
   const [activeSection, setActiveSection] = useState<Section>('menu');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -72,19 +77,44 @@ export default function AdminPanel() {
         return;
       }
       const data = await res.json();
-      setUserPermissions(data.permessi ? {
-        puoGestireMenu: data.permessi.puoGestireMenu,
-        puoGestireFooter: data.permessi.puoGestireFooter,
-        puoGestireTemi: data.permessi.puoGestireTemi,
-        puoGestirePrenotazioni: data.permessi.puoGestirePrenotazioni,
-        puoGestireDatiAzienda: data.permessi.puoGestireDatiAzienda,
-        puoGestireProfili: data.permessi.puoGestireProfili,
-        puoGestireAnalytics: data.permessi.puoGestireAnalytics,
-        puoGestireSito: data.permessi.puoGestireSito,
-        puoGestireEventi: data.permessi.puoGestireEventi,
-      } : null);
-    } catch {
-      console.error('Failed to fetch user');
+      // Salva nome e ruolo dell'utente
+      const fullName = [data.nome, data.cognome].filter(Boolean).join(' ') || data.email;
+      setUserName(fullName);
+      setUserRole(data.ruolo || 'admin');
+      if (data.Permission) {
+        setUserPermissions({
+          puoGestireMenu: data.Permission.puoGestireMenu,
+          puoGestireFooter: data.Permission.puoGestireFooter,
+          puoGestireTemi: data.Permission.puoGestireTemi,
+          puoGestirePrenotazioni: data.Permission.puoGestirePrenotazioni,
+          puoGestireDatiAzienda: data.Permission.puoGestireDatiAzienda,
+          puoGestireProfili: data.Permission.puoGestireProfili,
+          puoGestireAnalytics: data.Permission.puoGestireAnalytics,
+          puoGestireSito: data.Permission.puoGestireSito,
+          puoGestireEventi: data.Permission.puoGestireEventi,
+          puoGestireCookiePrivacy: data.Permission.puoGestireCookiePrivacy,
+          puoGestireBanners: data.Permission.puoGestireBanners,
+          puoGestireMultilingua: data.Permission.puoGestireMultilingua,
+        });
+      } else {
+        console.warn('[AdminPanel] Nessun oggetto Permission trovato nella risposta /me. Dati ricevuti:', JSON.stringify(data).substring(0, 300));
+        // Fallback: consenti tutte le sezioni se non ci sono permessi espliciti
+        setUserPermissions({
+          puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true,
+          puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: true,
+          puoGestireAnalytics: true, puoGestireSito: true, puoGestireEventi: true,
+          puoGestireCookiePrivacy: true, puoGestireBanners: true, puoGestireMultilingua: true,
+        });
+      }
+    } catch (err) {
+      console.error('[AdminPanel] Errore fetch /me:', err);
+      // Fallback: consenti tutte le sezioni anche se la chiamata fallisce
+      setUserPermissions({
+        puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true,
+        puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: true,
+        puoGestireAnalytics: true, puoGestireSito: true, puoGestireEventi: true,
+          puoGestireCookiePrivacy: true, puoGestireBanners: true, puoGestireMultilingua: true,
+      });
     }
   }, []);
 
@@ -129,11 +159,12 @@ export default function AdminPanel() {
       case 'site-info': return <AdminSiteInfo />;
       case 'footer': return <AdminFooter />;
       case 'company-data': return <AdminCompanyData />;
-      case 'cookie-privacy': return <AdminCompanyData initialTab="cookie" />;
+      case 'cookie-privacy': return <AdminCookiePrivacy />;
       case 'prenotazioni': return <AdminPrenotazioni />;
       case 'users': return <AdminUsers />;
       case 'analytics': return <AdminAnalytics />;
       case 'banners': return <AdminBanners />;
+      case 'multilingua': return <AdminMultilingua />;
       default: return <AdminMenu />;
     }
   };
@@ -150,7 +181,8 @@ export default function AdminPanel() {
       {!open && (
         <button
           onClick={handleOpenAdmin}
-          className="fixed bottom-6 right-6 z-30 w-14 h-14 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110"
+          className="fixed bottom-6 right-6 z-30 w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110"
+          style={{ backgroundColor: 'var(--settings-btn-color)' }}
           aria-label="Apri Pannello Admin"
         >
           <Settings className="h-6 w-6" />
@@ -162,50 +194,75 @@ export default function AdminPanel() {
 
       {/* Full-Page Overlay */}
       {open && (
-        <div className="fixed inset-0 z-40 bg-black/50 flex">
+        <div className="fixed inset-0 z-[60] bg-black/50 flex">
           {/* Mobile Header */}
-          <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
+          <div className="lg:hidden fixed top-0 left-0 right-0 z-[63] bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1">
                 <Menu className="h-5 w-5" />
               </button>
               <span className="font-semibold">Admin Panel</span>
             </div>
-            <button onClick={() => setOpen(false)} className="p-1">
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <a
+                href="/"
+                onClick={(e) => { e.preventDefault(); setOpen(false); window.location.href = '/'; }}
+                className="p-1 text-gray-400 hover:text-white"
+                title="Torna al Sito"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </a>
+              <button onClick={() => setOpen(false)} className="p-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Mobile Sidebar Overlay */}
           {mobileMenuOpen && (
-            <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
+            <div className="lg:hidden fixed inset-0 z-[61] bg-black/50" onClick={() => setMobileMenuOpen(false)} />
           )}
 
           {/* Sidebar */}
           <aside className={cn(
-            "bg-gray-900 text-white flex flex-col transition-all duration-300 z-50",
-            "lg:relative lg:translate-x-0",
+            "bg-gray-900 text-white flex flex-col transition-all duration-300 z-[62] max-h-screen",
+            "lg:relative lg:translate-x-0 lg:max-h-screen",
             mobileMenuOpen ? "fixed left-0 top-0 bottom-0 w-72 translate-x-0" : "fixed -translate-x-full lg:translate-x-0 w-0 lg:w-72"
           )}>
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700 min-h-[56px]">
-              <span className="font-bold text-lg">🍽️ Admin</span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-gray-400 hover:text-white h-8 w-8 hidden lg:flex"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-                <button onClick={() => setOpen(false)} className="p-1 text-gray-400 hover:text-white">
-                  <X className="h-5 w-5" />
-                </button>
+            <div className="px-4 py-3 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-lg leading-tight">🍽️ Admin</span>
+                  {userName && (
+                    <p className="text-xs text-gray-400 truncate leading-tight mt-0.5">{userName}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-gray-400 hover:text-white h-8 w-8 hidden lg:flex"
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                  >
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                  <a
+                    href="/"
+                    onClick={(e) => { e.preventDefault(); setOpen(false); window.location.href = '/'; }}
+                    className="p-1 text-gray-400 hover:text-white"
+                    title="Torna al Sito"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </a>
+                  <button onClick={() => setOpen(false)} className="p-1 text-gray-400 hover:text-white">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            <ScrollArea className="flex-1">
-              <nav className="px-3 py-2">
+            <ScrollArea className="flex-1 min-h-0 overflow-hidden">
+              <nav className="px-3 py-2 pb-4">
                 {Object.entries(groups).map(([group, items]) => (
                   <div key={group} className="mb-2">
                     <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">

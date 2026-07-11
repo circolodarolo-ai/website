@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Star, Flame } from 'lucide-react';
+import { useI18n } from '@/lib/i18n-context';
+import { useDbTranslation } from '@/hooks/useDbTranslation';
 
 interface Allergene {
   id: string;
@@ -23,6 +25,7 @@ interface Articolo {
   prezzo: number;
   prezzoPromozionale: number | null;
   eBestChoice: boolean;
+  eSurgelato: boolean;
   allergeni: AllergeneArticolo[];
 }
 
@@ -34,6 +37,8 @@ interface Categoria {
 }
 
 export default function MenuSection() {
+  const { t } = useI18n();
+  const dbTr = useDbTranslation();
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [activeTab, setActiveTab] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -48,6 +53,24 @@ export default function MenuSection() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (categorie.length === 0) return;
+    const texts: Record<string, string | null | undefined> = {};
+    for (const cat of categorie) {
+      texts[`cat.${cat.id}`] = cat.nome;
+      for (const art of cat.articoli) {
+        texts[`art.${art.id}.nome`] = art.nome;
+        texts[`art.${art.id}.desc`] = art.descrizione;
+        for (const aa of art.allergeni) {
+          if (aa.allergene.nome) {
+            texts[`allergene.${aa.allergene.id}`] = aa.allergene.nome;
+          }
+        }
+      }
+    }
+    dbTr.register(texts);
+  }, [categorie, dbTr.register]);
 
   const activeCategoria = categorie.find((c) => c.id === activeTab);
 
@@ -79,14 +102,14 @@ export default function MenuSection() {
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <span className="text-red-700 font-semibold text-sm uppercase tracking-wider">
-            Il Nostro Menu
+          <span className="text-[var(--primary)] font-semibold text-sm uppercase tracking-wider">
+            {t('menuSection.subtitle')}
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
-            I Piatti della Tradizione
+            {t('menuSection.title')}
           </h2>
           <p className="text-gray-500 mt-3 max-w-xl mx-auto">
-            Ogni piatto racconta la storia della nostra terra, con ingredienti selezionati e ricette tramandate
+            {t('menuSection.description')}
           </p>
         </div>
 
@@ -98,11 +121,11 @@ export default function MenuSection() {
               onClick={() => setActiveTab(cat.id)}
               className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
                 activeTab === cat.id
-                  ? 'bg-red-700 text-white shadow-md'
-                  : 'bg-white text-gray-600 hover:bg-red-50 hover:text-red-700 border border-gray-200'
+                  ? 'bg-[var(--primary)] text-white shadow-md'
+                  : 'bg-white text-gray-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)] border border-gray-200'
               }`}
             >
-              {cat.nome}
+              {dbTr.t('cat.' + cat.id, cat.nome)}
             </button>
           ))}
         </div>
@@ -118,19 +141,24 @@ export default function MenuSection() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-red-700 transition-colors">
-                        {articolo.nome}
+                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-[var(--primary)] transition-colors">
+                        {dbTr.t('art.' + articolo.id + '.nome', articolo.nome)}
                       </h3>
                       {articolo.eBestChoice && (
                         <Badge className="bg-amber-500 text-white text-xs gap-1">
                           <Star className="h-3 w-3 fill-current" />
-                          Consigliato
+                          {t('menuSection.consigliato')}
+                        </Badge>
+                      )}
+                      {articolo.eSurgelato && (
+                        <Badge className="bg-blue-100 text-blue-700 text-xs gap-1 border border-blue-300">
+                          ❄️ {t('menuSection.surgelato')}
                         </Badge>
                       )}
                     </div>
                     {articolo.descrizione && (
                       <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">
-                        {articolo.descrizione}
+                        {dbTr.t('art.' + articolo.id + '.desc', articolo.descrizione)}
                       </p>
                     )}
                     {articolo.allergeni.length > 0 && (
@@ -138,11 +166,11 @@ export default function MenuSection() {
                         {articolo.allergeni.map((aa) => (
                           <span
                             key={aa.id}
-                            title={aa.allergene.nome}
+                            title={dbTr.t('allergene.' + aa.allergene.id, aa.allergene.nome)}
                             className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full"
                           >
                             <span>{aa.allergene.icona}</span>
-                            <span>{aa.allergene.nome}</span>
+                            <span>{dbTr.t('allergene.' + aa.allergene.id, aa.allergene.nome)}</span>
                           </span>
                         ))}
                       </div>
@@ -156,14 +184,14 @@ export default function MenuSection() {
                           €{articolo.prezzo.toFixed(2)}
                         </span>
                       )}
-                      <span className="text-xl font-bold text-red-700">
+                      <span className="text-xl font-bold text-[var(--primary)]">
                         €{(articolo.prezzoPromozionale || articolo.prezzo).toFixed(2)}
                       </span>
                     </div>
                     {articolo.prezzoPromozionale && (
                       <Badge variant="destructive" className="mt-1 text-xs gap-1 bg-orange-500">
                         <Flame className="h-3 w-3" />
-                        Promo
+                        {t('menuSection.promo')}
                       </Badge>
                     )}
                   </div>
