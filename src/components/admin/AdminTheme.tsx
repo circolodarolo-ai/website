@@ -1,5 +1,6 @@
 'use client';
 
+import { adminFetch } from '@/lib/admin-fetch';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -154,12 +155,15 @@ export default function AdminTheme() {
     try {
       const [infoRes, imgRes] = await Promise.all([
         fetch('/api/site-info'),
-        fetch(`/api/admin/images?sezione=${selectedSection}`),
+        adminFetch(`/api/admin/images?sezione=${selectedSection}`),
       ]);
-      setSiteInfo(await infoRes.json());
-      setImages(await imgRes.json());
+      const infoData = await infoRes.json();
+      setSiteInfo((infoRes.ok && infoData?.id) ? infoData : null);
+      const imgData = await imgRes.json();
+      setImages(Array.isArray(imgData) ? imgData : []);
     } catch {
       toast.error('Errore nel caricamento');
+      setImages([]);
     }
     setLoading(false);
   }, [selectedSection]);
@@ -199,7 +203,7 @@ export default function AdminTheme() {
   const saveImage = async () => {
     if (!imgForm.url) { toast.error('URL immagine obbligatorio'); return; }
     try {
-      const res = await fetch('/api/admin/images', {
+      const res = await adminFetch('/api/admin/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...imgForm, sezione: selectedSection }),
@@ -213,7 +217,7 @@ export default function AdminTheme() {
 
   const deleteImage = async (id: string) => {
     try {
-      const res = await fetch(`/api/admin/images?id=${id}`, { method: 'DELETE' });
+      const res = await adminFetch(`/api/admin/images?id=${id}`, { method: 'DELETE' });
       if (!res.ok) { toast.error('Errore'); return; }
       toast.success('Immagine eliminata');
       fetchData();

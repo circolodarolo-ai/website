@@ -79,7 +79,7 @@ export default function AdminMenu() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
+            const res = await adminFetch('/api/admin/upload-image', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error); return null; }
       return data.url as string;
