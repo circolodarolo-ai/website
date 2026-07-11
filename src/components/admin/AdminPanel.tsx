@@ -72,6 +72,7 @@ export default function AdminPanel() {
       });
       if (!res.ok) {
         localStorage.removeItem('admin_token');
+document.cookie = 'admin_token=;path=/;max-age=0';
         setToken(null);
         setUserPermissions(null);
         return;
@@ -134,6 +135,7 @@ export default function AdminPanel() {
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
+document.cookie = 'admin_token=;path=/;max-age=0';
     setToken(null);
     setUserPermissions(null);
     setOpen(false);

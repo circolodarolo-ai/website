@@ -63,15 +63,23 @@ export async function middleware(request: NextRequest) {
 
   // ─── Auth Guard per le API admin (escluso login e me) ───
   if (pathname.startsWith('/api/admin/') && !pathname.startsWith('/api/admin/login') && !pathname.startsWith('/api/admin/me')) {
+    // Leggi token dall'header Authorization o dal cookie
     const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = authHeader?.replace('Bearer ', '') || '';
+
+    if (!token) {
+      const cookieHeader = request.headers.get('cookie') || '';
+      const match = cookieHeader.match(/admin_token=([^;]+)/);
+      token = match ? match[1] : '';
+    }
+
+    if (!token) {
       return new NextResponse(
         JSON.stringify({ error: 'Non autenticato' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
     try {
       await verifyToken(token);
     } catch {

@@ -39,6 +39,7 @@ export default function LoginDialog({ open, onOpenChange, onLoginSuccess }: Logi
       }
 
       localStorage.setItem('admin_token', data.token);
+document.cookie = 'admin_token=' + data.token + ';path=/;max-age=86400;SameSite=Lax';
       onLoginSuccess(data.token);
       onOpenChange(false);
     } catch {
