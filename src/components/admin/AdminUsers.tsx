@@ -185,7 +185,7 @@ export default function AdminUsers() {
 
       {/* ─── Dialog ─── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent aria-describedby={undefined} className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editing ? 'Modifica Utente' : 'Nuovo Utente'}</DialogTitle>
           </DialogHeader>

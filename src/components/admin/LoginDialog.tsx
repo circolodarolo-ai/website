@@ -39,7 +39,6 @@ export default function LoginDialog({ open, onOpenChange, onLoginSuccess }: Logi
       }
 
       localStorage.setItem('admin_token', data.token);
-document.cookie = 'admin_token=' + data.token + ';path=/;max-age=86400;SameSite=Lax';
       onLoginSuccess(data.token);
       onOpenChange(false);
     } catch {
@@ -50,7 +49,7 @@ document.cookie = 'admin_token=' + data.token + ';path=/;max-age=86400;SameSite=
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center text-xl">Accesso Admin</DialogTitle>
         </DialogHeader>

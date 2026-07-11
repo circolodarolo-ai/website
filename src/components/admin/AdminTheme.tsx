@@ -15,12 +15,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Plus, Trash2, Upload, Save, ImageIcon, Check, ChevronDown, Search, Clock, MapPin, Euro } from 'lucide-react';
 
-// Helper: fetch con token admin (auto-contenuto, nessun import esterno)
-function af(url: string, opts?: RequestInit) {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-  return fetch(url, { ...opts, headers: { ...(opts?.headers || {}), ...(t ? { Authorization: `Bearer ${t}` } : {}) } });
-}
-
 // ── Font Configuration ──
 const FONT_LIST = [
   { group: 'Serif', fonts: [
@@ -160,15 +154,12 @@ export default function AdminTheme() {
     try {
       const [infoRes, imgRes] = await Promise.all([
         fetch('/api/site-info'),
-        af(`/api/admin/images?sezione=${selectedSection}`),
+        fetch(`/api/admin/images?sezione=${selectedSection}`),
       ]);
-      const infoData = await infoRes.json();
-      setSiteInfo((infoRes.ok && infoData?.id) ? infoData : null);
-      const imgData = await imgRes.json();
-      setImages(Array.isArray(imgData) ? imgData : []);
+      setSiteInfo(await infoRes.json());
+      setImages(await imgRes.json());
     } catch {
       toast.error('Errore nel caricamento');
-      setImages([]);
     }
     setLoading(false);
   }, [selectedSection]);
@@ -196,7 +187,7 @@ export default function AdminTheme() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await af('/api/admin/upload-image', { method: 'POST', body: formData });
+      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error); return null; }
       return data.url as string;
@@ -208,7 +199,7 @@ export default function AdminTheme() {
   const saveImage = async () => {
     if (!imgForm.url) { toast.error('URL immagine obbligatorio'); return; }
     try {
-      const res = await af('/api/admin/images', {
+      const res = await fetch('/api/admin/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...imgForm, sezione: selectedSection }),
@@ -222,7 +213,7 @@ export default function AdminTheme() {
 
   const deleteImage = async (id: string) => {
     try {
-      const res = await af(`/api/admin/images?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/images?id=${id}`, { method: 'DELETE' });
       if (!res.ok) { toast.error('Errore'); return; }
       toast.success('Immagine eliminata');
       fetchData();
@@ -800,7 +791,7 @@ export default function AdminTheme() {
 
       {/* ─── Add Image Dialog ─── */}
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Aggiungi Immagine</DialogTitle>
           </DialogHeader>

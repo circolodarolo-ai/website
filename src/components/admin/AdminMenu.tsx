@@ -409,7 +409,7 @@ export default function AdminMenu() {
 
       {/* ─── Categorie Dialog ─── */}
       <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{editingCat ? 'Modifica Categoria' : 'Nuova Categoria'}</DialogTitle>
           </DialogHeader>
@@ -550,7 +550,7 @@ export default function AdminMenu() {
 
       {/* ─── Allergene Dialog ─── */}
       <Dialog open={allDialogOpen} onOpenChange={setAllDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{editingAll ? 'Modifica Allergene' : 'Nuovo Allergene'}</DialogTitle>
           </DialogHeader>
