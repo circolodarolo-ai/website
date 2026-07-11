@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,43 @@ export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState<Section>('menu');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const tokenRef = useRef<string | null>(null);
+
+  // Keep tokenRef in sync with token state
+  useEffect(() => { tokenRef.current = token; }, [token]);
+
+  // ── GLOBAL FETCH INTERCEPTOR ──
+  // Patches window.fetch to automatically inject the JWT Authorization header
+  // for ALL /api/admin/* requests (except login). This fixes ALL admin tabs at once.
+  useEffect(() => {
+    if (!open || !token) return;
+
+    const originalFetch = window.fetch;
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+      const url = typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.pathname
+          : input.url;
+
+      // Auto-inject token for all /api/admin/ routes except login
+      if (url.startsWith('/api/admin/') && !url.startsWith('/api/admin/login') && tokenRef.current) {
+        return originalFetch.call(this, input, {
+          ...init,
+          headers: {
+            ...(init?.headers || {}),
+            Authorization: `Bearer ${tokenRef.current}`,
+          },
+        });
+      }
+
+      return originalFetch.call(this, input, init);
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [open, token]);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('admin_token');
@@ -72,13 +109,11 @@ export default function AdminPanel() {
       });
       if (!res.ok) {
         localStorage.removeItem('admin_token');
-document.cookie = 'admin_token=;path=/;max-age=0';
         setToken(null);
         setUserPermissions(null);
         return;
       }
       const data = await res.json();
-      // Salva nome e ruolo dell'utente
       const fullName = [data.nome, data.cognome].filter(Boolean).join(' ') || data.email;
       setUserName(fullName);
       setUserRole(data.ruolo || 'admin');
@@ -99,7 +134,6 @@ document.cookie = 'admin_token=;path=/;max-age=0';
         });
       } else {
         console.warn('[AdminPanel] Nessun oggetto Permission trovato nella risposta /me. Dati ricevuti:', JSON.stringify(data).substring(0, 300));
-        // Fallback: consenti tutte le sezioni se non ci sono permessi espliciti
         setUserPermissions({
           puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true,
           puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: true,
@@ -109,12 +143,11 @@ document.cookie = 'admin_token=;path=/;max-age=0';
       }
     } catch (err) {
       console.error('[AdminPanel] Errore fetch /me:', err);
-      // Fallback: consenti tutte le sezioni anche se la chiamata fallisce
       setUserPermissions({
         puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true,
         puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: true,
         puoGestireAnalytics: true, puoGestireSito: true, puoGestireEventi: true,
-          puoGestireCookiePrivacy: true, puoGestireBanners: true, puoGestireMultilingua: true,
+        puoGestireCookiePrivacy: true, puoGestireBanners: true, puoGestireMultilingua: true,
       });
     }
   }, []);
@@ -135,7 +168,6 @@ document.cookie = 'admin_token=;path=/;max-age=0';
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
-document.cookie = 'admin_token=;path=/;max-age=0';
     setToken(null);
     setUserPermissions(null);
     setOpen(false);
