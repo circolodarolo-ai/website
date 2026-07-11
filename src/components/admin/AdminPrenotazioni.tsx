@@ -32,7 +32,8 @@ export default function AdminPrenotazioni() {
   const [showConfig, setShowConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [giorniChiusura, setGiorniChiusura] = useState('');
-  const lastFetchTime = useRef<Date>(new Date());
+  const lastFetchTimeRef = useRef<Date>(new Date());
+  const [lastFetchDisplay, setLastFetchDisplay] = useState('');
 
   const [config, setConfig] = useState<SiteConfig>({
     prenotazioniAttive: true,
@@ -45,10 +46,11 @@ export default function AdminPrenotazioni() {
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await adminadminfetch('/api/admin/prenotazioni');
+      const res = await fetch('/api/admin/prenotazioni');
       const data = await res.json();
       setPrenotazioni(Array.isArray(data) ? data : []);
-      lastFetchTime.current = new Date();
+      lastFetchTimeRef.current = new Date();
+      setLastFetchDisplay(new Date().toLocaleTimeString('it-IT'));
     } catch {
       if (!silent) toast.error('Errore nel caricamento');
     }
@@ -120,7 +122,7 @@ export default function AdminPrenotazioni() {
     // Trova la prenotazione corrente per prendere il telefono
     const prenotazione = prenotazioni.find(p => p.id === id);
     try {
-      const res = await adminadminfetch('/api/admin/prenotazioni', {
+      const res = await fetch('/api/admin/prenotazioni', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, stato }),
@@ -305,7 +307,7 @@ export default function AdminPrenotazioni() {
       {/* Auto-refresh indicator */}
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-gray-400">
-          Ultimo aggiornamento: {lastFetchTime.current.toLocaleTimeString('it-IT')} (auto-refresh ogni 15s)
+          Ultimo aggiornamento: {lastFetchDisplay} (auto-refresh ogni 15s)
         </p>
         <Button variant="ghost" size="sm" onClick={() => fetchData()} className="h-7 gap-1 text-xs text-gray-500">
           <RefreshCw className="h-3 w-3" /> Aggiorna ora

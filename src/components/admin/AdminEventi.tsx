@@ -51,7 +51,7 @@ export default function AdminEventi() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminadminadminfetch('/api/admin/eventi');
+      const res = await fetch('/api/admin/eventi');
       setEventi(await res.json());
     } catch {
       toast.error('Errore nel caricamento');
@@ -116,7 +116,7 @@ export default function AdminEventi() {
         ricorrente: form.ricorrente,
         giorniRicorrenza: form.ricorrente ? form.giorniRicorrenza.join(', ') : null,
       };
-      const res = await adminadminfetch('/api/admin/eventi', {
+      const res = await fetch('/api/admin/eventi', {
         method: editing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -209,7 +209,7 @@ export default function AdminEventi() {
                       onCheckedChange={async (v) => {
                         setEventi(prev => prev.map(e => e.id === ev.id ? { ...e, attivo: v } : e));
                         try {
-                          const res = await adminadminfetch('/api/admin/eventi', {
+                          const res = await fetch('/api/admin/eventi', {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ id: ev.id, attivo: v }),
@@ -361,7 +361,7 @@ export default function AdminEventi() {
                     setUploading(true);
                     const fd = new FormData(); fd.append('file', file);
                     try {
-                      const res = await adminadminfetch('/api/admin/upload-image', { method: 'POST', body: fd });
+                      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd });
                       const data = await res.json();
                       if (res.ok) setForm(f => ({ ...f, immagineUrl: data.url }));
                     } catch { toast.error('Errore'); }

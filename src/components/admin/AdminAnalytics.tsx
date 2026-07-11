@@ -16,7 +16,6 @@ import {
   BarChart, Bar, PieChart as RPieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Area, AreaChart,
 } from 'recharts';
-import { adminFetch } from '@/lib/admin-fetch';
 
 // --- Types ---
 type InsightTab = 'overview' | 'geo' | 'pages' | 'referrers' | 'devices' | 'sessions' | 'events';

@@ -11,7 +11,7 @@ export async function GET() {
     }
     return NextResponse.json(info);
   } catch (error) {
-    console.error('FooterInfo GET error:', error);
+    console.error('[footer-info] GET error:', error);
     return NextResponse.json(
       { error: 'Errore nel recupero del footer' },
       { status: 500 }
@@ -22,18 +22,18 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    // Strip reserved fields that cannot be updated
+    // Rimuovi campi readonly che non possono essere aggiornati via Prisma
     const { id, createdAt, updatedAt, ...data } = body;
     const info = await db.footerInfo.upsert({
       where: { id: id || 'default' },
-      update: data,
+      update: { ...data, updatedAt: new Date() },
       create: { id: 'default', ...data },
     });
     return NextResponse.json(info);
   } catch (error) {
-    console.error('FooterInfo PUT error:', error);
+    console.error('[footer-info] PUT error:', error);
     return NextResponse.json(
-      { error: 'Errore nell\'aggiornamento' },
+      { error: "Errore nell'aggiornamento" },
       { status: 500 }
     );
   }

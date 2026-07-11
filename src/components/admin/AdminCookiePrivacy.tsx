@@ -10,7 +10,6 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Save, ShieldCheck, FileText, ScrollText, Cookie, Globe, ExternalLink } from 'lucide-react';
-import { adminFetch } from '@/lib/admin-fetch';
 
 interface CookiePrivacyData {
   id?: string;

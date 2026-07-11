@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Plus, Pencil, Trash2, Upload, Megaphone } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { adminFetch } from '@/lib/admin-fetch';
 
 interface Banner {
   id: string;
@@ -67,7 +66,7 @@ export default function AdminBanners() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminfetch('/api/admin/banners');
+      const res = await fetch('/api/admin/banners');
       if (!res.ok) {
         console.error('[AdminBanners] fetchData error:', res.status);
         toast.error('Errore nel caricamento banner');
@@ -140,7 +139,7 @@ export default function AdminBanners() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await adminfetch('/api/admin/upload-image', { method: 'POST', body: formData });
+      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) return null;
       return data.url as string;

@@ -57,10 +57,10 @@ export default function AdminMenu() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-            const [catRes, artRes, allRes] = await Promise.all([
-        adminfetch('/api/admin/categorie'),
-        adminfetch('/api/admin/articoli'),
-        adminfetch('/api/admin/allergeni'),
+      const [catRes, artRes, allRes] = await Promise.all([
+        fetch('/api/admin/categorie'),
+        fetch('/api/admin/articoli'),
+        fetch('/api/admin/allergeni'),
       ]);
       setCategorie(await catRes.json());
       setArticoli(await artRes.json());
@@ -79,7 +79,7 @@ export default function AdminMenu() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-            const res = await adminFetch('/api/admin/upload-image', { method: 'POST', body: formData });
+      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error); return null; }
       return data.url as string;
