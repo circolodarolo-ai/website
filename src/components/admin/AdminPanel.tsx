@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,8 @@ export default function AdminPanel() {
   // ── GLOBAL FETCH INTERCEPTOR ──
   // Patches window.fetch to automatically inject the JWT Authorization header
   // for ALL /api/admin/* requests (except login). This fixes ALL admin tabs at once.
-  useEffect(() => {
+  // Uses useLayoutEffect so the interceptor is installed BEFORE child useEffects run.
+  useLayoutEffect(() => {
     if (!open || !token) return;
 
     const originalFetch = window.fetch;

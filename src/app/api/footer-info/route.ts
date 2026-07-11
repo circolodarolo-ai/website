@@ -11,6 +11,7 @@ export async function GET() {
     }
     return NextResponse.json(info);
   } catch (error) {
+    console.error('FooterInfo GET error:', error);
     return NextResponse.json(
       { error: 'Errore nel recupero del footer' },
       { status: 500 }
@@ -21,13 +22,16 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
+    // Strip reserved fields that cannot be updated
+    const { id, createdAt, updatedAt, ...data } = body;
     const info = await db.footerInfo.upsert({
-      where: { id: body.id || 'default' },
-      update: body,
-      create: { id: 'default', ...body },
+      where: { id: id || 'default' },
+      update: data,
+      create: { id: 'default', ...data },
     });
     return NextResponse.json(info);
   } catch (error) {
+    console.error('FooterInfo PUT error:', error);
     return NextResponse.json(
       { error: 'Errore nell\'aggiornamento' },
       { status: 500 }
