@@ -7,14 +7,21 @@ export async function GET() {
     const existing = await db.user.findFirst({ where: { email: 'admin@circolodarolo.it' } });
     if (existing) return NextResponse.json({ message: 'Admin already exists' });
 
+    const userId = crypto.randomUUID();
+
     const user = await db.user.create({
       data: {
+        id: userId,
         email: 'admin@circolodarolo.it',
         nome: 'Admin',
         cognome: 'Circolo',
         password: hashSync('admin', 10),
         ruolo: 'superadmin',
+        updatedAt: new Date(),
         Permission: { create: {
+          id: crypto.randomUUID(),
+          userId: userId,
+          updatedAt: new Date(),
           puoGestireMenu: true, puoGestireFooter: true, puoGestireTemi: true,
           puoGestirePrenotazioni: true, puoGestireDatiAzienda: true, puoGestireProfili: true,
           puoGestireAnalytics: true, puoGestireSito: true, puoGestireEventi: true,
