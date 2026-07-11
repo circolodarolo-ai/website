@@ -20,7 +20,6 @@ import AdminUsers from './AdminUsers';
 import AdminAnalytics from './AdminAnalytics';
 import AdminBanners from './AdminBanners';
 import AdminMultilingua from './AdminMultilingua';
-import { adminFetch } from '@/lib/admin-fetch';
 
 type Section = 'menu' | 'eventi' | 'temi' | 'site-info' | 'footer' | 'company-data' | 'cookie-privacy' | 'prenotazioni' | 'users' | 'analytics' | 'banners' | 'multilingua';
 
@@ -68,7 +67,7 @@ export default function AdminPanel() {
 
   const fetchMe = useCallback(async (t: string) => {
     try {
-      const res = await adminFetch('/api/admin/me', {
+      const res = await fetch('/api/admin/me', {
         headers: { Authorization: `Bearer ${t}` },
       });
       if (!res.ok) {

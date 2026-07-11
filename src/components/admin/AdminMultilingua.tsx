@@ -7,7 +7,6 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { adminFetch } from '@/lib/admin-fetch';
 
 interface I18nSettings {
   id: string;
@@ -40,7 +39,7 @@ export default function AdminMultilingua() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await adminFetch('/api/admin/i18n');
+      const res = await fetch('/api/admin/i18n');
       if (res.ok) {
         const data = await res.json();
         setSettings(data.settings);
@@ -73,7 +72,7 @@ export default function AdminMultilingua() {
     setSettings(updated);
     setSaving(true);
     try {
-      const res = await adminFetch('/api/admin/i18n', {
+      const res = await fetch('/api/admin/i18n', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
@@ -96,7 +95,7 @@ export default function AdminMultilingua() {
   const handleTranslateAll = async (locale: string) => {
     setTranslating(locale);
     try {
-      const res = await adminFetch('/api/admin/i18n', {
+      const res = await fetch('/api/admin/i18n', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'translate-all', locale }),
@@ -118,7 +117,7 @@ export default function AdminMultilingua() {
   const handleClearCache = async () => {
     setClearing(true);
     try {
-      const res = await adminFetch('/api/admin/i18n', {
+      const res = await fetch('/api/admin/i18n', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'clear-cache' }),

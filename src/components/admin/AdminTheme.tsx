@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Plus, Trash2, Upload, Save, ImageIcon, Check, ChevronDown, Search, Clock, MapPin, Euro } from 'lucide-react';
-import { adminFetch } from '@/lib/admin-fetch';
 
 // ── Font Configuration ──
 const FONT_LIST = [
@@ -188,7 +187,7 @@ export default function AdminTheme() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await adminFetch('/api/admin/upload-image', { method: 'POST', body: formData });
+      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error); return null; }
       return data.url as string;
@@ -200,7 +199,7 @@ export default function AdminTheme() {
   const saveImage = async () => {
     if (!imgForm.url) { toast.error('URL immagine obbligatorio'); return; }
     try {
-      const res = await adminFetch('/api/admin/images', {
+      const res = await fetch('/api/admin/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...imgForm, sezione: selectedSection }),

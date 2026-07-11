@@ -30,7 +30,7 @@ export default function AdminCompanyData() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminadminadminFetch('/api/admin/company-data');
+      const res = await adminadminfetch('/api/admin/company-data');
       const json = await res.json();
       setData({ ...defaults, ...json });
     } catch {
@@ -44,7 +44,7 @@ export default function AdminCompanyData() {
   const save = async () => {
     setSaving(true);
     try {
-      const res = await adminadminadminFetch('/api/admin/company-data', {
+      const res = await adminadminfetch('/api/admin/company-data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

@@ -90,7 +90,7 @@ export default function AdminCookiePrivacy() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminFetch('/api/admin/company-data');
+      const res = await fetch('/api/admin/company-data');
       const json = await res.json();
       setData({ ...defaults, ...json });
     } catch {
@@ -104,7 +104,7 @@ export default function AdminCookiePrivacy() {
   const save = async (updates: Partial<CookiePrivacyData>) => {
     setSaving(true);
     try {
-      const res = await adminFetch('/api/admin/company-data', {
+      const res = await fetch('/api/admin/company-data', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, ...updates }),

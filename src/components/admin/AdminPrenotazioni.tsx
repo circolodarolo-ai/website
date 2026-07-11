@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Trash2, CalendarDays, Users, Clock, CheckCircle, XCircle, AlertCircle, Settings2, RefreshCw } from 'lucide-react';
-import { adminFetch } from '@/lib/admin-fetch';
 
 interface Reservation {
   id: string; nome: string; cognome: string; email: string; telefono: string;
@@ -46,7 +45,7 @@ export default function AdminPrenotazioni() {
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await adminadminadminFetch('/api/admin/prenotazioni');
+      const res = await adminadminfetch('/api/admin/prenotazioni');
       const data = await res.json();
       setPrenotazioni(Array.isArray(data) ? data : []);
       lastFetchTime.current = new Date();
@@ -121,7 +120,7 @@ export default function AdminPrenotazioni() {
     // Trova la prenotazione corrente per prendere il telefono
     const prenotazione = prenotazioni.find(p => p.id === id);
     try {
-      const res = await adminadminadminFetch('/api/admin/prenotazioni', {
+      const res = await adminadminfetch('/api/admin/prenotazioni', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, stato }),

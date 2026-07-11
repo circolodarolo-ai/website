@@ -9,7 +9,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Save } from 'lucide-react';
-import { adminFetch } from '@/lib/admin-fetch';
 
 interface SiteInfoData {
   id: string; nomeLocale: string; telefono: string; email: string; prenotazioniAttive: boolean;
