@@ -47,8 +47,7 @@ export default function AdminPrenotazioni() {
     if (!silent) setLoading(true);
     try {
       const res = await fetch('/api/admin/prenotazioni');
-      const data = await res.json();
-      setPrenotazioni(Array.isArray(data) ? data : []);
+      if (res.ok) { const data = await res.json(); setPrenotazioni(Array.isArray(data) ? data : []); } else { setPrenotazioni([]); }
       lastFetchTimeRef.current = new Date();
       setLastFetchDisplay(new Date().toLocaleTimeString('it-IT'));
     } catch {

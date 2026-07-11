@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -56,15 +56,12 @@ export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState<Section>('menu');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const tokenRef = useRef<string | null>(null);
-
-  // Keep tokenRef in sync with token state
-  useEffect(() => { tokenRef.current = token; }, [token]);
-
   // ── GLOBAL FETCH INTERCEPTOR ──
   // Patches window.fetch to automatically inject the JWT Authorization header
   // for ALL /api/admin/* requests (except login). This fixes ALL admin tabs at once.
   // Uses useLayoutEffect so the interceptor is installed BEFORE child useEffects run.
+  // IMPORTANT: uses `token` from closure (not a ref) so the value is always current
+  // when the effect re-runs after setToken/setOpen.
   useLayoutEffect(() => {
     if (!open || !token) return;
 
@@ -77,12 +74,12 @@ export default function AdminPanel() {
           : input.url;
 
       // Auto-inject token for all /api/admin/ routes except login
-      if (url.startsWith('/api/admin/') && !url.startsWith('/api/admin/login') && tokenRef.current) {
+      if (url.startsWith('/api/admin/') && !url.startsWith('/api/admin/login')) {
         return originalFetch.call(this, input, {
           ...init,
           headers: {
             ...(init?.headers || {}),
-            Authorization: `Bearer ${tokenRef.current}`,
+            Authorization: `Bearer ${token}`,
           },
         });
       }

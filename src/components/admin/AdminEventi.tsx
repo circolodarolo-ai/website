@@ -52,7 +52,7 @@ export default function AdminEventi() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/eventi');
-      setEventi(await res.json());
+      if (res.ok) { const data = await res.json(); setEventi(Array.isArray(data) ? data : []); } else { setEventi([]); }
     } catch {
       toast.error('Errore nel caricamento');
     }
@@ -238,7 +238,7 @@ export default function AdminEventi() {
 
       {/* ─── Dialog ─── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl flex flex-col max-h-[85vh]">
+        <DialogContent aria-describedby={undefined} className="max-w-2xl flex flex-col max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>{editing ? 'Modifica Evento' : 'Nuovo Evento'}</DialogTitle>
           </DialogHeader>

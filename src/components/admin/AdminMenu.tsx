@@ -62,9 +62,12 @@ export default function AdminMenu() {
         fetch('/api/admin/articoli'),
         fetch('/api/admin/allergeni'),
       ]);
-      setCategorie(await catRes.json());
-      setArticoli(await artRes.json());
-      setAllergeni(await allRes.json());
+      const catData = catRes.ok ? await catRes.json() : [];
+      const artData = artRes.ok ? await artRes.json() : [];
+      const allData = allRes.ok ? await allRes.json() : [];
+      setCategorie(Array.isArray(catData) ? catData : []);
+      setArticoli(Array.isArray(artData) ? artData : []);
+      setAllergeni(Array.isArray(allData) ? allData : []);
     } catch {
       toast.error('Errore nel caricamento dati');
     }
@@ -437,7 +440,7 @@ export default function AdminMenu() {
 
       {/* ─── Articolo Dialog ─── */}
       <Dialog open={artDialogOpen} onOpenChange={setArtDialogOpen}>
-        <DialogContent className="max-w-2xl flex flex-col max-h-[85vh]">
+        <DialogContent aria-describedby={undefined} className="max-w-2xl flex flex-col max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>{editingArt ? 'Modifica Articolo' : 'Nuovo Articolo'}</DialogTitle>
           </DialogHeader>

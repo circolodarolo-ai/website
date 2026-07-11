@@ -206,7 +206,7 @@ export default function AdminBanners() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Modifica Banner' : 'Nuovo Banner'}</DialogTitle>
           </DialogHeader>
