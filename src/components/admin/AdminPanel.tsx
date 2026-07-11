@@ -228,6 +228,9 @@ export default function AdminPanel() {
 
       {/* Full-Page Overlay */}
       {open && (
+        <>
+        {/* Force all Radix portals (Dialog, Popover, Select, etc.) above the admin panel z-[60] */}
+        <style>{`[data-radix-portal]{z-index:9999!important}`}</style>
         <div className="fixed inset-0 z-[60] bg-black/50 flex">
           {/* Mobile Header */}
           <div className="lg:hidden fixed top-0 left-0 right-0 z-[63] bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
@@ -343,6 +346,7 @@ export default function AdminPanel() {
             </div>
           </div>
         </div>
+        </>
       )}
     </>
   );
