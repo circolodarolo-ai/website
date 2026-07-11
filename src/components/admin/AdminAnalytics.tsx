@@ -238,11 +238,6 @@ export default function AdminAnalytics() {
     catch { return d; }
   };
 
-  // --- Loading skeleton ---
-  const SkeletonCard = () => (
-    <Card><CardContent className="p-6"><div className="h-20 bg-gray-100 rounded animate-pulse" /></CardContent></Card>
-  );
-
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -841,6 +836,12 @@ export default function AdminAnalytics() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <Card><CardContent className="p-6"><div className="h-20 bg-gray-100 rounded animate-pulse" /></CardContent></Card>
   );
 }
 
