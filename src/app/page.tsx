@@ -6,7 +6,7 @@ import EventiSection from '@/components/restaurant/EventiSection';
 import ReservationDialog from '@/components/restaurant/ReservationDialog';
 import Footer from '@/components/restaurant/Footer';
 import SocialSidebar from '@/components/restaurant/SocialSidebar';
-import AdminPanel from '@/components/admin/AdminPanel';
+import AdminPanelLoader from '@/components/admin/AdminPanelLoader';
 
 export default function Home() {
   return (
@@ -21,7 +21,7 @@ export default function Home() {
       </main>
       <Footer />
       <SocialSidebar />
-      <AdminPanel />
+      <AdminPanelLoader />
     </div>
   );
 }

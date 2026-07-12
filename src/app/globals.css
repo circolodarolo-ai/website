@@ -76,30 +76,58 @@
 }
 
 /* ── Dynamic Color Derived Variables ── */
+/* Fallbacks first (for browsers without color-mix support), then overridden by color-mix */
 :root {
-  --primary-light: color-mix(in srgb, var(--primary) 30%, white);
-  --primary-lighter: color-mix(in srgb, var(--primary) 12%, white);
-  --primary-dark: color-mix(in srgb, var(--primary) 75%, black);
-  --primary-darker: color-mix(in srgb, var(--primary) 90%, black);
-  --primary-50: color-mix(in srgb, var(--primary) 8%, white);
-  --primary-100: color-mix(in srgb, var(--primary) 15%, white);
-  --primary-200: color-mix(in srgb, var(--primary) 25%, white);
-  --primary-700: color-mix(in srgb, var(--primary) 70%, black);
-  --primary-800: color-mix(in srgb, var(--primary) 80%, black);
-  --primary-900: color-mix(in srgb, var(--primary) 90%, black);
+  --primary-light: #fde8e8;
+  --primary-lighter: #fef5f5;
+  --primary-dark: #7f2d0c;
+  --primary-darker: #4a1a07;
+  --primary-50: #fff7ed;
+  --primary-100: #ffedd5;
+  --primary-200: #fed7aa;
+  --primary-700: #9a3412;
+  --primary-800: #7c2d12;
+  --primary-900: #431407;
 
-  /* Secondary derived */
-  --secondary-light: color-mix(in srgb, var(--secondary-custom) 30%, white);
-  --secondary-lighter: color-mix(in srgb, var(--secondary-custom) 12%, white);
-  --secondary-dark: color-mix(in srgb, var(--secondary-custom) 75%, black);
-  --secondary-50: color-mix(in srgb, var(--secondary-custom) 8%, white);
-  --secondary-100: color-mix(in srgb, var(--secondary-custom) 15%, white);
-  --secondary-200: color-mix(in srgb, var(--secondary-custom) 25%, white);
-  --secondary-700: color-mix(in srgb, var(--secondary-custom) 70%, black);
-  --secondary-800: color-mix(in srgb, var(--secondary-custom) 80%, black);
-  --secondary-900: color-mix(in srgb, var(--secondary-custom) 90%, black);
+  --secondary-light: #ccfbf1;
+  --secondary-lighter: #f0fdfa;
+  --secondary-dark: #064e3b;
+  --secondary-50: #f0fdfa;
+  --secondary-100: #ccfbf1;
+  --secondary-200: #99f6e4;
+  --secondary-700: #0f766e;
+  --secondary-800: #115e59;
+  --secondary-900: #134e4a;
 
-  /* Footer derived */
-  --footer-bg-light: color-mix(in srgb, var(--footer-bg) 85%, white);
-  --footer-text-muted: color-mix(in srgb, var(--footer-text) 60%, var(--footer-bg));
+  --footer-bg-light: #1f2937;
+  --footer-text-muted: #9ca3af;
+}
+
+/* Override with color-mix when supported (modern browsers) */
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  :root {
+    --primary-light: color-mix(in srgb, var(--primary) 30%, white);
+    --primary-lighter: color-mix(in srgb, var(--primary) 12%, white);
+    --primary-dark: color-mix(in srgb, var(--primary) 75%, black);
+    --primary-darker: color-mix(in srgb, var(--primary) 90%, black);
+    --primary-50: color-mix(in srgb, var(--primary) 8%, white);
+    --primary-100: color-mix(in srgb, var(--primary) 15%, white);
+    --primary-200: color-mix(in srgb, var(--primary) 25%, white);
+    --primary-700: color-mix(in srgb, var(--primary) 70%, black);
+    --primary-800: color-mix(in srgb, var(--primary) 80%, black);
+    --primary-900: color-mix(in srgb, var(--primary) 90%, black);
+
+    --secondary-light: color-mix(in srgb, var(--secondary-custom) 30%, white);
+    --secondary-lighter: color-mix(in srgb, var(--secondary-custom) 12%, white);
+    --secondary-dark: color-mix(in srgb, var(--secondary-custom) 75%, black);
+    --secondary-50: color-mix(in srgb, var(--secondary-custom) 8%, white);
+    --secondary-100: color-mix(in srgb, var(--secondary-custom) 15%, white);
+    --secondary-200: color-mix(in srgb, var(--secondary-custom) 25%, white);
+    --secondary-700: color-mix(in srgb, var(--secondary-custom) 70%, black);
+    --secondary-800: color-mix(in srgb, var(--secondary-custom) 80%, black);
+    --secondary-900: color-mix(in srgb, var(--secondary-custom) 90%, black);
+
+    --footer-bg-light: color-mix(in srgb, var(--footer-bg) 85%, white);
+    --footer-text-muted: color-mix(in srgb, var(--footer-text) 60%, var(--footer-bg));
+  }
 }

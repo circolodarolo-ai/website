@@ -160,6 +160,9 @@ export default async function RootLayout({
                 try { return JSON.parse(localStorage.getItem('cookie-consent') || 'null'); } catch(e) { return null; }
               })();
               window.__adSenseId = ${JSON.stringify(adSenseId)};
+              if (typeof window !== 'undefined' && !window._origFetch) {
+                window._origFetch = window.fetch;
+              }
             `,
           }}
         />

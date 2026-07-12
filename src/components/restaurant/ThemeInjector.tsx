@@ -2,6 +2,21 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+// Fallback color manipulation for browsers without color-mix()
+function parseHex(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function toHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+}
+function darkenColor(hex: string, amount: number): string {
+  try { const [r, g, b] = parseHex(hex); return toHex(r * (1 - amount), g * (1 - amount), b * (1 - amount)); } catch { return hex; }
+}
+function lightenColor(hex: string, amount: number): string {
+  try { const [r, g, b] = parseHex(hex); return toHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount); } catch { return hex; }
+}
+
 interface SiteTheme {
   primaryColor: string;
   primaryForeground: string;
@@ -56,13 +71,24 @@ export default function ThemeInjector({ children }: { children: React.ReactNode 
   const css = `
     :root {
       --site-color: ${theme.primaryColor};
-      --site-color-hover: color-mix(in srgb, ${theme.primaryColor} 78%, black);
-      --site-color-soft: color-mix(in srgb, ${theme.primaryColor} 90%, black);
-      --site-color-light: color-mix(in srgb, ${theme.primaryColor} 8%, white);
-      --site-color-lighter: color-mix(in srgb, ${theme.primaryColor} 15%, white);
-      --site-color-border: color-mix(in srgb, ${theme.primaryColor} 25%, white);
+      --site-color-hover: ${darkenColor(theme.primaryColor, 0.22)};
+      --site-color-soft: ${darkenColor(theme.primaryColor, 0.10)};
+      --site-color-light: ${lightenColor(theme.primaryColor, 0.92)};
+      --site-color-lighter: ${lightenColor(theme.primaryColor, 0.85)};
+      --site-color-border: ${lightenColor(theme.primaryColor, 0.75)};
       ${headingFamily ? `--font-heading: ${headingFamily};` : ''}
       ${bodyFamily ? `--font-body: ${bodyFamily};` : ''}
+    }
+
+    /* Modern browser overrides using color-mix */
+    @supports (color: color-mix(in srgb, red 50%, blue)) {
+      :root {
+        --site-color-hover: color-mix(in srgb, ${theme.primaryColor} 78%, black);
+        --site-color-soft: color-mix(in srgb, ${theme.primaryColor} 90%, black);
+        --site-color-light: color-mix(in srgb, ${theme.primaryColor} 8%, white);
+        --site-color-lighter: color-mix(in srgb, ${theme.primaryColor} 15%, white);
+        --site-color-border: color-mix(in srgb, ${theme.primaryColor} 25%, white);
+      }
     }
 
     /* === Color overrides === */
