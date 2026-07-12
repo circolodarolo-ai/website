@@ -100,6 +100,19 @@ export default function AdminPanel() {
     }
   }, []);
 
+  // Listen for the footer ⚙️ button
+  useEffect(() => {
+    const handler = () => {
+      if (token) {
+        setOpen(true);
+      } else {
+        setLoginOpen(true);
+      }
+    };
+    window.addEventListener('open-admin-panel', handler);
+    return () => window.removeEventListener('open-admin-panel', handler);
+  }, [token]);
+
   const fetchMe = useCallback(async (t: string) => {
     try {
       const res = await fetch('/api/admin/me', {

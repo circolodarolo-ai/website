@@ -14,7 +14,6 @@ import Footer from '@/components/restaurant/Footer';
 import ReservationDialog from '@/components/restaurant/ReservationDialog';
 import BannerContainer from '@/components/restaurant/BannerContainer';
 import SocialSidebar from '@/components/restaurant/SocialSidebar';
-import AdminPanel from '@/components/admin/AdminPanel';
 
 interface Evento {
   id: string;
@@ -253,7 +252,6 @@ export default function EventiPage() {
       </main>
       <Footer />
       <SocialSidebar />
-      <AdminPanel />
     </div>
   );
 }

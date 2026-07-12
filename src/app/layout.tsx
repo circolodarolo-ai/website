@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { db } from '@/lib/db';
 
 import CookieBanner from '@/components/restaurant/CookieBanner';
+import AdminPanel from '@/components/admin/AdminPanel';
 import Providers from '@/components/Providers';
 import './globals.css';
 
@@ -164,6 +165,7 @@ export default async function RootLayout({
       <body className="antialiased bg-white text-foreground" suppressHydrationWarning>
         <Providers>
           {children}
+          <AdminPanel />
           <CookieBanner />
         </Providers>
       </body>
