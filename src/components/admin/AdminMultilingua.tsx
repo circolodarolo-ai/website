@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Globe, RefreshCw, Trash2, Loader2, CheckCircle2 } from 'lucide-react';
+import { Globe, RefreshCw, Trash2, Loader2, CheckCircle2, AlertCircle, Languages } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,26 @@ const LANGUAGES = [
   { key: 'es' as const, label: 'Spagnolo', flag: '🇪🇸', nativeLabel: 'Español' },
 ];
 
+// SiteInfo fields that the admin can edit and that need translation
+const TRANSLATABLE_FIELDS = [
+  { field: 'slogan', label: 'Badge Hero' },
+  { field: 'heroTitle', label: 'Titolo Hero' },
+  { field: 'heroSubtitle', label: 'Sottotitolo Hero' },
+  { field: 'chiSiamoSubtitle', label: 'Sottotitolo Chi Siamo' },
+  { field: 'chiSiamoTitolo', label: 'Titolo Chi Siamo' },
+  { field: 'chiSiamoTesto', label: 'Testo Chi Siamo' },
+  { field: 'valore1Titolo', label: 'Carta 1 Titolo' },
+  { field: 'valore1Desc', label: 'Carta 1 Descrizione' },
+  { field: 'valore2Titolo', label: 'Carta 2 Titolo' },
+  { field: 'valore2Desc', label: 'Carta 2 Descrizione' },
+  { field: 'valore3Titolo', label: 'Carta 3 Titolo' },
+  { field: 'valore3Desc', label: 'Carta 3 Descrizione' },
+  { field: 'valore4Titolo', label: 'Carta 4 Titolo' },
+  { field: 'valore4Desc', label: 'Carta 4 Descrizione' },
+  { field: 'specialitaTitle', label: 'Titolo Specialità' },
+  { field: 'specialitaSubtitle', label: 'Sottotitolo Specialità' },
+];
+
 export default function AdminMultilingua() {
   const [settings, setSettings] = useState<I18nSettings | null>(null);
   const [stats, setStats] = useState<TranslationStats>({ total: 0, byLocale: {} });
@@ -36,14 +56,29 @@ export default function AdminMultilingua() {
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [dbTexts, setDbTexts] = useState<Record<string, string>>({});
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/i18n');
-      if (res.ok) {
-        const data = await res.json();
+      const [i18nRes, siteRes] = await Promise.all([
+        fetch('/api/admin/i18n'),
+        fetch('/api/site-info'),
+      ]);
+      if (i18nRes.ok) {
+        const data = await i18nRes.json();
         setSettings(data.settings);
         setStats(data.stats || { total: 0, byLocale: {} });
+      }
+      if (siteRes.ok) {
+        const siteInfo = await siteRes.json();
+        const texts: Record<string, string> = {};
+        for (const f of TRANSLATABLE_FIELDS) {
+          const val = siteInfo[f.field];
+          if (val && typeof val === 'string' && val.trim()) {
+            texts[f.field] = val;
+          }
+        }
+        setDbTexts(texts);
       }
     } catch (err) {
       console.error(err);
@@ -61,7 +96,6 @@ export default function AdminMultilingua() {
     const newValue = !settings[field];
     const updated = { ...settings, [field]: newValue };
 
-    // Se si disattiva il multilingua, disattiva anche tutte le lingue
     if (field === 'multilinguaAttivo' && !newValue) {
       updated.enAttivo = false;
       updated.frAttivo = false;
@@ -82,11 +116,11 @@ export default function AdminMultilingua() {
         fetchSettings();
       } else {
         toast.error('Errore nel salvataggio');
-        setSettings(settings); // rollback
+        setSettings(settings);
       }
     } catch {
       toast.error('Errore di connessione');
-      setSettings(settings); // rollback
+      setSettings(settings);
     } finally {
       setSaving(false);
     }
@@ -102,7 +136,7 @@ export default function AdminMultilingua() {
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(`Traduzione completata: ${data.result.translated} testi tradotti, ${data.result.errors} errori`);
+        toast.success(`${data.result.translated} testi tradotti, ${data.result.errors} errori`);
         fetchSettings();
       } else {
         toast.error('Errore nella traduzione');
@@ -124,7 +158,7 @@ export default function AdminMultilingua() {
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(`Cache cancellata: ${data.deleted} traduzioni rimosse`);
+        toast.success(`${data.deleted} traduzioni rimosse`);
         fetchSettings();
       }
     } catch {
@@ -133,6 +167,9 @@ export default function AdminMultilingua() {
       setClearing(false);
     }
   };
+
+  const activeLocales = LANGUAGES.filter(l => settings?.[`${l.key}Attivo` as keyof I18nSettings]);
+  const isTranslating = translating !== null;
 
   if (loading) {
     return (
@@ -155,7 +192,7 @@ export default function AdminMultilingua() {
           Multilingua
         </h2>
         <p className="text-gray-500 mt-1">
-          Attiva il sito multilingua per i tuoi visitatori. Le traduzioni vengono generate automaticamente e messe in cache.
+          Gestisci le lingue disponibili sul sito. Le traduzioni dei testi personalizzati vengono generate automaticamente.
         </p>
       </div>
 
@@ -184,14 +221,13 @@ export default function AdminMultilingua() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Lingue disponibili</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Italiano sempre attivo */}
-          <div className="flex items-center justify-between py-2">
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between py-1">
             <div className="flex items-center gap-3">
               <span className="text-xl">🇮🇹</span>
               <div>
                 <p className="font-medium">Italiano</p>
-                <p className="text-sm text-gray-500">Lingua base (sempre attiva)</p>
+                <p className="text-xs text-gray-400">Lingua base — sempre attiva</p>
               </div>
             </div>
             <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -201,12 +237,12 @@ export default function AdminMultilingua() {
 
           {LANGUAGES.map((lang) => (
             <div key={lang.key}>
-              <div className="flex items-center justify-between py-2">
+              <div className="flex items-center justify-between py-1">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{lang.flag}</span>
                   <div>
                     <p className="font-medium">{lang.label}</p>
-                    <p className="text-sm text-gray-500">{lang.nativeLabel}</p>
+                    <p className="text-xs text-gray-400">{lang.nativeLabel}</p>
                   </div>
                 </div>
                 <Switch
@@ -215,33 +251,74 @@ export default function AdminMultilingua() {
                   disabled={saving || !settings.multilinguaAttivo}
                 />
               </div>
-              {settings[`${lang.key}Attivo` as keyof I18nSettings] && (
-                <div className="ml-12 mt-1 flex items-center gap-2">
-                  <span className="text-xs text-gray-400">
-                    {stats.byLocale[lang.key] || 0} testi in cache
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs"
-                    onClick={() => handleTranslateAll(lang.key)}
-                    disabled={translating === lang.key}
-                  >
-                    {translating === lang.key ? (
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    ) : (
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                    )}
-                    Traduci tutto
-                  </Button>
-                </div>
-              )}
             </div>
           ))}
         </CardContent>
       </Card>
 
-      {/* Statistiche e azioni cache */}
+      {/* Testi personalizzati + traduzione */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Languages className="h-4 w-4" />
+              Testi personalizzati
+            </CardTitle>
+            {activeLocales.length > 0 && (
+              <div className="flex gap-1.5">
+                {activeLocales.map(lang => (
+                  <Button
+                    key={lang.key}
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => handleTranslateAll(lang.key)}
+                    disabled={isTranslating}
+                  >
+                    {translating === lang.key ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    {lang.flag} Traduci
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(dbTexts).length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">
+              Nessun testo personalizzato trovato. Modifica i testi nei tab Hero e Chi Siamo.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {TRANSLATABLE_FIELDS.filter(f => dbTexts[f.field]).map(f => (
+                <div key={f.field} className="flex items-start gap-3 py-1.5 border-b border-gray-100 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground">{f.label}</p>
+                    <p className="text-sm text-gray-700 truncate">{dbTexts[f.field]}</p>
+                  </div>
+                  {activeLocales.length > 0 ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-1" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-gray-300 shrink-0 mt-1" />
+                  )}
+                </div>
+              ))}
+              {activeLocales.length === 0 && (
+                <p className="text-xs text-amber-600 flex items-center gap-1 mt-2">
+                  <AlertCircle className="h-3 w-3" />
+                  Attiva almeno una lingua per tradurre questi testi
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Statistiche cache */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Cache traduzioni</CardTitle>
@@ -274,8 +351,9 @@ export default function AdminMultilingua() {
           </div>
 
           <p className="text-xs text-gray-400">
-            Le traduzioni vengono generate automaticamente alla prima visita e salvate in cache. 
-            Usa &quot;Traduci tutto&quot; per precaricare tutte le traduzioni di una lingua.
+            Dopo aver modificato i testi in &quot;Hero&quot; o &quot;Chi Siamo&quot;, clicca il pulsante
+            &quot;🇬🇧 Traduci&quot; per aggiornare le traduzioni nella cache.
+            Le modifiche saranno visibili sul sito pubblico.
           </p>
         </CardContent>
       </Card>

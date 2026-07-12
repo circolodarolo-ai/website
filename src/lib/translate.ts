@@ -247,7 +247,10 @@ export async function translateAllContent(locale: Locale): Promise<{ translated:
   try {
     const siteInfo = await db.siteInfo.findFirst();
     if (siteInfo) {
-      const fields = ['nomeLocale', 'slogan', 'chiSiamoTitolo', 'chiSiamoTesto', 'heroTitle', 'heroSubtitle', 'heroCTAText', 'specialitaTitle', 'specialitaSubtitle'];
+      const fields = ['nomeLocale', 'slogan', 'chiSiamoTitolo', 'chiSiamoSubtitle', 'chiSiamoTesto',
+        'heroTitle', 'heroSubtitle', 'heroCTAText', 'specialitaTitle', 'specialitaSubtitle',
+        'valore1Titolo', 'valore1Desc', 'valore2Titolo', 'valore2Desc',
+        'valore3Titolo', 'valore3Desc', 'valore4Titolo', 'valore4Desc'];
       for (const field of fields) {
         const value = siteInfo[field as keyof typeof siteInfo];
         if (typeof value === 'string' && value.trim()) {

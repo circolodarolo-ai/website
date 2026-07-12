@@ -212,7 +212,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState(defaultMessages);
   const [isMultilingual, setIsMultilingual] = useState(false);
   // DB overrides: flat key → value map. Components register their DB content here.
-  // These ALWAYS take priority over both messages and defaultMessages.
+  // Applied ONLY for Italian locale — for other locales, translations are loaded into messages.
   const [dbOverrides, setDbOverrides] = useState<Record<string, string>>({});
 
   const registerOverrides = useCallback((overrides: Record<string, string | null | undefined>) => {
@@ -229,6 +229,24 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // DB keys that may be overridden and need translation for non-Italian locales
+  const DB_OVERRIDE_KEYS = [
+    { key: 'hero.defaultTitle', field: 'heroTitle' },
+    { key: 'hero.defaultSubtitle', field: 'heroSubtitle' },
+    { key: 'hero.badge', field: 'slogan' },
+    { key: 'chiSiamo.subtitle', field: 'chiSiamoSubtitle' },
+    { key: 'chiSiamo.defaultTitle', field: 'chiSiamoTitolo' },
+    { key: 'chiSiamo.defaultText', field: 'chiSiamoTesto' },
+    { key: 'chiSiamo.valore1Titolo', field: 'valore1Titolo' },
+    { key: 'chiSiamo.valore1Desc', field: 'valore1Desc' },
+    { key: 'chiSiamo.valore2Titolo', field: 'valore2Titolo' },
+    { key: 'chiSiamo.valore2Desc', field: 'valore2Desc' },
+    { key: 'chiSiamo.valore3Titolo', field: 'valore3Titolo' },
+    { key: 'chiSiamo.valore3Desc', field: 'valore3Desc' },
+    { key: 'chiSiamo.valore4Titolo', field: 'valore4Titolo' },
+    { key: 'chiSiamo.valore4Desc', field: 'valore4Desc' },
+  ];
+
   const loadMessages = useCallback(async (loc: Locale) => {
     if (loc === 'it') {
       setMessages(defaultMessages);
@@ -239,6 +257,34 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (Object.keys(data).length > 0) {
+          // Fetch DB-overridden texts and translate them for this locale
+          try {
+            const siteRes = await fetch('/api/site-info');
+            if (siteRes.ok) {
+              const siteInfo = await siteRes.json();
+              const textsToTranslate = DB_OVERRIDE_KEYS
+                .map(m => ({ key: m.key, text: siteInfo[m.field] }))
+                .filter(t => t.text && t.text.trim());
+              if (textsToTranslate.length > 0) {
+                const batchRes = await fetch('/api/translate-batch', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ locale: loc, texts: textsToTranslate }),
+                });
+                if (batchRes.ok) {
+                  const { translations } = await batchRes.json();
+                  for (const [key, value] of Object.entries(translations)) {
+                    const original = textsToTranslate.find(t => t.key === key);
+                    // Only merge if translation differs from Italian original
+                    if (original && value !== original.text) {
+                      const [section, field] = key.split('.');
+                      if (data[section]) data[section][field] = value;
+                    }
+                  }
+                }
+              }
+            }
+          } catch { /* ignore — fall back to static JSON */ }
           setMessages(data);
         } else {
           setMessages(defaultMessages);
@@ -285,20 +331,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [loadMessages]);
 
   const t = (key: string, replacements?: Record<string, string>): string => {
-    // Priority: dbOverrides → messages → defaultMessages → key
-    if (dbOverrides[key]) {
-      let text = dbOverrides[key];
-      if (replacements) {
-        Object.entries(replacements).forEach(([k, v]) => {
-          text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-        });
-      }
-      return text;
-    }
-
     const parts = key.split('.');
     let text: string;
-    if (parts.length === 2) {
+
+    if (locale === 'it' && dbOverrides[key]) {
+      // Italian: DB overrides take priority (admin-edited text)
+      text = dbOverrides[key];
+    } else if (parts.length === 2) {
+      // Other locales: use translated messages → defaultMessages → key
       text = messages[parts[0]]?.[parts[1]] || defaultMessages[parts[0]]?.[parts[1]] || key;
     } else {
       text = key;
