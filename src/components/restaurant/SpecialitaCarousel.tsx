@@ -111,134 +111,132 @@ export default function SpecialitaCarousel() {
   if (!loading && articoli.length === 0) return null;
 
   return (
-    <>
-      <section id="specialita" className="py-20 px-4 bg-white overflow-hidden">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-4">
-            <span className="text-[var(--primary)] font-semibold text-sm uppercase tracking-wider">
-              {t('specialita.subtitle')}
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
-              {t('specialita.title')}
-            </h2>
-            <p className="text-gray-500 mt-3 max-w-xl mx-auto">
-              {t('specialita.description')}
-            </p>
-          </div>
+    <section id="specialita" className="py-20 px-4 bg-white overflow-hidden">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-4">
+          <span className="text-[var(--primary)] font-semibold text-sm uppercase tracking-wider">
+            {t('specialita.subtitle')}
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
+            {t('specialita.title')}
+          </h2>
+          <p className="text-gray-500 mt-3 max-w-xl mx-auto">
+            {t('specialita.description')}
+          </p>
         </div>
+      </div>
 
-        {loading ? (
-          <div className="flex justify-center items-center h-[420px]">
-            <Loader2 className="h-8 w-8 text-[var(--primary)] animate-spin" />
-          </div>
-        ) : (
-          <>
-            {/* 3D Carousel */}
-            <div className="sp-carousel-container">
-              <div className="sp-carousel-content">
-                {articoli.map((articolo, index) => {
-                  const itemClass = getItemClass(index);
-                  const gradient = foodGradients[index % foodGradients.length];
-                  const emoji = foodEmojis[articolo.Categoria?.nome] || '🍽️';
+      {loading ? (
+        <div className="flex justify-center items-center h-[420px]">
+          <Loader2 className="h-8 w-8 text-[var(--primary)] animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* 3D Carousel */}
+          <div className="carousel-container">
+            <div className="carousel-content">
+              {articoli.map((articolo, index) => {
+                const itemClass = getItemClass(index);
+                const gradient = foodGradients[index % foodGradients.length];
+                const emoji = foodEmojis[articolo.Categoria?.nome] || '🍽️';
 
-                  return (
-                    <div key={articolo.id} className={`sp-step-item ${itemClass}`}>
-                      <div
-                        className="sp-card-content cursor-pointer"
-                        onClick={() => router.push(`/menu#art-${articolo.id}`)}
-                      >
-                        {/* Image area */}
-                        <div className="sp-card-image" style={{ background: articolo.immagineUrl ? 'transparent' : gradient }}>
-                          {articolo.immagineUrl ? (
-                            <img
-                              src={articolo.immagineUrl}
-                              alt={dbTr.t('specialita.' + articolo.id + '.nome', articolo.nome)}
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-7xl drop-shadow-lg">{emoji}</span>
-                            </div>
+                return (
+                  <div key={articolo.id} className={`step-content-item ${itemClass}`}>
+                    <div
+                      className="card-content cursor-pointer"
+                      onClick={() => router.push(`/menu#art-${articolo.id}`)}
+                    >
+                      {/* Image area */}
+                      <div className="card-image" style={{ background: articolo.immagineUrl ? 'transparent' : gradient }}>
+                        {articolo.immagineUrl ? (
+                          <img
+                            src={articolo.immagineUrl}
+                            alt={dbTr.t('specialita.' + articolo.id + '.nome', articolo.nome)}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-7xl drop-shadow-lg">{emoji}</span>
+                          </div>
+                        )}
+                        {/* Badges */}
+                        <div className="badges">
+                          {articolo.eBestChoice && (
+                            <span className="badge badge-best-choice flex items-center gap-1">
+                              <Star className="h-3 w-3 fill-current" /> {t('specialita.bestChoice')}
+                            </span>
                           )}
-                          {/* Badges */}
-                          <div className="sp-badges">
-                            {articolo.eBestChoice && (
-                              <span className="sp-badge sp-badge-best-choice flex items-center gap-1">
-                                <Star className="h-3 w-3 fill-current" /> {t('specialita.bestChoice')}
+                          {isPromo(articolo) && (
+                            <span className="badge badge-promo">{t('specialita.promo')}</span>
+                          )}
+                        </div>
+                        {/* Category tag */}
+                        <div className="absolute bottom-3 left-3">
+                          <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium rounded-full">
+                            {dbTr.t('specialita.' + articolo.id + '.cat', articolo.Categoria?.nome)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Info */}
+                      <div className="card-info">
+                        <div>
+                          <div className="card-title">{dbTr.t('specialita.' + articolo.id + '.nome', articolo.nome)}</div>
+                          {articolo.descrizione && (
+                            <div className="card-description">{dbTr.t('specialita.' + articolo.id + '.desc', articolo.descrizione)}</div>
+                          )}
+                        </div>
+                        <div className="card-footer">
+                          <div className="card-price">
+                            €{prezzoDaMostrare(articolo).toFixed(2)}
+                            {isPromo(articolo) && (
+                              <span className="text-sm font-normal text-gray-400 line-through ml-2">
+                                €{articolo.prezzo.toFixed(2)}
                               </span>
                             )}
-                            {isPromo(articolo) && (
-                              <span className="sp-badge sp-badge-promo">{t('specialita.promo')}</span>
-                            )}
-                          </div>
-                          {/* Category tag */}
-                          <div className="absolute bottom-3 left-3">
-                            <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium rounded-full">
-                              {dbTr.t('specialita.' + articolo.id + '.cat', articolo.Categoria?.nome)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Info */}
-                        <div className="sp-card-info">
-                          <div>
-                            <div className="sp-card-title">{dbTr.t('specialita.' + articolo.id + '.nome', articolo.nome)}</div>
-                            {articolo.descrizione && (
-                              <div className="sp-card-description">{dbTr.t('specialita.' + articolo.id + '.desc', articolo.descrizione)}</div>
-                            )}
-                          </div>
-                          <div className="sp-card-footer">
-                            <div className="sp-card-price">
-                              €{prezzoDaMostrare(articolo).toFixed(2)}
-                              {isPromo(articolo) && (
-                                <span className="text-sm font-normal text-gray-400 line-through ml-2">
-                                  €{articolo.prezzo.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              {/* Nav buttons */}
-              <button
-                className="sp-nav-btn sp-nav-prev"
-                onClick={goToPrevious}
-                aria-label={t('specialita.precedente')}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                className="sp-nav-btn sp-nav-next"
-                onClick={goToNext}
-                aria-label={t('specialita.successivo')}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Indicators */}
-            <div className="sp-indicators">
-              {articoli.map((_, index) => (
-                <button
-                  key={index}
-                  className={`sp-indicator ${index === activeIndex ? 'sp-indicator-active' : ''}`}
-                  onClick={() => goToSlide(index)}
-                  aria-label={t('specialita.vaiAllaSlide', { n: String(index + 1) })}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </section>
+            {/* Nav buttons */}
+            <button
+              className="nav-button nav-button-prev"
+              onClick={goToPrevious}
+              aria-label={t('specialita.precedente')}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              className="nav-button nav-button-next"
+              onClick={goToNext}
+              aria-label={t('specialita.successivo')}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
 
-      {/* Embedded styles for 3D carousel */}
+          {/* Indicators */}
+          <div className="indicators">
+            {articoli.map((_, index) => (
+              <button
+                key={index}
+                className={`indicator ${index === activeIndex ? 'active' : ''}`}
+                onClick={() => goToSlide(index)}
+                aria-label={t('specialita.vaiAllaSlide', { n: String(index + 1) })}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Embedded styles for 3D carousel — plain <style> to avoid styled-jsx hydration mismatch (#185) */}
       <style dangerouslySetInnerHTML={{ __html: `
-        .sp-carousel-container {
+        .carousel-container {
           position: relative;
           display: flex;
           justify-content: center;
@@ -248,12 +246,12 @@ export default function SpecialitaCarousel() {
           perspective: 1000px;
         }
         @media (max-width: 768px) {
-          .sp-carousel-container { height: 420px; }
+          .carousel-container { height: 420px; }
         }
         @media (max-width: 480px) {
-          .sp-carousel-container { height: 380px; }
+          .carousel-container { height: 380px; }
         }
-        .sp-carousel-content {
+        .carousel-content {
           position: relative;
           width: 100%;
           height: 100%;
@@ -261,7 +259,7 @@ export default function SpecialitaCarousel() {
           justify-content: center;
           align-items: center;
         }
-        .sp-step-item {
+        .step-content-item {
           position: absolute;
           width: 320px;
           height: 450px;
@@ -269,36 +267,36 @@ export default function SpecialitaCarousel() {
           transform-style: preserve-3d;
         }
         @media (max-width: 768px) {
-          .sp-step-item { width: 260px; height: 380px; }
+          .step-content-item { width: 260px; height: 380px; }
         }
         @media (max-width: 480px) {
-          .sp-step-item { width: 220px; height: 340px; }
+          .step-content-item { width: 220px; height: 340px; }
         }
-        .sp-step-item.active {
+        .step-content-item.active {
           z-index: 3;
           transform: translateX(0) scale(1);
           opacity: 1;
         }
-        .sp-step-item.before {
+        .step-content-item.before {
           z-index: 2;
           transform: translateX(-120%) scale(0.8);
           opacity: 0.7;
           filter: blur(2px);
         }
-        .sp-step-item.after {
+        .step-content-item.after {
           z-index: 2;
           transform: translateX(120%) scale(0.8);
           opacity: 0.7;
           filter: blur(2px);
         }
-        .sp-step-item.before-all,
-        .sp-step-item.after-all {
+        .step-content-item.before-all,
+        .step-content-item.after-all {
           z-index: 1;
           transform: translateX(0) scale(0.6);
           opacity: 0;
           filter: blur(4px);
         }
-        .sp-card-content {
+        .card-content {
           width: 100%;
           height: 100%;
           background: white;
@@ -307,16 +305,16 @@ export default function SpecialitaCarousel() {
           box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
           transition: all 0.5s ease;
         }
-        .sp-step-item.active .sp-card-content {
+        .step-content-item.active .card-content {
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
         }
-        .sp-card-image {
+        .card-image {
           position: relative;
           width: 100%;
           height: 60%;
           overflow: hidden;
         }
-        .sp-badges {
+        .badges {
           position: absolute;
           top: 12px;
           left: 12px;
@@ -325,7 +323,7 @@ export default function SpecialitaCarousel() {
           gap: 6px;
           z-index: 2;
         }
-        .sp-badge {
+        .badge {
           padding: 4px 10px;
           border-radius: 20px;
           font-size: 11px;
@@ -334,27 +332,27 @@ export default function SpecialitaCarousel() {
           letter-spacing: 0.5px;
           color: white;
         }
-        .sp-badge-best-choice {
+        .badge-best-choice {
           background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         }
-        .sp-badge-promo {
+        .badge-promo {
           background: var(--primary);
         }
-        .sp-card-info {
+        .card-info {
           padding: 16px;
           height: 40%;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
         }
-        .sp-card-title {
+        .card-title {
           font-size: 1.25rem;
           font-weight: 700;
           color: #1a1a1a;
           margin-bottom: 4px;
           line-height: 1.3;
         }
-        .sp-card-description {
+        .card-description {
           font-size: 0.85rem;
           color: #666;
           line-height: 1.4;
@@ -363,18 +361,18 @@ export default function SpecialitaCarousel() {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
-        .sp-card-footer {
+        .card-footer {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-top: auto;
         }
-        .sp-card-price {
+        .card-price {
           font-size: 1.5rem;
           font-weight: 800;
           color: #059669;
         }
-        .sp-nav-btn {
+        .nav-button {
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
@@ -392,32 +390,32 @@ export default function SpecialitaCarousel() {
           z-index: 10;
           color: #1a1a1a;
         }
-        .sp-nav-btn:hover {
+        .nav-button:hover {
           transform: translateY(-50%) scale(1.1);
           box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
         }
-        .sp-nav-btn:active {
+        .nav-button:active {
           transform: translateY(-50%) scale(0.95);
         }
-        .sp-nav-prev { left: 20px; }
-        .sp-nav-next { right: 20px; }
+        .nav-button-prev { left: 20px; }
+        .nav-button-next { right: 20px; }
         @media (max-width: 768px) {
-          .sp-nav-prev { left: 10px; }
-          .sp-nav-next { right: 10px; }
-          .sp-nav-btn { width: 42px; height: 42px; }
+          .nav-button-prev { left: 10px; }
+          .nav-button-next { right: 10px; }
+          .nav-button { width: 42px; height: 42px; }
         }
         @media (max-width: 480px) {
-          .sp-nav-prev { left: 5px; }
-          .sp-nav-next { right: 5px; }
-          .sp-nav-btn { width: 38px; height: 38px; }
+          .nav-button-prev { left: 5px; }
+          .nav-button-next { right: 5px; }
+          .nav-button { width: 38px; height: 38px; }
         }
-        .sp-indicators {
+        .indicators {
           display: flex;
           justify-content: center;
           gap: 10px;
           margin-top: 24px;
         }
-        .sp-indicator {
+        .indicator {
           width: 10px;
           height: 10px;
           border-radius: 50%;
@@ -426,13 +424,13 @@ export default function SpecialitaCarousel() {
           cursor: pointer;
           transition: all 0.3s ease;
         }
-        .sp-indicator:hover { background: #9ca3af; }
-        .sp-indicator-active {
+        .indicator:hover { background: #9ca3af; }
+        .indicator.active {
           width: 30px;
           border-radius: 5px;
           background: var(--primary);
         }
       ` }} />
-    </>
+    </section>
   );
 }

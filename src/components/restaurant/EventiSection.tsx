@@ -152,164 +152,162 @@ export default function EventiSection() {
   if (eventi.length === 0) return null;
 
   return (
-    <>
-      <section id="eventi" className="py-20 px-4 bg-gray-50 overflow-hidden">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-4">
-            <span className="text-[var(--primary)] font-semibold text-sm uppercase tracking-wider">
-              {t('eventiSection.subtitle')}
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
-              {t('eventiSection.title')}
-            </h2>
-            <p className="text-gray-500 mt-3 max-w-xl mx-auto">
-              {t('eventiSection.description')}
-            </p>
-          </div>
+    <section id="eventi" className="py-20 px-4 bg-gray-50 overflow-hidden">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-4">
+          <span className="text-[var(--primary)] font-semibold text-sm uppercase tracking-wider">
+            {t('eventiSection.subtitle')}
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
+            {t('eventiSection.title')}
+          </h2>
+          <p className="text-gray-500 mt-3 max-w-xl mx-auto">
+            {t('eventiSection.description')}
+          </p>
         </div>
+      </div>
 
-        {/* 3D Carousel */}
-        <div className="ev-carousel-container">
-          <div className="ev-carousel-content">
-            {eventi.map((evento, index) => {
-              const itemClass = getItemClass(index);
-              const gradient = eventGradients[index % eventGradients.length];
+      {/* 3D Carousel */}
+      <div className="carousel-container">
+        <div className="carousel-content">
+          {eventi.map((evento, index) => {
+            const itemClass = getItemClass(index);
+            const gradient = eventGradients[index % eventGradients.length];
 
-              return (
-                <div key={evento.id} className={`ev-step-item ${itemClass}`}>
-                  <div className="ev-card-content">
-                    {/* Image area */}
-                    <div className="ev-card-image" style={{ background: evento.immagineUrl ? 'transparent' : gradient }}>
-                      {evento.immagineUrl ? (
-                        <img
-                          src={evento.immagineUrl}
-                          alt={dbTr.t('evento.' + evento.id + '.titolo', evento.titolo)}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Calendar className="h-16 w-16 text-white/40" />
-                        </div>
+            return (
+              <div key={evento.id} className={`step-content-item ${itemClass}`}>
+                <div className="card-content">
+                  {/* Image area */}
+                  <div className="card-image" style={{ background: evento.immagineUrl ? 'transparent' : gradient }}>
+                    {evento.immagineUrl ? (
+                      <img
+                        src={evento.immagineUrl}
+                        alt={dbTr.t('evento.' + evento.id + '.titolo', evento.titolo)}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Calendar className="h-16 w-16 text-white/40" />
+                      </div>
+                    )}
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                    {/* Badges */}
+                    <div className="badges">
+                      {evento.inEvidenza && (
+                        <span className="badge badge-evidenza flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-current" /> {t('eventiSection.inEvidenza')}
+                        </span>
                       )}
-                      {/* Gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                      {/* Badges */}
-                      <div className="ev-badges">
-                        {evento.inEvidenza && (
-                          <span className="ev-badge ev-badge-evidenza flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-current" /> {t('eventiSection.inEvidenza')}
+                      {evento.nuovo && (
+                        <span className="badge badge-nuovo">{t('eventiSection.nuovo')}</span>
+                      )}
+                    </div>
+                    {/* Price badge bottom-right */}
+                    <div className="absolute bottom-3 right-3 z-10">
+                      <span className="px-3 py-1.5 bg-white/95 backdrop-blur-sm text-sm font-bold text-[var(--primary)] rounded-full shadow-sm">
+                        {evento.gratuito ? t('eventiSection.gratuito') : `${evento.prezzo.toFixed(2)}\u20ac`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="card-info">
+                    <div>
+                      {/* Date & Time row */}
+                      <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+                        {evento.ricorrente ? (
+                          <span className="flex items-center gap-1 text-purple-600 font-medium">
+                            <Repeat className="h-3.5 w-3.5" />
+                            {t('eventiSection.ogni', { giorni: formatGiorni(evento.giorniRicorrenza) })}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {formatDate(evento.data)}
                           </span>
                         )}
-                        {evento.nuovo && (
-                          <span className="ev-badge ev-badge-nuovo">{t('eventiSection.nuovo')}</span>
-                        )}
-                      </div>
-                      {/* Price badge bottom-right */}
-                      <div className="absolute bottom-3 right-3 z-10">
-                        <span className="px-3 py-1.5 bg-white/95 backdrop-blur-sm text-sm font-bold text-[var(--primary)] rounded-full shadow-sm">
-                          {evento.gratuito ? t('eventiSection.gratuito') : `${evento.prezzo.toFixed(2)}\u20ac`}
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {evento.oraInizio} - {evento.oraFine}
                         </span>
                       </div>
+                      {/* Title */}
+                      <div className="card-title">{dbTr.t('evento.' + evento.id + '.titolo', evento.titolo)}</div>
+                      {/* Description */}
+                      <div className="card-description">
+                        {evento.descrizioneBreve
+                          ? dbTr.t('evento.' + evento.id + '.descBreve', evento.descrizioneBreve)
+                          : dbTr.t('evento.' + evento.id + '.descrizione', evento.descrizione)
+                        }
+                      </div>
                     </div>
-
-                    {/* Info */}
-                    <div className="ev-card-info">
-                      <div>
-                        {/* Date & Time row */}
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
-                          {evento.ricorrente ? (
-                            <span className="flex items-center gap-1 text-purple-600 font-medium">
-                              <Repeat className="h-3.5 w-3.5" />
-                              {t('eventiSection.ogni', { giorni: formatGiorni(evento.giorniRicorrenza) })}
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5" />
-                              {formatDate(evento.data)}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            {evento.oraInizio} - {evento.oraFine}
-                          </span>
-                        </div>
-                        {/* Title */}
-                        <div className="ev-card-title">{dbTr.t('evento.' + evento.id + '.titolo', evento.titolo)}</div>
-                        {/* Description */}
-                        <div className="ev-card-desc">
-                          {evento.descrizioneBreve
-                            ? dbTr.t('evento.' + evento.id + '.descBreve', evento.descrizioneBreve)
-                            : dbTr.t('evento.' + evento.id + '.descrizione', evento.descrizione)
-                          }
-                        </div>
-                      </div>
-                      <div className="ev-card-footer">
-                        {/* Location if available */}
-                        {evento.location && (
-                          <span className="flex items-center gap-1 text-xs text-gray-400">
-                            <MapPin className="h-3.5 w-3.5" />
-                            {dbTr.t('evento.' + evento.id + '.location', evento.location)}
-                          </span>
-                        )}
-                        {/* Seats remaining */}
-                        {evento.postiDisponibili > 0 && evento.postiDisponibili <= 20 && (
-                          <span className="flex items-center gap-1 text-xs text-orange-600 font-medium">
-                            <Users className="h-3.5 w-3.5" />
-                            {evento.postiDisponibili} {t('eventiSection.postiRimasti')}
-                          </span>
-                        )}
-                      </div>
+                    <div className="card-footer">
+                      {/* Location if available */}
+                      {evento.location && (
+                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {dbTr.t('evento.' + evento.id + '.location', evento.location)}
+                        </span>
+                      )}
+                      {/* Seats remaining */}
+                      {evento.postiDisponibili > 0 && evento.postiDisponibili <= 20 && (
+                        <span className="flex items-center gap-1 text-xs text-orange-600 font-medium">
+                          <Users className="h-3.5 w-3.5" />
+                          {evento.postiDisponibili} {t('eventiSection.postiRimasti')}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
+        </div>
 
-          {/* Nav buttons */}
+        {/* Nav buttons */}
+        <button
+          className="nav-button nav-button-prev"
+          onClick={goToPrevious}
+          aria-label={t('eventiSection.precedente')}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          className="nav-button nav-button-next"
+          onClick={goToNext}
+          aria-label={t('eventiSection.successivo')}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Indicators */}
+      <div className="indicators">
+        {eventi.map((_, index) => (
           <button
-            className="ev-nav-btn ev-nav-prev"
-            onClick={goToPrevious}
-            aria-label={t('eventiSection.precedente')}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            className="ev-nav-btn ev-nav-next"
-            onClick={goToNext}
-            aria-label={t('eventiSection.successivo')}
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
+            key={index}
+            className={`indicator ${index === activeIndex ? 'active' : ''}`}
+            onClick={() => goToSlide(index)}
+            aria-label={t('eventiSection.vaiAllEvento', { n: String(index + 1) })}
+          />
+        ))}
+      </div>
 
-        {/* Indicators */}
-        <div className="ev-indicators">
-          {eventi.map((_, index) => (
-            <button
-              key={index}
-              className={`ev-indicator ${index === activeIndex ? 'ev-indicator-active' : ''}`}
-              onClick={() => goToSlide(index)}
-              aria-label={t('eventiSection.vaiAllEvento', { n: String(index + 1) })}
-            />
-          ))}
-        </div>
+      {/* CTA link */}
+      <div className="text-center mt-8">
+        <Link
+          href="/eventi"
+          className="inline-flex items-center gap-1.5 text-[var(--primary)] hover:opacity-80 font-medium text-sm transition-colors group"
+        >
+          {t('eventiSection.vediTutti')}
+          <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+        </Link>
+      </div>
 
-        {/* CTA link */}
-        <div className="text-center mt-8">
-          <Link
-            href="/eventi"
-            className="inline-flex items-center gap-1.5 text-[var(--primary)] hover:opacity-80 font-medium text-sm transition-colors group"
-          >
-            {t('eventiSection.vediTutti')}
-            <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </div>
-      </section>
-
-      {/* Embedded styles for 3D carousel - events variant */}
+      {/* Embedded styles for 3D carousel — plain <style> to avoid styled-jsx hydration mismatch (#185) */}
       <style dangerouslySetInnerHTML={{ __html: `
-        .ev-carousel-container {
+        .carousel-container {
           position: relative;
           display: flex;
           justify-content: center;
@@ -319,12 +317,12 @@ export default function EventiSection() {
           perspective: 1000px;
         }
         @media (max-width: 768px) {
-          .ev-carousel-container { height: 420px; }
+          .carousel-container { height: 420px; }
         }
         @media (max-width: 480px) {
-          .ev-carousel-container { height: 380px; }
+          .carousel-container { height: 380px; }
         }
-        .ev-carousel-content {
+        .carousel-content {
           position: relative;
           width: 100%;
           height: 100%;
@@ -332,7 +330,7 @@ export default function EventiSection() {
           justify-content: center;
           align-items: center;
         }
-        .ev-step-item {
+        .step-content-item {
           position: absolute;
           width: 320px;
           height: 450px;
@@ -340,36 +338,36 @@ export default function EventiSection() {
           transform-style: preserve-3d;
         }
         @media (max-width: 768px) {
-          .ev-step-item { width: 260px; height: 380px; }
+          .step-content-item { width: 260px; height: 380px; }
         }
         @media (max-width: 480px) {
-          .ev-step-item { width: 220px; height: 340px; }
+          .step-content-item { width: 220px; height: 340px; }
         }
-        .ev-step-item.active {
+        .step-content-item.active {
           z-index: 3;
           transform: translateX(0) scale(1);
           opacity: 1;
         }
-        .ev-step-item.before {
+        .step-content-item.before {
           z-index: 2;
           transform: translateX(-120%) scale(0.8);
           opacity: 0.7;
           filter: blur(2px);
         }
-        .ev-step-item.after {
+        .step-content-item.after {
           z-index: 2;
           transform: translateX(120%) scale(0.8);
           opacity: 0.7;
           filter: blur(2px);
         }
-        .ev-step-item.before-all,
-        .ev-step-item.after-all {
+        .step-content-item.before-all,
+        .step-content-item.after-all {
           z-index: 1;
           transform: translateX(0) scale(0.6);
           opacity: 0;
           filter: blur(4px);
         }
-        .ev-card-content {
+        .card-content {
           width: 100%;
           height: 100%;
           background: white;
@@ -378,16 +376,16 @@ export default function EventiSection() {
           box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
           transition: all 0.5s ease;
         }
-        .ev-step-item.active .ev-card-content {
+        .step-content-item.active .card-content {
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
         }
-        .ev-card-image {
+        .card-image {
           position: relative;
           width: 100%;
           height: 60%;
           overflow: hidden;
         }
-        .ev-badges {
+        .badges {
           position: absolute;
           top: 12px;
           left: 12px;
@@ -396,7 +394,7 @@ export default function EventiSection() {
           gap: 6px;
           z-index: 2;
         }
-        .ev-badge {
+        .badge {
           padding: 4px 10px;
           border-radius: 20px;
           font-size: 11px;
@@ -405,27 +403,27 @@ export default function EventiSection() {
           letter-spacing: 0.5px;
           color: white;
         }
-        .ev-badge-evidenza {
+        .badge-evidenza {
           background: var(--primary);
         }
-        .ev-badge-nuovo {
+        .badge-nuovo {
           background: linear-gradient(135deg, #059669 0%, #10b981 100%);
         }
-        .ev-card-info {
+        .card-info {
           padding: 16px;
           height: 40%;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
         }
-        .ev-card-title {
+        .card-title {
           font-size: 1.25rem;
           font-weight: 700;
           color: #1a1a1a;
           margin-bottom: 4px;
           line-height: 1.3;
         }
-        .ev-card-desc {
+        .card-description {
           font-size: 0.85rem;
           color: #666;
           line-height: 1.4;
@@ -434,13 +432,13 @@ export default function EventiSection() {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
-        .ev-card-footer {
+        .card-footer {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-top: auto;
         }
-        .ev-nav-btn {
+        .nav-button {
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
@@ -458,32 +456,32 @@ export default function EventiSection() {
           z-index: 10;
           color: #1a1a1a;
         }
-        .ev-nav-btn:hover {
+        .nav-button:hover {
           transform: translateY(-50%) scale(1.1);
           box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
         }
-        .ev-nav-btn:active {
+        .nav-button:active {
           transform: translateY(-50%) scale(0.95);
         }
-        .ev-nav-prev { left: 20px; }
-        .ev-nav-next { right: 20px; }
+        .nav-button-prev { left: 20px; }
+        .nav-button-next { right: 20px; }
         @media (max-width: 768px) {
-          .ev-nav-prev { left: 10px; }
-          .ev-nav-next { right: 10px; }
-          .ev-nav-btn { width: 42px; height: 42px; }
+          .nav-button-prev { left: 10px; }
+          .nav-button-next { right: 10px; }
+          .nav-button { width: 42px; height: 42px; }
         }
         @media (max-width: 480px) {
-          .ev-nav-prev { left: 5px; }
-          .ev-nav-next { right: 5px; }
-          .ev-nav-btn { width: 38px; height: 38px; }
+          .nav-button-prev { left: 5px; }
+          .nav-button-next { right: 5px; }
+          .nav-button { width: 38px; height: 38px; }
         }
-        .ev-indicators {
+        .indicators {
           display: flex;
           justify-content: center;
           gap: 10px;
           margin-top: 24px;
         }
-        .ev-indicator {
+        .indicator {
           width: 10px;
           height: 10px;
           border-radius: 50%;
@@ -492,13 +490,13 @@ export default function EventiSection() {
           cursor: pointer;
           transition: all 0.3s ease;
         }
-        .ev-indicator:hover { background: #9ca3af; }
-        .ev-indicator-active {
+        .indicator:hover { background: #9ca3af; }
+        .indicator.active {
           width: 30px;
           border-radius: 5px;
           background: var(--primary);
         }
       ` }} />
-    </>
+    </section>
   );
 }

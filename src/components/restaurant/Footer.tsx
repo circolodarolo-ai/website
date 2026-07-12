@@ -64,11 +64,8 @@ export default function Footer() {
   const dbTr = useDbTranslation();
   const [footerInfo, setFooterInfo] = useState<FooterInfo | null>(null);
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
-  // Year computed in useEffect — avoids hydration mismatch (#185)
-  const [year, setYear] = useState(2025);
 
   useEffect(() => {
-    setYear(new Date().getFullYear());
     Promise.all([
       fetch('/api/footer-info').then((r) => r.json()),
       fetch('/api/site-info').then((r) => r.json()),
@@ -90,6 +87,7 @@ export default function Footer() {
       'footer.orari': footerInfo.orariApertura,
       'footer.giorniChiusuraTesto': footerInfo.giorniChiusura,
     };
+    // Split multi-line hours into individual translatable lines
     if (footerInfo.orariApertura) {
       const lines = footerInfo.orariApertura.split('\n').filter(l => l.trim());
       lines.forEach((line, i) => {
@@ -124,6 +122,7 @@ export default function Footer() {
     footerInfo?.provincia && `(${footerInfo.provincia})`,
   ].filter(Boolean).join(', ');
 
+  // Render opening hours with per-line translation
   const renderOrari = () => {
     if (!footerInfo?.orariApertura) return null;
     const lines = footerInfo.orariApertura.split('\n').filter(l => l.trim());
@@ -137,7 +136,9 @@ export default function Footer() {
   return (
     <footer id="contatti" style={{ backgroundColor: 'var(--footer-bg)', color: 'var(--footer-text)' }}>
       <div className="max-w-6xl mx-auto px-4 py-12">
+        {/* Top: Map left + Content right */}
         <div className="grid md:grid-cols-[280px_1fr] gap-10 items-start">
+          {/* Map - square, left side */}
           {mapSrc && (
             <div className="aspect-square rounded-2xl overflow-hidden border border-white/10 shadow-lg order-first md:order-first">
               <iframe
@@ -154,7 +155,9 @@ export default function Footer() {
             </div>
           )}
 
+          {/* Content columns */}
           <div className="grid sm:grid-cols-2 gap-8">
+            {/* Column 1: Info + Schedule */}
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl font-bold text-white mb-3">
@@ -196,6 +199,7 @@ export default function Footer() {
               )}
             </div>
 
+            {/* Column 2: Social + Delivery */}
             <div className="space-y-6">
               {activeSocial.length > 0 && (
                 <div>
@@ -243,8 +247,8 @@ export default function Footer() {
       {/* Bottom Bar */}
       <div className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p className="text-xs text-white/40" suppressHydrationWarning>
-            &copy; {year} {dbTr.t('footer.nomeLocale', siteInfo?.nomeLocale || 'Il Nostro Ristorante')}. {t('footer.diritti')}
+          <p className="text-xs text-white/40">
+            &copy; {new Date().getFullYear()} {dbTr.t('footer.nomeLocale', siteInfo?.nomeLocale || 'Il Nostro Ristorante')}. {t('footer.diritti')}
           </p>
           <div className="flex items-center gap-4 text-xs text-white/40">
             <Link href="/cookie-policy" className="hover:text-white/70 transition-colors">
@@ -256,16 +260,14 @@ export default function Footer() {
             <Link href="/termini" className="hover:text-white/70 transition-colors">
               {t('footer.termini')}
             </Link>
-            {/* Admin settings trigger — visibile */}
+            {/* Admin settings trigger */}
             <button
-              onClick={() => {
-                try { window.dispatchEvent(new CustomEvent('open-admin-panel')); } catch {}
-              }}
-              className="p-2 rounded-lg hover:bg-white/10 hover:text-white/80 transition-all"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-admin-panel'))}
+              className="p-1.5 text-white/60 hover:text-white transition-colors"
               title="Admin"
-              aria-label="Apri Pannello Admin"
+              aria-label="Admin"
             >
-              <Settings className="h-5 w-5" />
+              <Settings className="h-4 w-4" />
             </button>
           </div>
         </div>

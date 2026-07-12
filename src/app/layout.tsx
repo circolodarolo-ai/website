@@ -95,6 +95,7 @@ export default async function RootLayout({
     // fallback ai default
   }
 
+  // Carica AdSense ID da CompanyData
   try {
     const companyData = await db.companyData.findFirst({
       select: { adSenseId: true },
@@ -131,6 +132,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href={fontsUrl} rel="stylesheet" />
+        {/* JSON-LD Structured Data per il ristorante */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -149,25 +151,6 @@ export default async function RootLayout({
               hasMenu: { '@type': 'Menu', url: `${SITE_URL}/menu` },
               acceptsReservations: true,
             }),
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  window.__cookieConsent = JSON.parse(localStorage.getItem('cookie-consent') || 'null');
-                } catch(e) {
-                  window.__cookieConsent = null;
-                }
-              })();
-              window.__adSenseId = ${JSON.stringify(adSenseId)};
-              try {
-                if (!window._origFetch) {
-                  window._origFetch = window.fetch;
-                }
-              } catch(e) {}
-            `,
           }}
         />
         {adSenseId && (
