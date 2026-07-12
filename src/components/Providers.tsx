@@ -2,6 +2,7 @@
 
 import { I18nProvider } from '@/lib/i18n-context';
 import { useAnalyticsTracking } from '@/hooks/useAnalytics';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 function AnalyticsTracker() {
   useAnalyticsTracking();
@@ -10,9 +11,13 @@ function AnalyticsTracker() {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <I18nProvider>
-      <AnalyticsTracker />
-      {children}
-    </I18nProvider>
+    <ErrorBoundary>
+      <I18nProvider>
+        <AnalyticsTracker />
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+      </I18nProvider>
+    </ErrorBoundary>
   );
 }

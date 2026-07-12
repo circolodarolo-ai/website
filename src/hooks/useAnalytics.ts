@@ -2,20 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// Generate or retrieve anonymous session ID
 function getSessionId(): string {
-  if (typeof window === 'undefined') return '';
-  let sid = sessionStorage.getItem('_analytics_sid');
-  if (!sid) {
-    sid = 'sid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-    sessionStorage.setItem('_analytics_sid', sid);
+  if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return '';
+  try {
+    let sid = sessionStorage.getItem('_analytics_sid');
+    if (!sid) {
+      sid = 'sid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+      sessionStorage.setItem('_analytics_sid', sid);
+    }
+    return sid;
+  } catch {
+    return '';
   }
-  return sid;
 }
 
-// Simple hash for IP (not real IP, just a fingerprint placeholder)
 function fingerprintHash(): string {
   try {
+    if (typeof navigator === 'undefined' || typeof screen === 'undefined') return 'unknown';
     const nav = navigator as Record<string, unknown>;
     const str = [
       nav.language,
@@ -36,9 +39,9 @@ function fingerprintHash(): string {
   }
 }
 
-// Track a single pageview
 function trackPageView(sessionId: string, ipHash: string) {
   try {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
     fetch('/api/analytics-track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -58,70 +61,79 @@ export function useAnalyticsTracking() {
   const tracked = useRef(false);
 
   useEffect(() => {
-    // Always register the consent-change listener FIRST,
-    // even if consent hasn't been given yet.
-    // Previously, the early return prevented the listener from ever being registered.
+    if (typeof window === 'undefined') return;
+
     const sessionId = getSessionId();
     const ipHash = fingerprintHash();
 
     const tryTrack = () => {
-      if (tracked.current) return;
-      const consent = window.__cookieConsent;
-      if (!consent?.analitici) return;
-      tracked.current = true;
-      trackPageView(sessionId, ipHash);
+      try {
+        if (tracked.current) return;
+        const consent = (window as any).__cookieConsent;
+        if (!consent?.analitici) return;
+        tracked.current = true;
+        trackPageView(sessionId, ipHash);
 
-      // Track duration on unload
-      const startTime = Date.now();
-      const handleUnload = () => {
-        const duration = Math.round((Date.now() - startTime) / 1000);
-        if (duration < 2) return;
-        try {
-          const payload = JSON.stringify({
-            sessionId,
-            eventType: 'session_end',
-            pageUrl: window.location.pathname,
-            duration,
-            ipHash,
-          });
-          navigator.sendBeacon('/api/analytics-track', payload);
-        } catch {}
-      };
-      window.addEventListener('beforeunload', handleUnload);
+        const startTime = Date.now();
+        const handleUnload = () => {
+          const duration = Math.round((Date.now() - startTime) / 1000);
+          if (duration < 2) return;
+          try {
+            const payload = JSON.stringify({
+              sessionId,
+              eventType: 'session_end',
+              pageUrl: window.location.pathname,
+              duration,
+              ipHash,
+            });
+            if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+              navigator.sendBeacon('/api/analytics-track', payload);
+            }
+          } catch {}
+        };
+        window.addEventListener('beforeunload', handleUnload);
+      } catch {}
     };
 
-    // Try tracking immediately (consent might already be set from localStorage)
     tryTrack();
 
-    // Listen for consent changes (fires when user accepts cookies)
-    const handleConsentChange = () => {
-      tryTrack();
-    };
-    window.addEventListener('cookie-consent-change', handleConsentChange);
-
-    return () => {
-      window.removeEventListener('cookie-consent-change', handleConsentChange);
-    };
+    const handleConsentChange = () => { tryTrack(); };
+    try {
+      window.addEventListener('cookie-consent-change', handleConsentChange);
+      return () => {
+        try { window.removeEventListener('cookie-consent-change', handleConsentChange); } catch {}
+      };
+    } catch {
+      return;
+    }
   }, []);
 }
 
-// Hook to check if marketing cookies are accepted
 export function useMarketingConsent(): boolean {
   const [consent, setConsent] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const check = () => {
-      const c = window.__cookieConsent;
-      setConsent(c?.marketing === true);
+      try {
+        const c = (window as any).__cookieConsent;
+        setConsent(c?.marketing === true);
+      } catch {}
     };
     check();
 
     const handle = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      setConsent(detail?.marketing === true);
+      try {
+        const detail = (e as CustomEvent).detail;
+        setConsent(detail?.marketing === true);
+      } catch {}
     };
-    window.addEventListener('cookie-consent-change', handle);
-    return () => window.removeEventListener('cookie-consent-change', handle);
+    try {
+      window.addEventListener('cookie-consent-change', handle);
+      return () => { try { window.removeEventListener('cookie-consent-change', handle); } catch {} };
+    } catch {
+      return;
+    }
   }, []);
 
   return consent;

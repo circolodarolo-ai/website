@@ -1,21 +1,53 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ReactNode } from 'react';
+
+// Safely validate a hex color string before parsing
+function isValidHex(hex: string): boolean {
+  return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex);
+}
 
 // Fallback color manipulation for browsers without color-mix()
 function parseHex(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  let h = hex.replace('#', '');
+  // Expand 3-char hex to 6-char
+  if (h.length === 3) {
+    h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  }
+  return [
+    parseInt(h.slice(0, 2), 16) || 0,
+    parseInt(h.slice(2, 4), 16) || 0,
+    parseInt(h.slice(4, 6), 16) || 0,
+  ];
 }
+
 function toHex(r: number, g: number, b: number): string {
-  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  return '#' + [r, g, b]
+    .map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'))
+    .join('');
 }
+
 function darkenColor(hex: string, amount: number): string {
-  try { const [r, g, b] = parseHex(hex); return toHex(r * (1 - amount), g * (1 - amount), b * (1 - amount)); } catch { return hex; }
+  try {
+    if (!isValidHex(hex)) return hex;
+    const [r, g, b] = parseHex(hex);
+    return toHex(r * (1 - amount), g * (1 - amount), b * (1 - amount));
+  } catch {
+    return hex;
+  }
 }
+
 function lightenColor(hex: string, amount: number): string {
-  try { const [r, g, b] = parseHex(hex); return toHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount); } catch { return hex; }
+  try {
+    if (!isValidHex(hex)) return hex;
+    const [r, g, b] = parseHex(hex);
+    return toHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount);
+  } catch {
+    return hex;
+  }
 }
+
+const SAFE_FALLBACK_COLOR = '#b91c1c';
 
 interface SiteTheme {
   primaryColor: string;
@@ -24,32 +56,52 @@ interface SiteTheme {
   bodyFont: string;
 }
 
-export default function ThemeInjector({ children }: { children: React.ReactNode }) {
+function sanitizeColor(val: unknown, fallback: string): string {
+  if (typeof val === 'string' && isValidHex(val)) return val;
+  return fallback;
+}
+
+export default function ThemeInjector({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<SiteTheme | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const fetchTheme = useCallback(async () => {
     try {
       const res = await fetch('/api/site-info');
+      if (!res.ok) return;
       const data = await res.json();
       setTheme({
-        primaryColor: data.primaryColor || '#b91c1c',
-        primaryForeground: data.primaryForeground || '#ffffff',
-        headingFont: data.headingFont || 'Inter',
-        bodyFont: data.bodyFont || 'Inter',
+        primaryColor: sanitizeColor(data.primaryColor, SAFE_FALLBACK_COLOR),
+        primaryForeground: sanitizeColor(data.primaryForeground, '#ffffff'),
+        headingFont: typeof data.headingFont === 'string' ? data.headingFont : 'Inter',
+        bodyFont: typeof data.bodyFont === 'string' ? data.bodyFont : 'Inter',
       });
-    } catch { /* silent */ }
+    } catch {
+      // silent — use defaults
+    }
   }, []);
 
-  useEffect(() => { fetchTheme(); }, [fetchTheme]);
-
-  // Listen for theme updates from admin
   useEffect(() => {
-    const handler = () => fetchTheme();
-    window.addEventListener('site-theme-updated', handler);
-    return () => window.removeEventListener('site-theme-updated', handler);
+    setMounted(true);
+    fetchTheme();
   }, [fetchTheme]);
 
-  if (!theme) return <>{children}</>;
+  // Listen for theme updates from admin — guard window access
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => fetchTheme();
+    try {
+      window.addEventListener('site-theme-updated', handler);
+      return () => {
+        try { window.removeEventListener('site-theme-updated', handler); } catch { /* noop */ }
+      };
+    } catch {
+      return;
+    }
+  }, [fetchTheme]);
+
+  // Don't render any theme CSS until client-side is ready
+  if (!mounted || !theme) return <>{children}</>;
 
   // Build Google Fonts URL
   const fontsToLoad: string[] = [];
@@ -68,30 +120,30 @@ export default function ThemeInjector({ children }: { children: React.ReactNode 
   const headingFamily = theme.headingFont !== 'Inter' ? `'${theme.headingFont}', sans-serif` : '';
   const bodyFamily = theme.bodyFont !== 'Inter' ? `'${theme.bodyFont}', sans-serif` : '';
 
+  const safeColor = theme.primaryColor;
+
   const css = `
     :root {
-      --site-color: ${theme.primaryColor};
-      --site-color-hover: ${darkenColor(theme.primaryColor, 0.22)};
-      --site-color-soft: ${darkenColor(theme.primaryColor, 0.10)};
-      --site-color-light: ${lightenColor(theme.primaryColor, 0.92)};
-      --site-color-lighter: ${lightenColor(theme.primaryColor, 0.85)};
-      --site-color-border: ${lightenColor(theme.primaryColor, 0.75)};
+      --site-color: ${safeColor};
+      --site-color-hover: ${darkenColor(safeColor, 0.22)};
+      --site-color-soft: ${darkenColor(safeColor, 0.10)};
+      --site-color-light: ${lightenColor(safeColor, 0.92)};
+      --site-color-lighter: ${lightenColor(safeColor, 0.85)};
+      --site-color-border: ${lightenColor(safeColor, 0.75)};
       ${headingFamily ? `--font-heading: ${headingFamily};` : ''}
       ${bodyFamily ? `--font-body: ${bodyFamily};` : ''}
     }
 
-    /* Modern browser overrides using color-mix */
     @supports (color: color-mix(in srgb, red 50%, blue)) {
       :root {
-        --site-color-hover: color-mix(in srgb, ${theme.primaryColor} 78%, black);
-        --site-color-soft: color-mix(in srgb, ${theme.primaryColor} 90%, black);
-        --site-color-light: color-mix(in srgb, ${theme.primaryColor} 8%, white);
-        --site-color-lighter: color-mix(in srgb, ${theme.primaryColor} 15%, white);
-        --site-color-border: color-mix(in srgb, ${theme.primaryColor} 25%, white);
+        --site-color-hover: color-mix(in srgb, ${safeColor} 78%, black);
+        --site-color-soft: color-mix(in srgb, ${safeColor} 90%, black);
+        --site-color-light: color-mix(in srgb, ${safeColor} 8%, white);
+        --site-color-lighter: color-mix(in srgb, ${safeColor} 15%, white);
+        --site-color-border: color-mix(in srgb, ${safeColor} 25%, white);
       }
     }
 
-    /* === Color overrides === */
     .bg-red-700 { background-color: var(--site-color) !important; }
     .text-red-700 { color: var(--site-color) !important; }
     .bg-red-800 { background-color: var(--site-color-hover) !important; }
@@ -112,7 +164,6 @@ export default function ThemeInjector({ children }: { children: React.ReactNode 
     .ring-red-700 { --tw-ring-color: var(--site-color) !important; }
     .focus\\:ring-red-700:focus { --tw-ring-color: var(--site-color) !important; }
 
-    /* === Font overrides === */
     ${bodyFamily ? `body, .font-sans { font-family: var(--font-body) !important; }` : ''}
     h1, h2, h3, h4, h5, h6,
     .text-3xl, .text-4xl, .text-5xl {

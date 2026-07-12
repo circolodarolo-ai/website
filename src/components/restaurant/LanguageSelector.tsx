@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { safeGetItem, safeSetItem } from '@/lib/i18n-context';
 
 interface Language {
   code: string;
@@ -9,29 +10,19 @@ interface Language {
   flag: string;
 }
 
-// Mappa codice lingua → codice paese per le bandiere
 const FLAG_COUNTRY: Record<string, string> = {
-  it: 'it',
-  en: 'gb',
-  fr: 'fr',
-  de: 'de',
-  es: 'es',
+  it: 'it', en: 'gb', fr: 'fr', de: 'de', es: 'es',
 };
 
 function FlagIcon({ code, size = 20 }: { code: string; size?: number }) {
   const country = FLAG_COUNTRY[code] || code;
   const [error, setError] = useState(false);
 
-  // Fallback: sigla stilizzata se l'immagine non carica
   if (error) {
     return (
       <span
         className="inline-flex items-center justify-center rounded-sm font-bold text-[10px] leading-none text-white"
-        style={{
-          width: size * 1.25,
-          height: size * 0.9,
-          backgroundColor: '#6b7280',
-        }}
+        style={{ width: size * 1.25, height: size * 0.9, backgroundColor: '#6b7280' }}
       >
         {code.toUpperCase()}
       </span>
@@ -59,7 +50,6 @@ export default function LanguageSelector() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Carica lingue attive dal DB
     fetch('/api/i18n-settings')
       .then(r => r.json())
       .then(data => {
@@ -70,35 +60,37 @@ export default function LanguageSelector() {
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Leggi lingua salvata
-    const saved = localStorage.getItem('user-locale') || 'it';
+    const saved = safeGetItem('user-locale') || 'it';
     setCurrentLocale(saved);
   }, []);
 
-  // Chiudi dropdown al click fuori
   useEffect(() => {
+    if (typeof document === 'undefined') return;
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    try {
+      document.addEventListener('mousedown', handleClick);
+      return () => { try { document.removeEventListener('mousedown', handleClick); } catch {} };
+    } catch {
+      return;
+    }
   }, []);
 
-  // Non mostrare nulla durante il caricamento iniziale né se non ci sono lingue
   if (loading || languages.length <= 1) return null;
 
   const currentLang = languages.find(l => l.code === currentLocale) || languages[0];
 
   const switchLocale = (newLocale: string) => {
     setCurrentLocale(newLocale);
-    localStorage.setItem('user-locale', newLocale);
-    document.documentElement.lang = newLocale;
+    safeSetItem('user-locale', newLocale);
+    try { document.documentElement.lang = newLocale; } catch {}
     setOpen(false);
-
-    // Notifica il contesto i18n del cambio lingua (senza reload)
-    window.dispatchEvent(new CustomEvent('locale-change', { detail: { locale: newLocale } }));
+    try {
+      window.dispatchEvent(new CustomEvent('locale-change', { detail: { locale: newLocale } }));
+    } catch {}
   };
 
   return (

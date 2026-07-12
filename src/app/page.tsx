@@ -7,20 +7,37 @@ import ReservationDialog from '@/components/restaurant/ReservationDialog';
 import Footer from '@/components/restaurant/Footer';
 import SocialSidebar from '@/components/restaurant/SocialSidebar';
 import AdminPanelLoader from '@/components/admin/AdminPanelLoader';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <ErrorBoundary>
+        <Header />
+      </ErrorBoundary>
       <main className="flex-1">
-        <Hero />
-        <ChiSiamo />
-        <SpecialitaCarousel />
-        <EventiSection />
-        <ReservationDialog />
+        <ErrorBoundary>
+          <Hero />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <ChiSiamo />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <SpecialitaCarousel />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <EventiSection />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <ReservationDialog />
+        </ErrorBoundary>
       </main>
-      <Footer />
-      <SocialSidebar />
+      <ErrorBoundary>
+        <Footer />
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <SocialSidebar />
+      </ErrorBoundary>
       <AdminPanelLoader />
     </div>
   );

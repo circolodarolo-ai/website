@@ -25,7 +25,7 @@ export const metadata: Metadata = {
       follow: true,
       'max-video-preview': -1,
       'max-image-preview': 'large',
-      'max-snippet': -1,
+      'max-snippet-preview': -1,
     },
   },
   openGraph: {
@@ -95,7 +95,6 @@ export default async function RootLayout({
     // fallback ai default
   }
 
-  // Carica AdSense ID da CompanyData
   try {
     const companyData = await db.companyData.findFirst({
       select: { adSenseId: true },
@@ -132,7 +131,6 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href={fontsUrl} rel="stylesheet" />
-        {/* JSON-LD Structured Data per il ristorante */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -156,13 +154,19 @@ export default async function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              window.__cookieConsent = (function() {
-                try { return JSON.parse(localStorage.getItem('cookie-consent') || 'null'); } catch(e) { return null; }
+              (function() {
+                try {
+                  window.__cookieConsent = JSON.parse(localStorage.getItem('cookie-consent') || 'null');
+                } catch(e) {
+                  window.__cookieConsent = null;
+                }
               })();
               window.__adSenseId = ${JSON.stringify(adSenseId)};
-              if (typeof window !== 'undefined' && !window._origFetch) {
-                window._origFetch = window.fetch;
-              }
+              try {
+                if (!window._origFetch) {
+                  window._origFetch = window.fetch;
+                }
+              } catch(e) {}
             `,
           }}
         />

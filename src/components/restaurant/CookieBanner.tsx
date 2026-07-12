@@ -7,6 +7,7 @@ import { useDbTranslation } from '@/hooks/useDbTranslation';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
+import { safeGetItem, safeSetItem } from '@/lib/i18n-context';
 
 interface CookieConfig {
   showCookieBanner: boolean;
@@ -38,13 +39,13 @@ export default function CookieBanner() {
   const [marketing, setMarketing] = useState(true);
 
   useEffect(() => {
-    const existingConsent = localStorage.getItem('cookie-consent');
+    const existingConsent = safeGetItem('cookie-consent');
     if (existingConsent) {
       try {
         const parsed = JSON.parse(existingConsent);
-        window.__cookieConsent = parsed;
+        try { (window as any).__cookieConsent = parsed; } catch {}
       } catch {
-        localStorage.removeItem('cookie-consent');
+        try { localStorage.removeItem('cookie-consent'); } catch {}
       }
       return;
     }
@@ -65,7 +66,6 @@ export default function CookieBanner() {
         setConfig(cfg);
         setAnalitici(cfg.cookieAnalitici);
         setMarketing(cfg.cookieMarketing);
-        // Registra testi DB per traduzione
         dbTr.register({
           'cookie.bannerText': cfg.cookieBannerText,
           'cookie.acceptText': cfg.cookieAcceptText,
@@ -80,32 +80,30 @@ export default function CookieBanner() {
       });
   }, []);
 
+  const dispatchConsent = (consent: Record<string, unknown>) => {
+    try { (window as any).__cookieConsent = consent; } catch {}
+    setVisible(false);
+    try {
+      window.dispatchEvent(new CustomEvent('cookie-consent-change', { detail: consent }));
+    } catch {}
+  };
+
   const saveConsent = () => {
     const consent = {
-      accepted: true,
-      date: new Date().toISOString(),
-      tecnici,
-      analitici,
-      marketing,
+      accepted: true, date: new Date().toISOString(),
+      tecnici, analitici, marketing,
     };
-    localStorage.setItem('cookie-consent', JSON.stringify(consent));
-    window.__cookieConsent = consent;
-    setVisible(false);
-    window.dispatchEvent(new CustomEvent('cookie-consent-change', { detail: consent }));
+    safeSetItem('cookie-consent', JSON.stringify(consent));
+    dispatchConsent(consent);
   };
 
   const rejectAll = () => {
     const consent = {
-      accepted: false,
-      date: new Date().toISOString(),
-      tecnici: true,
-      analitici: false,
-      marketing: false,
+      accepted: false, date: new Date().toISOString(),
+      tecnici: true, analitici: false, marketing: false,
     };
-    localStorage.setItem('cookie-consent', JSON.stringify(consent));
-    window.__cookieConsent = consent;
-    setVisible(false);
-    window.dispatchEvent(new CustomEvent('cookie-consent-change', { detail: consent }));
+    safeSetItem('cookie-consent', JSON.stringify(consent));
+    dispatchConsent(consent);
   };
 
   const acceptAll = () => {
@@ -113,16 +111,11 @@ export default function CookieBanner() {
     setAnalitici(true);
     setMarketing(true);
     const consent = {
-      accepted: true,
-      date: new Date().toISOString(),
-      tecnici: true,
-      analitici: true,
-      marketing: true,
+      accepted: true, date: new Date().toISOString(),
+      tecnici: true, analitici: true, marketing: true,
     };
-    localStorage.setItem('cookie-consent', JSON.stringify(consent));
-    window.__cookieConsent = consent;
-    setVisible(false);
-    window.dispatchEvent(new CustomEvent('cookie-consent-change', { detail: consent }));
+    safeSetItem('cookie-consent', JSON.stringify(consent));
+    dispatchConsent(consent);
   };
 
   if (!visible) return null;
@@ -130,7 +123,6 @@ export default function CookieBanner() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[60] p-4">
       <div className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden">
-        {/* Testo informativo */}
         <div className="p-5 sm:p-6 pb-4">
           <div className="flex items-start gap-3">
             <Cookie className="h-6 w-6 text-[var(--primary)] mt-0.5 flex-shrink-0" />
@@ -143,9 +135,7 @@ export default function CookieBanner() {
           </div>
         </div>
 
-        {/* Switch per tipologie di cookie */}
         <div className="px-5 sm:px-6 pb-4 space-y-3">
-          {/* Tecnici - sempre attivo, non disabilitabile */}
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-4.5 w-4.5 text-green-600" />
@@ -157,7 +147,6 @@ export default function CookieBanner() {
             <Switch checked={true} disabled className="opacity-70" />
           </div>
 
-          {/* Analitici */}
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-3">
               <BarChart3 className="h-4.5 w-4.5 text-blue-600" />
@@ -166,13 +155,9 @@ export default function CookieBanner() {
                 <p className="text-xs text-gray-400">{t('cookie.analiticiDesc')}</p>
               </div>
             </div>
-            <Switch
-              checked={analitici}
-              onCheckedChange={setAnalitici}
-            />
+            <Switch checked={analitici} onCheckedChange={setAnalitici} />
           </div>
 
-          {/* Marketing */}
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-3">
               <Megaphone className="h-4.5 w-4.5 text-orange-500" />
@@ -181,33 +166,20 @@ export default function CookieBanner() {
                 <p className="text-xs text-gray-400">{t('cookie.marketingDesc')}</p>
               </div>
             </div>
-            <Switch
-              checked={marketing}
-              onCheckedChange={setMarketing}
-            />
+            <Switch checked={marketing} onCheckedChange={setMarketing} />
           </div>
         </div>
 
-        {/* Link e pulsanti */}
         <div className="px-5 sm:px-6 pb-5 sm:pb-6">
           <div className="flex gap-3 text-xs text-gray-400 mb-4">
             <Link href="/cookie-policy" className="hover:text-[var(--primary)] underline">{t('cookie.cookie')}</Link>
             <Link href="/privacy-policy" className="hover:text-[var(--primary)] underline">{t('cookie.privacy')}</Link>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={rejectAll}
-              className="flex-1 rounded-full px-4"
-            >
+            <Button variant="outline" size="sm" onClick={rejectAll} className="flex-1 rounded-full px-4">
               {config.cookieDeclineText ? dbTr.t('cookie.declineText', config.cookieDeclineText) : t('cookie.rejectAll')}
             </Button>
-            <Button
-              size="sm"
-              onClick={saveConsent}
-              className="flex-1 rounded-full px-4 bg-[var(--primary)] hover:opacity-90 text-white"
-            >
+            <Button size="sm" onClick={saveConsent} className="flex-1 rounded-full px-4 bg-[var(--primary)] hover:opacity-90 text-white">
               {config.cookieAcceptText ? dbTr.t('cookie.acceptText', config.cookieAcceptText) : t('cookie.acceptAll')}
             </Button>
           </div>
