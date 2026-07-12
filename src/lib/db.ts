@@ -6,7 +6,11 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-function createPrismaClient() {
+let cachedClient: PrismaClient | null = null
+
+function getClient(): PrismaClient {
+  if (cachedClient) return cachedClient
+
   const databaseUrl = process.env.DATABASE_URL
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is not set')
@@ -25,12 +29,23 @@ function createPrismaClient() {
 
   const adapter = new PrismaPg(pool)
 
-  return new PrismaClient({
+  const client = globalForPrisma.prisma ?? new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error'] : [],
   })
+
+  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = client
+
+  cachedClient = client
+  return client
 }
 
-export const db = globalForPrisma.prisma ?? createPrismaClient()
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+// Lazy proxy: il modulo si valuta senza connettersi.
+// Il client Prisma viene creato solo al primo accesso (es. db.siteInfo.findFirst()),
+// dove il try/catch del layout può catturare l'errore e usare i default.
+export const db = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getClient()
+    return Reflect.get(client, prop, receiver)
+  },
+})
