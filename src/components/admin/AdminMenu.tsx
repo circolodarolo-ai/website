@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Upload, ImageIcon } from 'lucide-react';
+import { compressImage } from '@/lib/image-compress';
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface Categoria {
@@ -77,20 +78,13 @@ export default function AdminMenu() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // ─── Image Upload ─────────────────────────────────────────────────
-  const handleImageUpload = async (file: File, target: 'articolo' | 'evento') => {
-    setUploadingImage(true);
-    const formData = new FormData();
-    formData.append('file', file);
+  const handleImageUpload = async (file: File) => {
     try {
-      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.error); return null; }
-      return data.url as string;
+      const url = await compressImage(file, 800, 0.75);
+      return url;
     } catch {
-      toast.error('Errore nel caricamento');
+      toast.error('Errore nel caricamento dell\'immagine');
       return null;
-    } finally {
-      setUploadingImage(false);
     }
   };
 
@@ -502,7 +496,9 @@ export default function AdminMenu() {
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const url = await handleImageUpload(file, 'articolo');
+                    setUploadingImage(true);
+                    const url = await handleImageUpload(file);
+                    setUploadingImage(false);
                     if (url) setArtForm(f => ({ ...f, immagineUrl: url }));
                     e.target.value = '';
                   }}

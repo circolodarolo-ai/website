@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Plus, Trash2, Upload, Save, ImageIcon, Check, ChevronDown, Search, Clock, MapPin, Euro } from 'lucide-react';
+import { compressImage } from '@/lib/image-compress';
 
 // ── Font Configuration ──
 const FONT_LIST = [
@@ -184,14 +185,10 @@ export default function AdminTheme() {
 
   const uploadImage = async (file: File): Promise<string | null> => {
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.error); return null; }
-      return data.url as string;
-    } catch { toast.error('Errore'); return null; }
+      const url = await compressImage(file, 1200, 0.85);
+      return url;
+    } catch { toast.error('Errore nel caricamento'); return null; }
     finally { setUploading(false); }
   };
 

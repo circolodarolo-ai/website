@@ -11,6 +11,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Plus, Pencil, Trash2, Upload, Megaphone } from 'lucide-react';
+import { compressImage } from '@/lib/image-compress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Banner {
@@ -136,14 +137,10 @@ export default function AdminBanners() {
 
   const uploadImage = async (file: File): Promise<string | null> => {
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) return null;
-      return data.url as string;
-    } catch { return null; }
+      const url = await compressImage(file, 1200, 0.8);
+      return url;
+    } catch { toast.error('Errore'); return null; }
     finally { setUploading(false); }
   };
 

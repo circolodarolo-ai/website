@@ -30,8 +30,12 @@ export default function AdminCompanyData() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/company-data');
-      const json = await res.json();
-      setData({ ...defaults, ...json });
+      if (res.ok) {
+        const json = await res.json();
+        setData({ ...defaults, ...json });
+      } else {
+        toast.error('Errore nel caricamento');
+      }
     } catch {
       toast.error('Errore nel caricamento');
     }
@@ -48,12 +52,12 @@ export default function AdminCompanyData() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) { toast.error('Errore'); return; }
+      if (!res.ok) { toast.error('Errore nel salvataggio'); return; }
       const json = await res.json();
       setData({ ...defaults, ...json });
       toast.success('Dati azienda salvati');
     } catch { toast.error('Errore di rete'); }
-    setSaving(false);
+    finally { setSaving(false); }
   };
 
   if (loading) return <div className="animate-pulse p-6">Caricamento...</div>;

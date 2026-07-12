@@ -42,7 +42,11 @@ export default function AdminFooter() {
     setLoading(true);
     try {
       const res = await fetch('/api/footer-info');
-      setFooter(await res.json());
+      if (res.ok) {
+        setFooter(await res.json());
+      } else {
+        toast.error('Errore nel caricamento');
+      }
     } catch {
       toast.error('Errore nel caricamento');
     }
@@ -53,7 +57,11 @@ export default function AdminFooter() {
 
   const set = (key: string, value: string) => {
     if (!footer) return;
-    setFooter({ ...footer, [key]: value });
+    if (key === 'latitudine' || key === 'longitudine') {
+      setFooter({ ...footer, [key]: value ? parseFloat(value) : null });
+    } else {
+      setFooter({ ...footer, [key]: value });
+    }
   };
 
   const save = async () => {
@@ -71,7 +79,7 @@ export default function AdminFooter() {
     } catch {
       toast.error('Errore nel salvataggio');
     }
-    setSaving(false);
+    finally { setSaving(false); }
   };
 
   if (loading) return <div className="animate-pulse p-6">Caricamento...</div>;
