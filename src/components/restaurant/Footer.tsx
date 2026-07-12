@@ -100,7 +100,7 @@ export default function Footer() {
       });
     }
     dbTr.register(texts);
-  }, [footerInfo, siteInfo, dbTr]);
+  }, [footerInfo, siteInfo, dbTr.register]);
 
   const activeSocial = socialLinks.filter(
     (s) => footerInfo && footerInfo[s.key]

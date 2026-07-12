@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useI18n, useSiteOverrides } from '@/lib/i18n-context';
@@ -41,12 +41,13 @@ export default function Hero() {
   const heroTextColor = siteInfo?.heroTextColor || '#ffffff';
 
   // Register DB content into i18n overrides so t() prioritizes DB values
-  useSiteOverrides(siteInfo ? {
+  const heroOverrides = useMemo(() => siteInfo ? {
     'hero.defaultTitle': siteInfo.heroTitle,
     'hero.defaultSubtitle': siteInfo.heroSubtitle,
     'hero.defaultCTA': siteInfo.heroCTAText,
     'hero.badge': (siteInfo as any).slogan,
-  } : {});
+  } : {}, [siteInfo]);
+  useSiteOverrides(heroOverrides);
 
   // Auto-rotate slideshow if multiple hero images
   useEffect(() => {

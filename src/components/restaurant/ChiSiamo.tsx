@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Heart, Award, Leaf, Clock } from 'lucide-react';
 import { useI18n, useSiteOverrides } from '@/lib/i18n-context';
 
@@ -53,7 +53,7 @@ export default function ChiSiamo() {
   }, []);
 
   // Register DB content into i18n overrides so t() prioritizes DB values
-  useSiteOverrides(siteInfo ? {
+  const chiSiamoOverrides = useMemo(() => siteInfo ? {
     'chiSiamo.subtitle': siteInfo.chiSiamoSubtitle,
     'chiSiamo.defaultTitle': siteInfo.chiSiamoTitolo,
     'chiSiamo.defaultText': siteInfo.chiSiamoTesto,
@@ -65,7 +65,8 @@ export default function ChiSiamo() {
     'chiSiamo.valore3Desc': siteInfo.valore3Desc,
     'chiSiamo.valore4Titolo': siteInfo.valore4Titolo,
     'chiSiamo.valore4Desc': siteInfo.valore4Desc,
-  } : {});
+  } : {}, [siteInfo]);
+  useSiteOverrides(chiSiamoOverrides);
 
   const values = valueKeys.map((vk, i) => ({
     icon: valueIcons[i],
