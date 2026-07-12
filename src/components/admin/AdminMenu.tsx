@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Upload, ImageIcon } from 'lucide-react';
-import { compressImage } from '@/lib/image-compress';
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface Categoria {
@@ -77,11 +76,18 @@ export default function AdminMenu() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ─── Image Upload ─────────────────────────────────────────────────
+  // ─── Image Upload (server-side) ─────────────────────────────────
   const handleImageUpload = async (file: File) => {
     try {
-      const url = await compressImage(file, 800, 0.75);
-      return url;
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) { toast.error('Errore nel caricamento'); return null; }
+      const data = await res.json();
+      return data.url as string;
     } catch {
       toast.error('Errore nel caricamento dell\'immagine');
       return null;

@@ -36,73 +36,70 @@ function fingerprintHash(): string {
   }
 }
 
+// Track a single pageview
+function trackPageView(sessionId: string, ipHash: string) {
+  try {
+    fetch('/api/analytics-track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        eventType: 'pageview',
+        pageUrl: window.location.pathname,
+        referrer: document.referrer || null,
+        userAgent: navigator.userAgent,
+        ipHash,
+      }),
+    }).catch(() => {});
+  } catch {}
+}
+
 export function useAnalyticsTracking() {
   const tracked = useRef(false);
 
   useEffect(() => {
-    if (tracked.current) return;
-
-    // Only track if analytics cookies are accepted
-    const consent = window.__cookieConsent;
-    if (!consent?.analitici) return;
-
-    tracked.current = true;
-
+    // Always register the consent-change listener FIRST,
+    // even if consent hasn't been given yet.
+    // Previously, the early return prevented the listener from ever being registered.
     const sessionId = getSessionId();
     const ipHash = fingerprintHash();
 
-    // Track page view
-    const trackPageView = () => {
-      try {
-        fetch('/api/analytics-track', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+    const tryTrack = () => {
+      if (tracked.current) return;
+      const consent = window.__cookieConsent;
+      if (!consent?.analitici) return;
+      tracked.current = true;
+      trackPageView(sessionId, ipHash);
+
+      // Track duration on unload
+      const startTime = Date.now();
+      const handleUnload = () => {
+        const duration = Math.round((Date.now() - startTime) / 1000);
+        if (duration < 2) return;
+        try {
+          const payload = JSON.stringify({
             sessionId,
-            eventType: 'pageview',
+            eventType: 'session_end',
             pageUrl: window.location.pathname,
-            referrer: document.referrer || null,
-            userAgent: navigator.userAgent,
+            duration,
             ipHash,
-          }),
-        }).catch(() => {});
-      } catch {}
+          });
+          navigator.sendBeacon('/api/analytics-track', payload);
+        } catch {}
+      };
+      window.addEventListener('beforeunload', handleUnload);
     };
 
-    trackPageView();
+    // Try tracking immediately (consent might already be set from localStorage)
+    tryTrack();
 
-    // Track duration on unload
-    const startTime = Date.now();
-    const handleUnload = () => {
-      const duration = Math.round((Date.now() - startTime) / 1000);
-      if (duration < 2) return;
-      try {
-        // Use sendBeacon for reliable tracking on page leave
-        const payload = JSON.stringify({
-          sessionId,
-          eventType: 'session_end',
-          pageUrl: window.location.pathname,
-          duration,
-          ipHash,
-        });
-        navigator.sendBeacon('/api/analytics-track', payload);
-      } catch {}
-    };
-
-    window.addEventListener('beforeunload', handleUnload);
-
-    // Listen for consent changes
-    const handleConsentChange = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.analitici && !tracked.current) {
-        tracked.current = true;
-        trackPageView();
-      }
+    // Listen for consent changes (fires when user accepts cookies)
+    const handleConsentChange = () => {
+      tryTrack();
     };
     window.addEventListener('cookie-consent-change', handleConsentChange);
 
     return () => {
-      window.removeEventListener('beforeunload', handleUnload);
       window.removeEventListener('cookie-consent-change', handleConsentChange);
     };
   }, []);
@@ -129,4 +126,3 @@ export function useMarketingConsent(): boolean {
 
   return consent;
 }
-

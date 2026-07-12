@@ -6,7 +6,7 @@ export async function GET() {
     let info = await db.footerInfo.findFirst();
     if (!info) {
       info = await db.footerInfo.create({
-        data: { id: 'default' },
+        data: { id: 'default', updatedAt: new Date() },
       });
     }
     return NextResponse.json(info);
@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest) {
     const info = await db.footerInfo.upsert({
       where: { id: id || 'default' },
       update: { ...data, updatedAt: new Date() },
-      create: { id: 'default', ...data },
+      create: { id: 'default', ...data, updatedAt: new Date() },
     });
     return NextResponse.json(info);
   } catch (error) {

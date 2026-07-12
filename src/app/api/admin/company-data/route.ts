@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { randomUUID } from 'crypto';
 
 export async function GET() {
   try {
     let data = await db.companyData.findFirst();
     if (!data) {
-      data = await db.companyData.create({ data: {} });
+      data = await db.companyData.create({
+        data: { id: randomUUID(), updatedAt: new Date() },
+      });
     }
     return NextResponse.json(data);
   } catch (error) {
@@ -23,12 +26,14 @@ export async function PUT(request: NextRequest) {
       const { id, createdAt, updatedAt, ...data } = body;
       const updated = await db.companyData.update({
         where: { id: existing.id },
-        data,
+        data: { ...data, updatedAt: new Date() },
       });
       return NextResponse.json(updated);
     } else {
       const { id, createdAt, updatedAt, ...data } = body;
-      const created = await db.companyData.create({ data });
+      const created = await db.companyData.create({
+        data: { id: randomUUID(), ...data, updatedAt: new Date() },
+      });
       return NextResponse.json(created);
     }
   } catch (error) {

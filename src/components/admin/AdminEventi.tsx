@@ -12,7 +12,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Plus, Pencil, Trash2, Upload, Save, ImageIcon, Repeat } from 'lucide-react';
-import { compressImage } from '@/lib/image-compress';
 
 const GIORNI_SETTIMANA = [
   { value: 'lunedì', label: 'Lun' },
@@ -361,8 +360,18 @@ export default function AdminEventi() {
                     const file = e.target.files?.[0]; if (!file) return;
                     setUploading(true);
                     try {
-                      const url = await compressImage(file, 1200, 0.8);
-                      setForm(f => ({ ...f, immagineUrl: url }));
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      const res = await fetch('/api/admin/upload-image', {
+                        method: 'POST',
+                        body: formData,
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setForm(f => ({ ...f, immagineUrl: data.url }));
+                      } else {
+                        toast.error('Errore nel caricamento');
+                      }
                     } catch { toast.error('Errore'); }
                     setUploading(false);
                     e.target.value = '';

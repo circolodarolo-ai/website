@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,11 +30,30 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
-    const mimeType = file.type;
-    const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    return NextResponse.json({ url: dataUrl, fileName: file.name, size: file.size });
+    // Determine file extension from MIME type
+    const extMap: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+    };
+    const ext = extMap[file.type] || 'jpg';
+    const fileName = `${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
+
+    // Ensure uploads directory exists
+    const uploadsDir = join(process.cwd(), 'public', 'uploads');
+    await mkdir(uploadsDir, { recursive: true });
+
+    // Write file to disk
+    const filePath = join(uploadsDir, fileName);
+    await writeFile(filePath, buffer);
+
+    // Return the public URL path
+    const url = `/uploads/${fileName}`;
+
+    return NextResponse.json({ url, fileName, size: file.size });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Errore nel caricamento del file' }, { status: 500 });

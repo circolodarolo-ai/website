@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, MapPin } from 'lucide-react';
+import { Save, MapPin, AlertCircle } from 'lucide-react';
 
 interface FooterInfoData {
   id: string;
@@ -37,17 +37,22 @@ export default function AdminFooter() {
   const [footer, setFooter] = useState<FooterInfoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch('/api/footer-info');
       if (res.ok) {
-        setFooter(await res.json());
+        const data = await res.json();
+        setFooter(data);
       } else {
+        setLoadError(true);
         toast.error('Errore nel caricamento');
       }
     } catch {
+      setLoadError(true);
       toast.error('Errore nel caricamento');
     }
     setLoading(false);
@@ -83,7 +88,17 @@ export default function AdminFooter() {
   };
 
   if (loading) return <div className="animate-pulse p-6">Caricamento...</div>;
-  if (!footer) return null;
+
+  if (loadError || !footer) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+        <h3 className="text-lg font-semibold text-gray-700 mb-2">Impossibile caricare i dati del footer</h3>
+        <p className="text-sm text-gray-500 mb-4">Verifica la connessione al database e riprova.</p>
+        <Button onClick={fetchData} variant="outline">Riprova</Button>
+      </div>
+    );
+  }
 
   return (
     <div>
