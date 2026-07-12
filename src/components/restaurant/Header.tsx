@@ -14,6 +14,7 @@ interface SiteInfo {
   telefono: string;
   prenotazioniAttive: boolean;
   logoUrl: string | null;
+  headerTextColor: string | null;
 }
 
 export default function Header() {
@@ -24,6 +25,7 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
 
+  const headerTextColor = siteInfo?.headerTextColor || '#ffffff';
   const navLinks = [
     { label: t('nav.home'), href: '/', anchor: null as string | null },
     { label: t('nav.menu'), href: '/menu', anchor: null as string | null },
@@ -101,13 +103,15 @@ export default function Header() {
               />
             ) : (
               <UtensilsCrossed
-                className={`h-7 w-7 transition-colors ${scrolled ? 'text-[var(--primary)]' : 'text-white'}`}
+                className={`h-7 w-7 transition-colors ${scrolled ? 'text-[var(--primary)]' : ''}`}
+                style={!scrolled ? { color: headerTextColor } : undefined}
               />
             )}
             <span
               className={`text-xl font-bold tracking-tight transition-colors ${
-                scrolled ? 'text-[var(--primary)]' : 'text-white'
+                scrolled ? 'text-[var(--primary)]' : ''
               }`}
+              style={!scrolled ? { color: headerTextColor } : undefined}
             >
               {siteInfo?.nomeLocale || 'La Bella Tavola'}
             </span>
@@ -122,8 +126,9 @@ export default function Header() {
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 ${
                   scrolled
                     ? 'text-gray-700 hover:text-[var(--primary)] hover:bg-[var(--primary)]/5'
-                    : 'text-white/90 hover:text-white hover:bg-white/10'
+                    : ''
                 }`}
+                style={!scrolled ? { color: headerTextColor } : undefined}
               >
                 {link.label}
               </button>
@@ -148,7 +153,8 @@ export default function Header() {
             {siteInfo?.telefono && (
               <a
                 href={`tel:${siteInfo.telefono}`}
-                className={`p-2 rounded-full ${scrolled ? 'text-[var(--primary)]' : 'text-white'}`}
+                className={`p-2 rounded-full ${scrolled ? 'text-[var(--primary)]' : ''}`}
+                style={!scrolled ? { color: headerTextColor } : undefined}
               >
                 <Phone className="h-5 w-5" />
               </a>
@@ -158,7 +164,8 @@ export default function Header() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={scrolled ? 'text-gray-700' : 'text-white'}
+                  className={scrolled ? 'text-gray-700' : ''}
+                style={!scrolled ? { color: headerTextColor } : undefined}
                   suppressHydrationWarning
                 >
                   <Menu className="h-6 w-6" />

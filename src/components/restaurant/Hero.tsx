@@ -11,6 +11,7 @@ interface SiteInfo {
   heroCTAText: string;
   heroImageUrl: string | null;
   heroOverlayOpacity: number;
+  heroTextColor: string | null;
 }
 
 interface SiteImage {
@@ -37,6 +38,8 @@ export default function Hero() {
       .catch(() => {});
   }, []);
 
+  const heroTextColor = siteInfo?.heroTextColor || '#ffffff';
+
   // Register DB content into i18n overrides so t() prioritizes DB values
   useSiteOverrides(siteInfo ? {
     'hero.defaultTitle': siteInfo.heroTitle,
@@ -62,9 +65,10 @@ export default function Hero() {
     window.location.href = '/menu';
   };
 
+  // DB images only: SiteImage slideshow > single heroImageUrl > no image
   const bgImage = heroImages.length > 0
     ? heroImages[currentSlide]?.url
-    : siteInfo?.heroImageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&q=80';
+    : siteInfo?.heroImageUrl || '';
 
   const overlayOpacity = siteInfo?.heroOverlayOpacity ?? 0.5;
 
@@ -123,16 +127,19 @@ export default function Hero() {
       <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
         <div className="space-y-6 animate-in fade-in duration-1000">
           <div className="inline-block">
-            <span className="px-4 py-1.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white/90 text-sm font-medium">
+            <span
+              className="px-4 py-1.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-sm font-medium"
+              style={{ color: heroTextColor }}
+            >
               {t('hero.badge')}
             </span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white leading-tight tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold leading-tight tracking-tight" style={{ color: heroTextColor }}>
             {t('hero.defaultTitle')}
           </h1>
 
-          <p className="text-lg sm:text-xl md:text-2xl text-white/80 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl md:text-2xl max-w-2xl mx-auto leading-relaxed" style={{ color: heroTextColor, opacity: 0.8 }}>
             {t('hero.defaultSubtitle')}
           </p>
 
@@ -161,7 +168,8 @@ export default function Hero() {
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce z-10">
         <button
           onClick={scrollToMenu}
-          className="text-white/60 hover:text-white transition-colors"
+          className="transition-colors hover:opacity-100"
+          style={{ color: heroTextColor, opacity: 0.6 }}
           aria-label={t('hero.scrollDown')}
         >
           <ChevronDown className="h-8 w-8" />

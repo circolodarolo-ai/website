@@ -64,6 +64,7 @@ interface SiteInfoData {
   heroTitle: string; heroSubtitle: string; heroCTAText: string; primaryColor: string;
   chiSiamoImageUrl: string | null; logoUrl: string | null; faviconUrl: string | null;
   heroImageUrl: string | null; heroOverlayOpacity: number;
+  heroTextColor: string | null; headerTextColor: string | null;
   specialitaTitle: string | null; specialitaSubtitle: string | null; primaryForeground: string | null;
   secondaryColor: string | null; footerBgColor: string | null; footerTextColor: string | null; sectionBgColor: string | null;
   socialBtnColor: string | null; settingsBtnColor: string | null; prenotaBtnColor: string | null; prenotaSectionBgColor: string | null;
@@ -134,6 +135,55 @@ function FontPicker({ value, onChange, label, description }: {
           </div>
         </PopoverContent>
       </Popover>
+    </div>
+  );
+}
+
+// ── Color helper components ──
+function ColorGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3 rounded-lg border p-4 bg-gray-50/30">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{title}</h3>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function ColorField({ label, description, value, presets, onChange }: {
+  label: string; description: string; value: string; presets: string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-3">
+        <input
+          type="color"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-9 h-9 rounded-lg border cursor-pointer shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">{label}</Label>
+            <span className="text-xs text-muted-foreground hidden sm:inline">— {description}</span>
+          </div>
+        </div>
+        <Input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-28 h-9 text-xs font-mono shrink-0"
+        />
+      </div>
+      <div className="flex gap-1.5 pl-12 flex-wrap">
+        {presets.map(c => (
+          <button
+            key={c}
+            onClick={() => onChange(c)}
+            className="w-6 h-6 rounded-full border hover:scale-125 transition-transform"
+            style={{ background: c, borderColor: value === c ? '#000' : undefined, borderWidth: value === c ? 2 : 1 }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -476,291 +526,106 @@ export default function AdminTheme() {
         {/* ── Colori ── */}
         <TabsContent value="colori">
           <div className="space-y-6">
-            {/* Colore Primario */}
+
+            {/* ── Colori Principal ── */}
+            <ColorGroup title="Colori Principali">
+              <ColorField
+                label="Primario" description="Bottoni, link, accenti"
+                value={siteInfo.primaryColor} presets={['#b91c1c','#dc2626','#ea580c','#d97706','#65a30d','#059669','#0d9488','#2563eb','#4f46e5','#7c3aed','#9333ea','#1c1917']}
+                onChange={v => setSiteInfo({ ...siteInfo, primaryColor: v })}
+              />
+              <ColorField
+                label="Testo su Primario" description="Testo nei bottoni primari"
+                value={siteInfo.primaryForeground || '#ffffff'} presets={['#ffffff','#f8fafc','#1c1917','#000000']}
+                onChange={v => setSiteInfo({ ...siteInfo, primaryForeground: v })}
+              />
+              <ColorField
+                label="Secondario" description="Accenti secondari, badge"
+                value={siteInfo.secondaryColor || '#0d9488'} presets={['#0d9488','#0891b2','#2563eb','#4f46e5','#7c3aed','#059669','#dc2626','#1c1917']}
+                onChange={v => setSiteInfo({ ...siteInfo, secondaryColor: v })}
+              />
+            </ColorGroup>
+
+            {/* ── Header & Hero ── */}
+            <ColorGroup title="Header e Hero">
+              <ColorField
+                label="Testo Header (trasparente)" description="Nav e nome locale sull'hero"
+                value={siteInfo.headerTextColor || '#ffffff'} presets={['#ffffff','#f8fafc','#fef2f2','#1c1917','#000000','#fbbf24']}
+                onChange={v => setSiteInfo({ ...siteInfo, headerTextColor: v })}
+              />
+              <ColorField
+                label="Testo Hero" description="Titolo, sottotitolo e badge della hero"
+                value={siteInfo.heroTextColor || '#ffffff'} presets={['#ffffff','#f8fafc','#fef2f2','#fefce8','#1c1917','#000000','#fbbf24']}
+                onChange={v => setSiteInfo({ ...siteInfo, heroTextColor: v })}
+              />
+            </ColorGroup>
+
+            {/* ── Footer ── */}
+            <ColorGroup title="Footer">
+              <ColorField
+                label="Sfondo Footer" description="Background del footer"
+                value={siteInfo.footerBgColor || '#111827'} presets={['#111827','#1c1917','#18181b','#0f172a','#1e1b4b','#ffffff','#f8fafc']}
+                onChange={v => setSiteInfo({ ...siteInfo, footerBgColor: v })}
+              />
+              <ColorField
+                label="Testo Footer" description="Titoli, paragrafi, link nel footer"
+                value={siteInfo.footerTextColor || '#d1d5db'} presets={['#d1d5db','#ffffff','#fbbf24','#fb923c','#a78bfa','#cbd5e1']}
+                onChange={v => setSiteInfo({ ...siteInfo, footerTextColor: v })}
+              />
+            </ColorGroup>
+
+            {/* ── Bottoni ── */}
+            <ColorGroup title="Bottoni">
+              <ColorField
+                label="Tasto Prenota (Header)" description="Bottone nel menu di navigazione"
+                value={siteInfo.prenotaBtnColor || '#ea580c'} presets={['#ea580c','#dc2626','#059669','#2563eb','#1c1917']}
+                onChange={v => setSiteInfo({ ...siteInfo, prenotaBtnColor: v })}
+              />
+              <ColorField
+                label="Sfondo Sezione Prenota" description="Background della sezione CTA"
+                value={siteInfo.prenotaSectionBgColor || '#ea580c'} presets={['#ea580c','#dc2626','#059669','#2563eb','#1c1917','#0f172a']}
+                onChange={v => setSiteInfo({ ...siteInfo, prenotaSectionBgColor: v })}
+              />
+              <ColorField
+                label="Tasto Condividi (Sociale)" description="Bottone fissato a sinistra"
+                value={siteInfo.socialBtnColor || '#ea580c'} presets={['#ea580c','#dc2626','#4f46e5','#2563eb','#1c1917']}
+                onChange={v => setSiteInfo({ ...siteInfo, socialBtnColor: v })}
+              />
+              <ColorField
+                label="Tasto Admin (Settings)" description="Ingranaggio in basso a destra"
+                value={siteInfo.settingsBtnColor || '#dc2626'} presets={['#dc2626','#ea580c','#4f46e5','#1c1917','#374151']}
+                onChange={v => setSiteInfo({ ...siteInfo, settingsBtnColor: v })}
+              />
+            </ColorGroup>
+
+            {/* ── Sezioni ── */}
+            <ColorGroup title="Sezioni">
+              <ColorField
+                label="Sfondo Sezioni Alternative" description="Menu, eventi, chi siamo"
+                value={siteInfo.sectionBgColor || '#f9fafb'} presets={['#f9fafb','#f8fafc','#f1f5f9','#fefce8','#f0fdf4','#ffffff']}
+                onChange={v => setSiteInfo({ ...siteInfo, sectionBgColor: v })}
+              />
+            </ColorGroup>
+
+            {/* Anteprima Live */}
             <div className="space-y-2">
-              <Label>Colore Primario</Label>
-              <p className="text-xs text-muted-foreground">Il colore principale del sito: bottoni, link, accenti, titoli sezione, CTA</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.primaryColor}
-                  onChange={e => setSiteInfo({ ...siteInfo, primaryColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.primaryColor} onChange={e => setSiteInfo({ ...siteInfo, primaryColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#b91c1c','#dc2626','#ea580c','#d97706','#ca8a04','#65a30d','#059669','#0d9488','#0891b2','#2563eb','#4f46e5','#7c3aed','#9333ea','#c026d3','#e11d48','#1c1917','#44403c','#78716c'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, primaryColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-            </div>
-
-            {/* Colore Testo su Primario (Foreground) */}
-            <div className="space-y-2">
-              <Label>Colore Testo su Primario (Foreground)</Label>
-              <p className="text-xs text-muted-foreground">Il colore del testo quando lo sfondo e il colore primario (es. bottoni)</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.primaryForeground || '#ffffff'}
-                  onChange={e => setSiteInfo({ ...siteInfo, primaryForeground: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.primaryForeground || '#ffffff'} onChange={e => setSiteInfo({ ...siteInfo, primaryForeground: e.target.value })} className="max-w-xs" />
-                <div className="flex gap-2">
-                  {['#ffffff','#f8fafc','#fef2f2','#fefce8','#f0fdf4','#1c1917','#000000'].map(c => (
-                    <button key={c} onClick={() => setSiteInfo({ ...siteInfo, primaryForeground: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Anteprima Live Completa */}
-            <div className="space-y-2">
-              <Label>Anteprima Primaria</Label>
-              <div className="grid grid-cols-5 gap-2">
-                {[
-                  { label: '50', var: '--primary-50' },
-                  { label: '100', var: '--primary-100' },
-                  { label: '200', var: '--primary-200' },
-                  { label: 'light', var: '--primary-light' },
-                  { label: 'Base', var: '--primary' },
-                  { label: 'dark', var: '--primary-dark' },
-                  { label: '700', var: '--primary-700' },
-                  { label: '800', var: '--primary-800' },
-                  { label: '900', var: '--primary-900' },
-                  { label: 'darker', var: '--primary-darker' },
-                ].map(s => (
-                  <div key={s.var} className="text-center">
-                    <div className="h-10 rounded-md border" style={{ background: `var(${s.var})` }} />
-                    <span className="text-[10px] text-gray-500 mt-1 block">{s.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Colore Secondario ── */}
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Colore Secondario</Label>
-              <p className="text-xs text-muted-foreground">Usato per accenti secondari, elementi distintivi dal colore primario (es. badge speciali, link alternativi).</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.secondaryColor || '#0d9488'}
-                  onChange={e => setSiteInfo({ ...siteInfo, secondaryColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.secondaryColor || '#0d9488'} onChange={e => setSiteInfo({ ...siteInfo, secondaryColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#0d9488','#0891b2','#2563eb','#4f46e5','#7c3aed','#9333ea','#059669','#65a30d','#ca8a04','#dc2626','#e11d48','#be185d','#1c1917','#44403c'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, secondaryColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-              {/* Anteprima palette secondaria */}
-              <div className="grid grid-cols-5 gap-2 mt-3">
-                {[
-                  { label: '50', var: '--secondary-50' },
-                  { label: '100', var: '--secondary-100' },
-                  { label: '200', var: '--secondary-200' },
-                  { label: 'light', var: '--secondary-light' },
-                  { label: 'Base', var: '--secondary-custom' },
-                  { label: 'dark', var: '--secondary-dark' },
-                  { label: '700', var: '--secondary-700' },
-                  { label: '800', var: '--secondary-800' },
-                ].map(s => (
-                  <div key={s.var} className="text-center">
-                    <div className="h-10 rounded-md border" style={{ background: `var(${s.var})` }} />
-                    <span className="text-[10px] text-gray-500 mt-1 block">{s.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Colore Sfondo Footer ── */}
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Sfondo Footer</Label>
-              <p className="text-xs text-muted-foreground">Il colore di sfondo del footer del sito.</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.footerBgColor || '#111827'}
-                  onChange={e => setSiteInfo({ ...siteInfo, footerBgColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.footerBgColor || '#111827'} onChange={e => setSiteInfo({ ...siteInfo, footerBgColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#111827','#1c1917','#18181b','#0f172a','#1e1b4b','#0c4a6e','#14532d','#422006','#78350f','#292524','#ffffff','#f8fafc','#f1f5f9','#e2e8f0','#1a1a2e','#16213e'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, footerBgColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-            </div>
-
-            {/* ── Colore Testo Footer ── */}
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Testo Footer</Label>
-              <p className="text-xs text-muted-foreground">Il colore del testo nel footer (titoli, paragrafi, link).</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.footerTextColor || '#d1d5db'}
-                  onChange={e => setSiteInfo({ ...siteInfo, footerTextColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.footerTextColor || '#d1d5db'} onChange={e => setSiteInfo({ ...siteInfo, footerTextColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#d1d5db','#e7e5e4','#f5f5f4','#a8a29e','#ffffff','#f8fafc','#cbd5e1','#94a3b8','#fbbf24','#fb923c','#a78bfa','#67e8f9'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, footerTextColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-            </div>
-
-            {/* ── Colore Sfondo Sezioni ── */}
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Sfondo Sezioni Alternative</Label>
-              <p className="text-xs text-muted-foreground">Il colore di sfondo per le sezioni con sfondo alternativo (es. area menu, eventi, chi siamo).</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.sectionBgColor || '#f9fafb'}
-                  onChange={e => setSiteInfo({ ...siteInfo, sectionBgColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.sectionBgColor || '#f9fafb'} onChange={e => setSiteInfo({ ...siteInfo, sectionBgColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#f9fafb','#f8fafc','#f1f5f9','#fefce8','#f0fdf4','#fdf2f8','#fff7ed','#f5f3ff','#ecfdf5','#fff1f2','#ffffff','#fef3c7','#dbeafe','#fce7f3','#e0e7ff','#d1fae5'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, sectionBgColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-            </div>
-
-            {/* ── Colore Tasto Social (sinistra) ── */}
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Colore Tasto Social (Condividi)</Label>
-              <p className="text-xs text-muted-foreground">Il colore del tasto &quot;Condividi&quot; fissato sul lato sinistro dello schermo.</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.socialBtnColor || '#ea580c'}
-                  onChange={e => setSiteInfo({ ...siteInfo, socialBtnColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.socialBtnColor || '#ea580c'} onChange={e => setSiteInfo({ ...siteInfo, socialBtnColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#ea580c','#b91c1c','#dc2626','#e11d48','#9333ea','#4f46e5','#2563eb','#0891b2','#059669','#65a30d','#1c1917','#374151'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, socialBtnColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-            </div>
-
-            {/* ── Colore Tasto Settings (admin, basso destra) ── */}
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Colore Tasto Settings (Admin)</Label>
-              <p className="text-xs text-muted-foreground">Il colore del tasto ingranaggio fissato in basso a destra per accedere al pannello admin.</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.settingsBtnColor || '#dc2626'}
-                  onChange={e => setSiteInfo({ ...siteInfo, settingsBtnColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.settingsBtnColor || '#dc2626'} onChange={e => setSiteInfo({ ...siteInfo, settingsBtnColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#dc2626','#b91c1c','#ea580c','#e11d48','#9333ea','#4f46e5','#2563eb','#0891b2','#1c1917','#374151','#44403c','#0f172a'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, settingsBtnColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-            </div>
-
-            {/* ── Colore Tasto Prenota (menu top) ── */}
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Colore Tasto &quot;Prenota&quot; (Menu)</Label>
-              <p className="text-xs text-muted-foreground">Il colore del bottone &quot;Prenota&quot; nel menu di navigazione in alto. Nascondibile tramite lo switch nel tab Prenotazioni.</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.prenotaBtnColor || '#ea580c'}
-                  onChange={e => setSiteInfo({ ...siteInfo, prenotaBtnColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.prenotaBtnColor || '#ea580c'} onChange={e => setSiteInfo({ ...siteInfo, prenotaBtnColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#ea580c','#b91c1c','#dc2626','#e11d48','#9333ea','#4f46e5','#2563eb','#0891b2','#059669','#65a30d','#1c1917','#374151'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, prenotaBtnColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-            </div>
-
-            {/* ── Colore Sfondo Sezione Prenota ── */}
-            <div className="space-y-2 pt-4 border-t">
-              <Label>Sfondo Sezione &quot;Prenota&quot;</Label>
-              <p className="text-xs text-muted-foreground">Il colore di sfondo della sezione CTA &quot;Prenota il Tuo Tavolo&quot; che appare sopra il footer.</p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="color"
-                  value={siteInfo.prenotaSectionBgColor || '#ea580c'}
-                  onChange={e => setSiteInfo({ ...siteInfo, prenotaSectionBgColor: e.target.value })}
-                  className="w-12 h-12 rounded-lg border cursor-pointer"
-                />
-                <Input value={siteInfo.prenotaSectionBgColor || '#ea580c'} onChange={e => setSiteInfo({ ...siteInfo, prenotaSectionBgColor: e.target.value })} className="max-w-xs" />
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {['#ea580c','#b91c1c','#dc2626','#e11d48','#9333ea','#4f46e5','#2563eb','#0891b2','#059669','#1c1917','#374151','#0f172a'].map(c => (
-                  <button key={c} onClick={() => setSiteInfo({ ...siteInfo, prenotaSectionBgColor: c })} className="w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform" style={{ background: c }} />
-                ))}
-              </div>
-            </div>
-
-            {/* Anteprima Live Completa */}
-            <div className="space-y-2">
-              <Label>Anteprima Live</Label>
+              <Label>Anteprima</Label>
               <div className="rounded-xl border overflow-hidden">
-                {/* Preview Hero */}
-                <div className="p-6" style={{ background: `linear-gradient(135deg, var(--primary-darker), var(--primary-dark), var(--primary))` }}>
-                  <p className="text-xs opacity-60 mb-1" style={{ color: 'var(--primary-foreground)' }}>Header / Hero</p>
-                  <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--primary-foreground)' }}>Il Nostro Menu</h3>
-                  <p className="text-sm opacity-80" style={{ color: 'var(--primary-foreground)' }}>Sfondo gradient dal primario scuro</p>
+                <div className="p-5" style={{ background: `linear-gradient(135deg, var(--primary-darker), var(--primary-dark), var(--primary))` }}>
+                  <p className="text-xs opacity-60 mb-1" style={{ color: siteInfo.heroTextColor || '#fff' }}>Hero / Header</p>
+                  <h3 className="text-lg font-bold" style={{ color: siteInfo.heroTextColor || '#fff' }}>Titolo Hero</h3>
+                  <p className="text-sm opacity-80 mt-1" style={{ color: siteInfo.heroTextColor || '#fff' }}>Sottotitolo con colore personalizzabile</p>
                 </div>
-                {/* Preview Tabs / Bottoni */}
-                <div className="p-4 space-y-3" style={{ background: 'var(--section-bg)' }}>
-                  <p className="text-xs text-gray-400 mb-1">Bottoni &amp; Tab Attivi (sfondo sezione)</p>
+                <div className="p-3 space-y-2" style={{ background: 'var(--section-bg)' }}>
                   <div className="flex flex-wrap gap-2">
-                    <span className="px-4 py-2 rounded-full text-sm font-medium text-white" style={{ background: 'var(--primary)' }}>Primario</span>
-                    <span className="px-4 py-2 rounded-full text-sm font-medium text-white" style={{ background: 'var(--secondary-custom)' }}>Secondario</span>
-                    <span className="px-4 py-2 rounded-full text-sm font-medium border" style={{ color: 'var(--primary)', borderColor: 'var(--primary-200)', background: 'var(--primary-50)' }}>Inattivo</span>
-                    <span className="px-4 py-2 rounded-full text-sm font-medium" style={{ color: 'var(--primary)' }}>Link / Hover</span>
+                    <span className="px-3 py-1.5 rounded-full text-xs font-medium text-white" style={{ background: 'var(--primary)' }}>Primario</span>
+                    <span className="px-3 py-1.5 rounded-full text-xs font-medium text-white" style={{ background: 'var(--secondary-custom)' }}>Secondario</span>
+                    <span className="px-3 py-1.5 rounded-full text-xs font-medium" style={{ color: 'var(--primary)' }}>Link</span>
                   </div>
                 </div>
-                {/* Preview Badge / Bordo */}
-                <div className="p-4 space-y-3">
-                  <p className="text-xs text-gray-400 mb-1">Badge &amp; Bordi</p>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold text-white" style={{ background: 'var(--primary)' }}>In evidenza</span>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold text-white" style={{ background: 'var(--secondary-custom)' }}>Secondario</span>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium border-2" style={{ color: 'var(--primary)', borderColor: 'var(--primary-200)' }}>Con bordo</span>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ color: 'var(--primary)' }}>&euro;12,50</span>
-                  </div>
-                  <div className="h-px" style={{ background: 'var(--primary-100)' }} />
-                  <h4 className="text-lg font-bold" style={{ color: 'var(--primary)' }}>Titolo Sezione</h4>
-                </div>
-                {/* Preview Footer */}
-                <div className="p-4" style={{ background: 'var(--footer-bg)' }}>
-                  <p className="text-xs opacity-50 mb-2" style={{ color: 'var(--footer-text)' }}>Footer</p>
-                  <p className="text-sm font-bold" style={{ color: 'var(--footer-text)' }}>Il Nostro Ristorante</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--footer-text-muted)' }}>Via Roma 123, Milano</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--footer-text-muted)' }}>info@ristorante.it</p>
-                  <div className="flex gap-2 mt-3">
-                    <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs" style={{ background: 'var(--footer-bg-light)', color: 'var(--footer-text)' }}>IG</span>
-                    <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs" style={{ background: 'var(--footer-bg-light)', color: 'var(--footer-text)' }}>FB</span>
-                    <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs" style={{ background: 'var(--footer-bg-light)', color: 'var(--footer-text)' }}>TW</span>
-                  </div>
+                <div className="p-3" style={{ background: 'var(--footer-bg)' }}>
+                  <p className="text-xs font-bold" style={{ color: 'var(--footer-text)' }}>Footer</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--footer-text-muted)' }}>info@ristorante.it</p>
                 </div>
               </div>
             </div>

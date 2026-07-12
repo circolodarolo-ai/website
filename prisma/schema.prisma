@@ -348,6 +348,8 @@ model SiteInfo {
   heroCTAText        String?  @default("Scopri il Menu")
   heroImageUrl       String?
   heroOverlayOpacity Float    @default(0.5)
+  heroTextColor      String?  @default("#ffffff")
+  headerTextColor    String?  @default("#ffffff")
   specialitaTitle    String?  @default("Le Nostre Specialità")
   specialitaSubtitle String?
   createdAt          DateTime @default(now())
