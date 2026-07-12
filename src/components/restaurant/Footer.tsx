@@ -100,6 +100,9 @@ export default function Footer() {
       });
     }
     dbTr.register(texts);
+    // FIX: dipendenza deve essere dbTr.register (stabile, useCallback su [locale])
+    // NON l'intero oggetto dbTr, che è un nuovo reference ad ogni render perché
+    // dbTr.t dipende da translations → loop asincrono ogni 50ms (drain CPU/battery mobile).
   }, [footerInfo, siteInfo, dbTr.register]);
 
   const activeSocial = socialLinks.filter(

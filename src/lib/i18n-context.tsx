@@ -4,7 +4,6 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 
 type Locale = 'it' | 'en' | 'fr' | 'de' | 'es';
 
-// Messaggi di default (italiano) inline come fallback — deve essere completo come it.json
 const defaultMessages: Record<string, Record<string, string>> = {
   nav: {
     home: 'Home', menu: 'Menu', eventi: 'Eventi', chiSiamo: 'Chi Siamo',
@@ -153,7 +152,7 @@ const defaultMessages: Record<string, Record<string, string>> = {
     pSec3Title: '3. Categorie di Dati Raccolti',
     pSec3Intro: 'Questo sito raccoglie le seguenti tipologie di dati personali:',
     pSec3Nav: 'Dati di navigazione: indirizzo IP (anonimizzato), tipo di browser, sistema operativo, pagine visitate, data e ora di accesso, durata della sessione. Questi dati sono raccolti in forma aggregata e anonima.',
-    pSec3Vol: 'Dati forniti voluntaryamente: nome, cognome, indirizzo email, numero di telefono, dati della prenotazione. Questi dati sono forniti esclusivamente dall\'utente tramite il modulo di prenotazione.',
+    pSec3Vol: 'Dati forniti volontariamente: nome, cognome, indirizzo email, numero di telefono, dati della prenotazione. Questi dati sono forniti esclusivamente dall\'utente tramite il modulo di prenotazione.',
     pSec3Cookie: 'Cookie tecnici e analitici: come dettagliato nella',
     pSec4Title: '4. Finalità del Trattamento',
     pSec4Intro: 'I dati personali sono trattati per le seguenti finalità:',
@@ -195,7 +194,6 @@ interface I18nContextType {
   messages: Record<string, Record<string, string>>;
   t: (key: string, replacements?: Record<string, string>) => string;
   isMultilingual: boolean;
-  /** Register DB-sourced overrides — these take priority over defaults */
   registerOverrides: (overrides: Record<string, string | null | undefined>) => void;
 }
 
@@ -207,12 +205,26 @@ const I18nContext = createContext<I18nContextType>({
   registerOverrides: () => {},
 });
 
+// Safe localStorage helper — never throws
+function safeGetItem(key: string): string | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
+  } catch { /* noop — private browsing, storage quota, etc. */ }
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>('it');
   const [messages, setMessages] = useState(defaultMessages);
   const [isMultilingual, setIsMultilingual] = useState(false);
-  // DB overrides: flat key → value map. Components register their DB content here.
-  // Applied ONLY for Italian locale — for other locales, translations are loaded into messages.
   const [dbOverrides, setDbOverrides] = useState<Record<string, string>>({});
 
   const registerOverrides = useCallback((overrides: Record<string, string | null | undefined>) => {
@@ -230,11 +242,16 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           changed = true;
         }
       }
+      // Bailout: return the SAME reference when nothing changed so React skips
+      // the re-render. Without this, useSiteOverrides (Hero/ChiSiamo) passed a
+      // fresh object literal every render → registerOverrides ran every render
+      // → setDbOverrides returned a new {} every time → infinite re-render loop
+      // → 'Maximum update depth exceeded' → ErrorBoundary fallback (broken
+      // sections + dead links + mobile white-screen crash).
       return changed ? next : prev;
     });
   }, []);
 
-  // DB keys that may be overridden and need translation for non-Italian locales
   const DB_OVERRIDE_KEYS = [
     { key: 'hero.defaultTitle', field: 'heroTitle' },
     { key: 'hero.defaultSubtitle', field: 'heroSubtitle' },
@@ -262,7 +279,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (Object.keys(data).length > 0) {
-          // Fetch DB-overridden texts and translate them for this locale
           try {
             const siteRes = await fetch('/api/site-info');
             if (siteRes.ok) {
@@ -280,7 +296,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
                   const { translations } = await batchRes.json();
                   for (const [key, value] of Object.entries(translations)) {
                     const original = textsToTranslate.find(t => t.key === key);
-                    // Only merge if translation differs from Italian original
                     if (original && value !== original.text) {
                       const [section, field] = key.split('.');
                       if (data[section]) data[section][field] = value;
@@ -308,7 +323,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .then(data => {
         if (data.active) {
           setIsMultilingual(true);
-          const saved = localStorage.getItem('user-locale') || 'it';
+          const saved = safeGetItem('user-locale') || 'it';
           if (saved !== 'it') {
             const isValid = data.languages?.some((l: { code: string }) => l.code === saved);
             if (isValid) {
@@ -322,8 +337,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [loadMessages]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handler = (e: Event) => {
-      const newLocale = (e as CustomEvent).detail?.locale || localStorage.getItem('user-locale') || 'it';
+      const newLocale = (e as CustomEvent).detail?.locale || safeGetItem('user-locale') || 'it';
       setLocale(newLocale as Locale);
       if (newLocale === 'it') {
         setMessages(defaultMessages);
@@ -331,8 +347,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         loadMessages(newLocale as Locale);
       }
     };
-    window.addEventListener('locale-change', handler);
-    return () => window.removeEventListener('locale-change', handler);
+    try {
+      window.addEventListener('locale-change', handler);
+      return () => { try { window.removeEventListener('locale-change', handler); } catch { /* noop */ } };
+    } catch {
+      return;
+    }
   }, [loadMessages]);
 
   const t = (key: string, replacements?: Record<string, string>): string => {
@@ -340,15 +360,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     let text: string;
 
     if (locale === 'it' && dbOverrides[key]) {
-      // Italian: DB overrides take priority (admin-edited text)
       text = dbOverrides[key];
     } else if (parts.length === 2) {
-      // Other locales: use translated messages → defaultMessages → key
       text = messages[parts[0]]?.[parts[1]] || defaultMessages[parts[0]]?.[parts[1]] || key;
     } else {
       text = key;
     }
-    // Sostituzione variabili tipo {n}, {query}, {giorni}
     if (replacements) {
       Object.entries(replacements).forEach(([k, v]) => {
         text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
@@ -368,13 +385,12 @@ export function useI18n() {
   return useContext(I18nContext);
 }
 
-/**
- * Convenience hook: registers DB fields into i18n overrides so t() prioritizes them.
- * Usage: useSiteOverrides({ 'hero.defaultTitle': siteInfo.heroTitle, 'hero.defaultSubtitle': siteInfo.heroSubtitle })
- */
 export function useSiteOverrides(overrides: Record<string, string | null | undefined>) {
   const { registerOverrides } = useI18n();
   useEffect(() => {
     if (overrides) registerOverrides(overrides);
   }, [overrides, registerOverrides]);
 }
+
+// Export safe helpers for use by other components (CookieBanner, LanguageSelector, etc.)
+export { safeGetItem, safeSetItem };

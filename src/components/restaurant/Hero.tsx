@@ -40,7 +40,10 @@ export default function Hero() {
 
   const heroTextColor = siteInfo?.heroTextColor || '#ffffff';
 
-  // Register DB content into i18n overrides so t() prioritizes DB values
+  // Register DB content into i18n overrides so t() prioritizes DB values.
+  // FIX: useMemo per stablire il reference dell'oggetto overrides; altrimenti un
+  // literal nuovo ad ogni render farebbe girare l'useEffect in useSiteOverrides
+  // ad ogni render (loop, anche se ora registerOverrides fa bailout).
   const heroOverrides = useMemo(() => siteInfo ? {
     'hero.defaultTitle': siteInfo.heroTitle,
     'hero.defaultSubtitle': siteInfo.heroSubtitle,
