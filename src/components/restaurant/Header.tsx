@@ -13,6 +13,7 @@ interface SiteInfo {
   nomeLocale: string;
   telefono: string;
   prenotazioniAttive: boolean;
+  logoUrl: string | null;
 }
 
 export default function Header() {
@@ -92,9 +93,17 @@ export default function Header() {
             }}
             className="flex items-center gap-2 group"
           >
-            <UtensilsCrossed
-              className={`h-7 w-7 transition-colors ${scrolled ? 'text-[var(--primary)]' : 'text-white'}`}
-            />
+            {siteInfo?.logoUrl ? (
+              <img
+                src={siteInfo.logoUrl}
+                alt={siteInfo.nomeLocale || 'Logo'}
+                className="h-8 w-auto object-contain transition-all group-hover:scale-105"
+              />
+            ) : (
+              <UtensilsCrossed
+                className={`h-7 w-7 transition-colors ${scrolled ? 'text-[var(--primary)]' : 'text-white'}`}
+              />
+            )}
             <span
               className={`text-xl font-bold tracking-tight transition-colors ${
                 scrolled ? 'text-[var(--primary)]' : 'text-white'

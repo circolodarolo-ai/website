@@ -195,6 +195,8 @@ interface I18nContextType {
   messages: Record<string, Record<string, string>>;
   t: (key: string, replacements?: Record<string, string>) => string;
   isMultilingual: boolean;
+  /** Register DB-sourced overrides — these take priority over defaults */
+  registerOverrides: (overrides: Record<string, string | null | undefined>) => void;
 }
 
 const I18nContext = createContext<I18nContextType>({
@@ -202,12 +204,30 @@ const I18nContext = createContext<I18nContextType>({
   messages: defaultMessages,
   t: (key: string) => key,
   isMultilingual: false,
+  registerOverrides: () => {},
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>('it');
   const [messages, setMessages] = useState(defaultMessages);
   const [isMultilingual, setIsMultilingual] = useState(false);
+  // DB overrides: flat key → value map. Components register their DB content here.
+  // These ALWAYS take priority over both messages and defaultMessages.
+  const [dbOverrides, setDbOverrides] = useState<Record<string, string>>({});
+
+  const registerOverrides = useCallback((overrides: Record<string, string | null | undefined>) => {
+    setDbOverrides(prev => {
+      const next = { ...prev };
+      for (const [key, val] of Object.entries(overrides)) {
+        if (val && val.trim()) {
+          next[key] = val;
+        } else {
+          delete next[key];
+        }
+      }
+      return next;
+    });
+  }, []);
 
   const loadMessages = useCallback(async (loc: Locale) => {
     if (loc === 'it') {
@@ -265,6 +285,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [loadMessages]);
 
   const t = (key: string, replacements?: Record<string, string>): string => {
+    // Priority: dbOverrides → messages → defaultMessages → key
+    if (dbOverrides[key]) {
+      let text = dbOverrides[key];
+      if (replacements) {
+        Object.entries(replacements).forEach(([k, v]) => {
+          text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+        });
+      }
+      return text;
+    }
+
     const parts = key.split('.');
     let text: string;
     if (parts.length === 2) {
@@ -282,7 +313,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <I18nContext.Provider value={{ locale, messages, t, isMultilingual }}>
+    <I18nContext.Provider value={{ locale, messages, t, isMultilingual, registerOverrides }}>
       {children}
     </I18nContext.Provider>
   );
@@ -290,4 +321,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
 export function useI18n() {
   return useContext(I18nContext);
+}
+
+/**
+ * Convenience hook: registers DB fields into i18n overrides so t() prioritizes them.
+ * Usage: useSiteOverrides({ 'hero.defaultTitle': siteInfo.heroTitle, 'hero.defaultSubtitle': siteInfo.heroSubtitle })
+ */
+export function useSiteOverrides(overrides: Record<string, string | null | undefined>) {
+  const { registerOverrides } = useI18n();
+  useEffect(() => {
+    if (overrides) registerOverrides(overrides);
+  }, [overrides, registerOverrides]);
 }

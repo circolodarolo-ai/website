@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useI18n } from '@/lib/i18n-context';
-import { useDbTranslation } from '@/hooks/useDbTranslation';
+import { useI18n, useSiteOverrides } from '@/lib/i18n-context';
 
 interface SiteInfo {
   heroTitle: string;
@@ -23,7 +22,6 @@ interface SiteImage {
 
 export default function Hero() {
   const { t } = useI18n();
-  const dbTr = useDbTranslation();
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
   const [heroImages, setHeroImages] = useState<SiteImage[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -39,16 +37,13 @@ export default function Hero() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (siteInfo) {
-      dbTr.register({
-        'hero.title': siteInfo.heroTitle,
-        'hero.subtitle': siteInfo.heroSubtitle,
-        'hero.cta': siteInfo.heroCTAText,
-        'hero.slogan': (siteInfo as any).slogan,
-      });
-    }
-  }, [siteInfo]);
+  // Register DB content into i18n overrides so t() prioritizes DB values
+  useSiteOverrides(siteInfo ? {
+    'hero.defaultTitle': siteInfo.heroTitle,
+    'hero.defaultSubtitle': siteInfo.heroSubtitle,
+    'hero.defaultCTA': siteInfo.heroCTAText,
+    'hero.badge': (siteInfo as any).slogan,
+  } : {});
 
   // Auto-rotate slideshow if multiple hero images
   useEffect(() => {
@@ -134,11 +129,11 @@ export default function Hero() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white leading-tight tracking-tight">
-            {dbTr.t('hero.title', siteInfo?.heroTitle) || t('hero.defaultTitle')}
+            {t('hero.defaultTitle')}
           </h1>
 
           <p className="text-lg sm:text-xl md:text-2xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-            {dbTr.t('hero.subtitle', siteInfo?.heroSubtitle) || t('hero.defaultSubtitle')}
+            {t('hero.defaultSubtitle')}
           </p>
 
           {/* CTA buttons — sospesi */}

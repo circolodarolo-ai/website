@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Heart, Award, Leaf, Clock } from 'lucide-react';
-import { useI18n } from '@/lib/i18n-context';
-import { useDbTranslation } from '@/hooks/useDbTranslation';
+import { useI18n, useSiteOverrides } from '@/lib/i18n-context';
 
 interface SiteInfo {
   chiSiamoTitolo: string;
@@ -30,25 +29,8 @@ const valueKeys = [
 
 export default function ChiSiamo() {
   const { t } = useI18n();
-  const dbTr = useDbTranslation();
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
   const [images, setImages] = useState<SiteImage[]>([]);
-
-  const values = valueKeys.map((vk, i) => ({
-    icon: valueIcons[i],
-    title: t(vk.titleKey),
-    description: t(vk.descKey),
-  }));
-
-  useEffect(() => {
-    if (siteInfo) {
-      dbTr.register({
-        'chisiamo.title': siteInfo.chiSiamoTitolo,
-        'chisiamo.text': siteInfo.chiSiamoTesto,
-        'chisiamo.subtitle': (siteInfo as any).specialitaTitle,
-      });
-    }
-  }, [siteInfo]);
 
   useEffect(() => {
     fetch('/api/site-info')
@@ -61,6 +43,18 @@ export default function ChiSiamo() {
       .catch(() => {});
   }, []);
 
+  // Register DB content into i18n overrides so t() prioritizes DB values
+  useSiteOverrides(siteInfo ? {
+    'chiSiamo.defaultTitle': siteInfo.chiSiamoTitolo,
+    'chiSiamo.defaultText': siteInfo.chiSiamoTesto,
+  } : {});
+
+  const values = valueKeys.map((vk, i) => ({
+    icon: valueIcons[i],
+    title: t(vk.titleKey),
+    description: t(vk.descKey),
+  }));
+
   return (
     <section id="chisiamo" className="py-20 px-4 bg-white">
       <div className="max-w-6xl mx-auto">
@@ -70,7 +64,7 @@ export default function ChiSiamo() {
             {t('chiSiamo.subtitle')}
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
-            {dbTr.t('chisiamo.title', siteInfo?.chiSiamoTitolo) || t('chiSiamo.defaultTitle')}
+            {t('chiSiamo.defaultTitle')}
           </h2>
         </div>
 
@@ -80,7 +74,7 @@ export default function ChiSiamo() {
             {/* Text */}
             <div className="text-center md:text-left">
               <p className="text-gray-600 text-lg leading-relaxed">
-                {dbTr.t('chisiamo.text', siteInfo?.chiSiamoTesto) || t('chiSiamo.defaultText')}
+                {t('chiSiamo.defaultText')}
               </p>
             </div>
 

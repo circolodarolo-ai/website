@@ -58,7 +58,7 @@ export default function SocialSidebar() {
   // Icona Telegram via immagine (lucide-react non ce l'ha, e gli SVG inline danno problemi)
   const telegramIcon = (
     <img
-      src="https://cdn.simpleicons.org/telegram/ffffff"
+      src="https://cdn.simpleicons.org/telegram/#26A5E4"
       alt="Telegram"
       width="20"
       height="20"
