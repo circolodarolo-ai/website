@@ -164,11 +164,12 @@ export default function AdminFooter() {
                 <div className="rounded-xl overflow-hidden border h-48">
                   <iframe
                     title="Anteprima mappa"
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent([footer.indirizzo, footer.cap, footer.citta, footer.provincia].filter(Boolean).join(', '))}&z=16&output=embed`}
+                    src={`https://www.google.com/maps?q=${encodeURIComponent([footer.indirizzo, footer.cap, footer.citta, footer.provincia].filter(Boolean).join(', '))}&z=16&output=embed`}
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
                     loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">

@@ -30,8 +30,8 @@ export async function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
             "img-src 'self' data: blob: https://flagcdn.com https://*.googleapis.com https://pagead2.googlesyndication.com https://images.unsplash.com https://*.unsplash.com",
-      "connect-src 'self' https://api.mymemory.translated.net https://translate.googleapis.com https://ip-api.com",
-      "frame-src https://pagead2.googlesyndication.com",
+      "connect-src 'self' https://api.mymemory.translated.net https://translate.googleapis.com https://ip-api.com https://maps.googleapis.com https://www.google.com",
+      "frame-src https://pagead2.googlesyndication.com https://maps.google.com https://www.google.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -63,23 +63,15 @@ export async function middleware(request: NextRequest) {
 
   // ─── Auth Guard per le API admin (escluso login e me) ───
   if (pathname.startsWith('/api/admin/') && !pathname.startsWith('/api/admin/login') && !pathname.startsWith('/api/admin/me')) {
-    // Leggi token dall'header Authorization o dal cookie
     const authHeader = request.headers.get('authorization');
-    let token = authHeader?.replace('Bearer ', '') || '';
-
-    if (!token) {
-      const cookieHeader = request.headers.get('cookie') || '';
-      const match = cookieHeader.match(/admin_token=([^;]+)/);
-      token = match ? match[1] : '';
-    }
-
-    if (!token) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new NextResponse(
         JSON.stringify({ error: 'Non autenticato' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
+    const token = authHeader.replace('Bearer ', '');
     try {
       await verifyToken(token);
     } catch {

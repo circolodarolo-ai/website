@@ -99,11 +99,11 @@ export default function Footer() {
   const mapSrc = useMemo(() => {
     if (!footerInfo) return '';
     if (footerInfo.latitudine && footerInfo.longitudine) {
-      return `https://maps.google.com/maps?q=${footerInfo.latitudine},${footerInfo.longitudine}&z=16&output=embed`;
+      return `https://www.google.com/maps?q=${footerInfo.latitudine},${footerInfo.longitudine}&z=16&output=embed`;
     }
     const fullAddr = [footerInfo.indirizzo, footerInfo.cap, footerInfo.citta, footerInfo.provincia].filter(Boolean).join(', ');
     if (!fullAddr) return '';
-    return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddr)}&z=16&output=embed`;
+    return `https://www.google.com/maps?q=${encodeURIComponent(fullAddr)}&z=16&output=embed`;
   }, [footerInfo]);
 
   const fullAddress = [
