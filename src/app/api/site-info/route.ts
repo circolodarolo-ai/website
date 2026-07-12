@@ -25,8 +25,11 @@ export async function PUT(request: NextRequest) {
 
     // Estrae solo i campi validi del modello SiteInfo
     const {
-      nomeLocale, slogan, chiSiamoTitolo, chiSiamoTesto,
-      chiSiamoImageUrl, logoUrl, faviconUrl, telefono, email,
+      nomeLocale, slogan, chiSiamoTitolo, chiSiamoSubtitle, chiSiamoTesto,
+      chiSiamoImageUrl, valore1Titolo, valore1Desc,
+      valore2Titolo, valore2Desc, valore3Titolo, valore3Desc,
+      valore4Titolo, valore4Desc,
+      logoUrl, faviconUrl, telefono, email,
       prenotazioniAttive, heroTitle, heroSubtitle, heroCTAText,
       heroImageUrl, heroOverlayOpacity, specialitaTitle, specialitaSubtitle,
       seoCanonical, seoDescription, seoKeywords, seoOgDescription,
@@ -39,8 +42,11 @@ export async function PUT(request: NextRequest) {
       ...rest
     } = body;
     const data = {
-      nomeLocale, slogan, chiSiamoTitolo, chiSiamoTesto,
-      chiSiamoImageUrl, logoUrl, faviconUrl, telefono, email,
+      nomeLocale, slogan, chiSiamoTitolo, chiSiamoSubtitle, chiSiamoTesto,
+      chiSiamoImageUrl, valore1Titolo, valore1Desc,
+      valore2Titolo, valore2Desc, valore3Titolo, valore3Desc,
+      valore4Titolo, valore4Desc,
+      logoUrl, faviconUrl, telefono, email,
       prenotazioniAttive, heroTitle, heroSubtitle, heroCTAText,
       heroImageUrl, heroOverlayOpacity, specialitaTitle, specialitaSubtitle,
       seoCanonical, seoDescription, seoKeywords, seoOgDescription,

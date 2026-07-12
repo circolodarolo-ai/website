@@ -97,7 +97,7 @@ export default function Header() {
               <img
                 src={siteInfo.logoUrl}
                 alt={siteInfo.nomeLocale || 'Logo'}
-                className="h-8 w-auto object-contain transition-all group-hover:scale-105"
+                className={`h-10 w-auto object-contain transition-all group-hover:scale-105 ${scrolled ? '' : 'drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]'}`}
               />
             ) : (
               <UtensilsCrossed

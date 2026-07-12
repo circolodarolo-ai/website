@@ -6,9 +6,18 @@ import { useI18n, useSiteOverrides } from '@/lib/i18n-context';
 
 interface SiteInfo {
   chiSiamoTitolo: string;
+  chiSiamoSubtitle: string | null;
   chiSiamoTesto: string;
   nomeLocale: string;
   chiSiamoImageUrl: string | null;
+  valore1Titolo: string | null;
+  valore1Desc: string | null;
+  valore2Titolo: string | null;
+  valore2Desc: string | null;
+  valore3Titolo: string | null;
+  valore3Desc: string | null;
+  valore4Titolo: string | null;
+  valore4Desc: string | null;
 }
 
 interface SiteImage {
@@ -45,8 +54,17 @@ export default function ChiSiamo() {
 
   // Register DB content into i18n overrides so t() prioritizes DB values
   useSiteOverrides(siteInfo ? {
+    'chiSiamo.subtitle': siteInfo.chiSiamoSubtitle,
     'chiSiamo.defaultTitle': siteInfo.chiSiamoTitolo,
     'chiSiamo.defaultText': siteInfo.chiSiamoTesto,
+    'chiSiamo.valore1Titolo': siteInfo.valore1Titolo,
+    'chiSiamo.valore1Desc': siteInfo.valore1Desc,
+    'chiSiamo.valore2Titolo': siteInfo.valore2Titolo,
+    'chiSiamo.valore2Desc': siteInfo.valore2Desc,
+    'chiSiamo.valore3Titolo': siteInfo.valore3Titolo,
+    'chiSiamo.valore3Desc': siteInfo.valore3Desc,
+    'chiSiamo.valore4Titolo': siteInfo.valore4Titolo,
+    'chiSiamo.valore4Desc': siteInfo.valore4Desc,
   } : {});
 
   const values = valueKeys.map((vk, i) => ({

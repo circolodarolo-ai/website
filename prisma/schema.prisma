@@ -327,8 +327,17 @@ model SiteInfo {
   nomeLocale         String   @default("Il Nostro Ristorante")
   slogan             String?
   chiSiamoTitolo     String?
+  chiSiamoSubtitle   String?
   chiSiamoTesto      String?
   chiSiamoImageUrl   String?
+  valore1Titolo      String?
+  valore1Desc        String?
+  valore2Titolo      String?
+  valore2Desc        String?
+  valore3Titolo      String?
+  valore3Desc        String?
+  valore4Titolo      String?
+  valore4Desc        String?
   logoUrl            String?
   faviconUrl         String?
   telefono           String?

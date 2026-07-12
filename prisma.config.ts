@@ -1,9 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { defineConfig } from 'prisma/config'
+import { resolve } from 'node:path'
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // Carica .env manualmente
 try {
-  const content = readFileSync('.env', 'utf-8')
+  const content = readFileSync(resolve(__dirname, '.env'), 'utf-8')
   for (const line of content.split('\n')) {
     const trimmed = line.trim()
     if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
@@ -16,6 +21,7 @@ try {
 } catch {}
 
 export default defineConfig({
+  schema: resolve(__dirname, 'prisma', 'schema.prisma'),
   datasource: {
     url: process.env.DATABASE_URL!,
   },

@@ -54,7 +54,12 @@ const ALL_FONTS = FONT_LIST.flatMap(g => g.fonts);
 const GOOGLE_FONTS_URL = `https://fonts.googleapis.com/css2?family=${ALL_FONTS.map(f => f.value.replace(/ /g, '+')).join('&family=')}:wght@400;500;600;700&display=swap`;
 
 interface SiteInfoData {
-  id: string; nomeLocale: string; slogan: string; chiSiamoTitolo: string; chiSiamoTesto: string;
+  id: string; nomeLocale: string; slogan: string;
+  chiSiamoTitolo: string; chiSiamoSubtitle: string | null; chiSiamoTesto: string;
+  valore1Titolo: string | null; valore1Desc: string | null;
+  valore2Titolo: string | null; valore2Desc: string | null;
+  valore3Titolo: string | null; valore3Desc: string | null;
+  valore4Titolo: string | null; valore4Desc: string | null;
   telefono: string; email: string; prenotazioniAttive: boolean;
   heroTitle: string; heroSubtitle: string; heroCTAText: string; primaryColor: string;
   chiSiamoImageUrl: string | null; logoUrl: string | null; faviconUrl: string | null;
@@ -227,34 +232,131 @@ export default function AdminTheme() {
       <link href={GOOGLE_FONTS_URL} rel="stylesheet" />
 
       <h2 className="text-2xl font-bold mb-6">Temi e Personalizzazioni</h2>
-      <Tabs defaultValue="testi">
+      <Tabs defaultValue="hero">
         <TabsList className="mb-6 flex-wrap">
-          <TabsTrigger value="testi">Testi</TabsTrigger>
-          <TabsTrigger value="font">Font</TabsTrigger>
-          <TabsTrigger value="logo">Logo & Favicon</TabsTrigger>
-          <TabsTrigger value="colori">Colori</TabsTrigger>
           <TabsTrigger value="hero">Hero</TabsTrigger>
+          <TabsTrigger value="chisiamo">Chi Siamo</TabsTrigger>
+          <TabsTrigger value="testi">Testi Generali</TabsTrigger>
+          <TabsTrigger value="font">Font</TabsTrigger>
+          <TabsTrigger value="colori">Colori</TabsTrigger>
+          <TabsTrigger value="logo">Logo & Favicon</TabsTrigger>
           <TabsTrigger value="immagini">Immagini Sito</TabsTrigger>
         </TabsList>
 
-        {/* ── Testi ── */}
+        {/* ── Hero ── */}
+        <TabsContent value="hero">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Badge (sopra il titolo)</Label>
+              <p className="text-xs text-muted-foreground">Es: &quot;Dal 1985 nel cuore di Milano&quot;</p>
+              <Input value={siteInfo.slogan} onChange={e => setSiteInfo({ ...siteInfo, slogan: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Titolo Hero</Label>
+              <Input value={siteInfo.heroTitle} onChange={e => setSiteInfo({ ...siteInfo, heroTitle: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Sottotitolo</Label>
+              <Textarea value={siteInfo.heroSubtitle} onChange={e => setSiteInfo({ ...siteInfo, heroSubtitle: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>Testo CTA</Label>
+              <Input value={siteInfo.heroCTAText} onChange={e => setSiteInfo({ ...siteInfo, heroCTAText: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Immagine Hero</Label>
+              <div className="flex gap-2">
+                <Input value={siteInfo.heroImageUrl || ''} onChange={e => setSiteInfo({ ...siteInfo, heroImageUrl: e.target.value })} />
+                <input type="file" accept="image/*" className="hidden" ref={heroFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const url = await uploadImage(file); if (url) setSiteInfo(s => ({ ...s!, heroImageUrl: url })); e.target.value = ''; }} />
+                <Button type="button" variant="outline" disabled={uploading} onClick={() => heroFileRef.current?.click()}>
+                  {uploading ? '...' : <Upload className="h-4 w-4" />}
+                </Button>
+              </div>
+              {siteInfo.heroImageUrl && (
+                <img src={siteInfo.heroImageUrl} alt="Hero" className="w-full max-h-48 object-cover rounded-lg border" />
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Opacita Overlay: {siteInfo.heroOverlayOpacity}</Label>
+              <Slider value={[siteInfo.heroOverlayOpacity || 0.5]} onValueChange={([v]) => setSiteInfo({ ...siteInfo, heroOverlayOpacity: v })} min={0} max={1} step={0.05} />
+            </div>
+            <Button onClick={() => saveSiteInfo(siteInfo)} disabled={saving}>
+              <Save className="mr-2 h-4 w-4" />{saving ? 'Salvataggio...' : 'Salva Hero'}
+            </Button>
+          </div>
+        </TabsContent>
+
+        {/* ── Chi Siamo ── */}
+        <TabsContent value="chisiamo">
+          <div className="space-y-6">
+            {/* Sezione intestazione */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Intestazione</h3>
+              <div className="space-y-2">
+                <Label>Sottotitolo (sopra il titolo)</Label>
+                <p className="text-xs text-muted-foreground">Es: &quot;La Nostra Storia&quot;</p>
+                <Input value={siteInfo.chiSiamoSubtitle || ''} onChange={e => setSiteInfo({ ...siteInfo, chiSiamoSubtitle: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Titolo</Label>
+                <Input value={siteInfo.chiSiamoTitolo} onChange={e => setSiteInfo({ ...siteInfo, chiSiamoTitolo: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Testo descrittivo</Label>
+                <Textarea value={siteInfo.chiSiamoTesto} onChange={e => setSiteInfo({ ...siteInfo, chiSiamoTesto: e.target.value })} rows={4} />
+              </div>
+              <div className="space-y-2">
+                <Label>Immagine</Label>
+                <div className="flex gap-2">
+                  <Input value={siteInfo.chiSiamoImageUrl || ''} onChange={e => setSiteInfo({ ...siteInfo, chiSiamoImageUrl: e.target.value })} />
+                  <input type="file" accept="image/*" className="hidden" ref={chiSiamoFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const url = await uploadImage(file); if (url) setSiteInfo(s => ({ ...s!, chiSiamoImageUrl: url })); e.target.value = ''; }} />
+                  <Button type="button" variant="outline" disabled={uploading} onClick={() => chiSiamoFileRef.current?.click()}>
+                    {uploading ? '...' : <Upload className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Sezione carte valori */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Carte Valori</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 rounded-lg border p-4 bg-gray-50/50">
+                  <Label className="text-xs font-medium text-muted-foreground">Carta 1</Label>
+                  <Input placeholder="Es: Passione" value={siteInfo.valore1Titolo || ''} onChange={e => setSiteInfo({ ...siteInfo, valore1Titolo: e.target.value })} />
+                  <Textarea placeholder="Descrizione..." value={siteInfo.valore1Desc || ''} onChange={e => setSiteInfo({ ...siteInfo, valore1Desc: e.target.value })} rows={2} />
+                </div>
+                <div className="space-y-2 rounded-lg border p-4 bg-gray-50/50">
+                  <Label className="text-xs font-medium text-muted-foreground">Carta 2</Label>
+                  <Input placeholder="Es: Ingredienti Freschi" value={siteInfo.valore2Titolo || ''} onChange={e => setSiteInfo({ ...siteInfo, valore2Titolo: e.target.value })} />
+                  <Textarea placeholder="Descrizione..." value={siteInfo.valore2Desc || ''} onChange={e => setSiteInfo({ ...siteInfo, valore2Desc: e.target.value })} rows={2} />
+                </div>
+                <div className="space-y-2 rounded-lg border p-4 bg-gray-50/50">
+                  <Label className="text-xs font-medium text-muted-foreground">Carta 3</Label>
+                  <Input placeholder="Es: Tradizione dal 1985" value={siteInfo.valore3Titolo || ''} onChange={e => setSiteInfo({ ...siteInfo, valore3Titolo: e.target.value })} />
+                  <Textarea placeholder="Descrizione..." value={siteInfo.valore3Desc || ''} onChange={e => setSiteInfo({ ...siteInfo, valore3Desc: e.target.value })} rows={2} />
+                </div>
+                <div className="space-y-2 rounded-lg border p-4 bg-gray-50/50">
+                  <Label className="text-xs font-medium text-muted-foreground">Carta 4</Label>
+                  <Input placeholder="Es: Ricette Autentiche" value={siteInfo.valore4Titolo || ''} onChange={e => setSiteInfo({ ...siteInfo, valore4Titolo: e.target.value })} />
+                  <Textarea placeholder="Descrizione..." value={siteInfo.valore4Desc || ''} onChange={e => setSiteInfo({ ...siteInfo, valore4Desc: e.target.value })} rows={2} />
+                </div>
+              </div>
+            </div>
+
+            <Button onClick={() => saveSiteInfo(siteInfo)} disabled={saving}>
+              <Save className="mr-2 h-4 w-4" />{saving ? 'Salvataggio...' : 'Salva Chi Siamo'}
+            </Button>
+          </div>
+        </TabsContent>
+
+        {/* ── Testi Generali ── */}
         <TabsContent value="testi">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Nome Locale</Label>
               <Input value={siteInfo.nomeLocale} onChange={e => setSiteInfo({ ...siteInfo, nomeLocale: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Slogan</Label>
-              <Input value={siteInfo.slogan} onChange={e => setSiteInfo({ ...siteInfo, slogan: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Titolo Chi Siamo</Label>
-              <Input value={siteInfo.chiSiamoTitolo} onChange={e => setSiteInfo({ ...siteInfo, chiSiamoTitolo: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Testo Chi Siamo</Label>
-              <Textarea value={siteInfo.chiSiamoTesto} onChange={e => setSiteInfo({ ...siteInfo, chiSiamoTesto: e.target.value })} rows={5} />
             </div>
             <div className="space-y-2">
               <Label>Titolo Specialita</Label>
@@ -665,78 +767,6 @@ export default function AdminTheme() {
 
             <Button onClick={() => saveSiteInfo(siteInfo)} disabled={saving}>
               <Save className="mr-2 h-4 w-4" />{saving ? 'Salvataggio...' : 'Salva Colori'}
-            </Button>
-          </div>
-        </TabsContent>
-
-        {/* ── Hero ── */}
-        <TabsContent value="hero">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Titolo Hero</Label>
-              <Input value={siteInfo.heroTitle} onChange={e => setSiteInfo({ ...siteInfo, heroTitle: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Sottotitolo</Label>
-              <Textarea value={siteInfo.heroSubtitle} onChange={e => setSiteInfo({ ...siteInfo, heroSubtitle: e.target.value })} rows={2} />
-            </div>
-            <div className="space-y-2">
-              <Label>Testo CTA</Label>
-              <Input value={siteInfo.heroCTAText} onChange={e => setSiteInfo({ ...siteInfo, heroCTAText: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Immagine Hero</Label>
-              <div className="flex gap-2">
-                <Input value={siteInfo.heroImageUrl || ''} onChange={e => setSiteInfo({ ...siteInfo, heroImageUrl: e.target.value })} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  ref={heroFileRef}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const url = await uploadImage(file);
-                    if (url) setSiteInfo(s => ({ ...s!, heroImageUrl: url }));
-                    e.target.value = '';
-                  }}
-                />
-                <Button type="button" variant="outline" disabled={uploading} onClick={() => heroFileRef.current?.click()}>
-                  {uploading ? '...' : <Upload className="h-4 w-4" />}
-                </Button>
-              </div>
-              {siteInfo.heroImageUrl && (
-                <img src={siteInfo.heroImageUrl} alt="Hero" className="w-full max-h-48 object-cover rounded-lg border" />
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Opacita Overlay: {siteInfo.heroOverlayOpacity}</Label>
-              <Slider value={[siteInfo.heroOverlayOpacity || 0.5]} onValueChange={([v]) => setSiteInfo({ ...siteInfo, heroOverlayOpacity: v })} min={0} max={1} step={0.05} />
-            </div>
-            <div className="space-y-2">
-              <Label>Immagine Chi Siamo</Label>
-              <div className="flex gap-2">
-                <Input value={siteInfo.chiSiamoImageUrl || ''} onChange={e => setSiteInfo({ ...siteInfo, chiSiamoImageUrl: e.target.value })} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  ref={chiSiamoFileRef}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const url = await uploadImage(file);
-                    if (url) setSiteInfo(s => ({ ...s!, chiSiamoImageUrl: url }));
-                    e.target.value = '';
-                  }}
-                />
-                <Button type="button" variant="outline" disabled={uploading} onClick={() => chiSiamoFileRef.current?.click()}>
-                  {uploading ? '...' : <Upload className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-            <Button onClick={() => saveSiteInfo(siteInfo)} disabled={saving}>
-              <Save className="mr-2 h-4 w-4" />{saving ? 'Salvataggio...' : 'Salva Hero'}
             </Button>
           </div>
         </TabsContent>
