@@ -161,7 +161,7 @@ export default async function RootLayout({
           />
         )}
       </head>
-      <body className="antialiased bg-white text-foreground">
+      <body className="antialiased bg-white text-foreground" suppressHydrationWarning>
         <Providers>
           {children}
           <CookieBanner />

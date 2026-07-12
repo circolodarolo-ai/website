@@ -60,10 +60,15 @@ const deliveryLinks: { key: keyof FooterInfo; label: string; color: string }[] =
 ];
 
 export default function Footer() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const dbTr = useDbTranslation();
   const [footerInfo, setFooterInfo] = useState<FooterInfo | null>(null);
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
+  const [currentYear, setCurrentYear] = useState(2026);
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -248,7 +253,7 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-2">
           <p className="text-xs text-white/40">
-            &copy; {new Date().getFullYear()} {dbTr.t('footer.nomeLocale', siteInfo?.nomeLocale || 'Il Nostro Ristorante')}. {t('footer.diritti')}
+            &copy; {currentYear} {dbTr.t('footer.nomeLocale', siteInfo?.nomeLocale || 'Il Nostro Ristorante')}. {t('footer.diritti')}
           </p>
           <div className="flex items-center gap-4 text-xs text-white/40">
             <Link href="/cookie-policy" className="hover:text-white/70 transition-colors">
