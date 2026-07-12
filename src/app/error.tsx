@@ -10,7 +10,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[ErrorBoundary]', error);
+    console.error('[PageError]', error.message, error.stack);
   }, [error]);
 
   return (
@@ -26,10 +26,10 @@ export default function Error({
 
         <details className="text-left mb-4">
           <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">Dettagli errore</summary>
-          <div className="mt-2 p-3 bg-red-50 rounded-lg overflow-auto max-h-40">
+          <div className="mt-2 p-3 bg-red-50 rounded-lg overflow-auto max-h-60">
             <p className="text-xs text-red-700 font-mono break-all">{error.message}</p>
             {error.stack && (
-              <pre className="text-[10px] text-red-400 mt-2 whitespace-pre-wrap break-all max-h-32 overflow-auto">{error.stack}</pre>
+              <pre className="text-[10px] text-red-400 mt-2 whitespace-pre-wrap break-all max-h-40 overflow-auto">{error.stack}</pre>
             )}
             {error.digest && <p className="text-xs text-gray-400 mt-1">Digest: {error.digest}</p>}
           </div>

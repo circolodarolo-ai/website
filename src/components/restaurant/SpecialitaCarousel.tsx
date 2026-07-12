@@ -17,6 +17,7 @@ interface Articolo {
   Categoria: { nome: string };
 }
 
+// Food gradient backgrounds for cards without images
 const foodGradients = [
   'linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%)',
   'linear-gradient(135deg, #059669 0%, #34d399 100%)',
@@ -49,7 +50,7 @@ export default function SpecialitaCarousel() {
     fetch('/api/articoli')
       .then((r) => r.json())
       .then(setArticoli)
-      .catch(() => {})
+      .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
@@ -91,7 +92,11 @@ export default function SpecialitaCarousel() {
     if (diff === 0) return 'active';
     if (diff === 1 || (activeIndex === articoli.length - 1 && index === 0)) return 'after';
     if (diff === articoli.length - 1) return 'before';
-    if (diff === 2 || (activeIndex >= articoli.length - 2 && index <= 1)) return 'after-all';
+    if (
+      diff === 2 ||
+      (activeIndex >= articoli.length - 2 && index <= 1)
+    )
+      return 'after-all';
     return 'before-all';
   };
 
@@ -128,6 +133,7 @@ export default function SpecialitaCarousel() {
           </div>
         ) : (
           <>
+            {/* 3D Carousel */}
             <div className="sp-carousel-container">
               <div className="sp-carousel-content">
                 {articoli.map((articolo, index) => {
@@ -141,6 +147,7 @@ export default function SpecialitaCarousel() {
                         className="sp-card-content cursor-pointer"
                         onClick={() => router.push(`/menu#art-${articolo.id}`)}
                       >
+                        {/* Image area */}
                         <div className="sp-card-image" style={{ background: articolo.immagineUrl ? 'transparent' : gradient }}>
                           {articolo.immagineUrl ? (
                             <img
@@ -153,6 +160,7 @@ export default function SpecialitaCarousel() {
                               <span className="text-7xl drop-shadow-lg">{emoji}</span>
                             </div>
                           )}
+                          {/* Badges */}
                           <div className="sp-badges">
                             {articolo.eBestChoice && (
                               <span className="sp-badge sp-badge-best-choice flex items-center gap-1">
@@ -163,6 +171,7 @@ export default function SpecialitaCarousel() {
                               <span className="sp-badge sp-badge-promo">{t('specialita.promo')}</span>
                             )}
                           </div>
+                          {/* Category tag */}
                           <div className="absolute bottom-3 left-3">
                             <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium rounded-full">
                               {dbTr.t('specialita.' + articolo.id + '.cat', articolo.Categoria?.nome)}
@@ -170,6 +179,7 @@ export default function SpecialitaCarousel() {
                           </div>
                         </div>
 
+                        {/* Info */}
                         <div className="sp-card-info">
                           <div>
                             <div className="sp-card-title">{dbTr.t('specialita.' + articolo.id + '.nome', articolo.nome)}</div>
@@ -194,14 +204,24 @@ export default function SpecialitaCarousel() {
                 })}
               </div>
 
-              <button className="sp-nav-btn sp-nav-prev" onClick={goToPrevious} aria-label={t('specialita.precedente')}>
+              {/* Nav buttons */}
+              <button
+                className="sp-nav-btn sp-nav-prev"
+                onClick={goToPrevious}
+                aria-label={t('specialita.precedente')}
+              >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <button className="sp-nav-btn sp-nav-next" onClick={goToNext} aria-label={t('specialita.successivo')}>
+              <button
+                className="sp-nav-btn sp-nav-next"
+                onClick={goToNext}
+                aria-label={t('specialita.successivo')}
+              >
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
 
+            {/* Indicators */}
             <div className="sp-indicators">
               {articoli.map((_, index) => (
                 <button
@@ -216,70 +236,203 @@ export default function SpecialitaCarousel() {
         )}
       </section>
 
-      {/* Scoped styles via regular <style> tag instead of styled-jsx */}
+      {/* Embedded styles for 3D carousel */}
       <style dangerouslySetInnerHTML={{ __html: `
         .sp-carousel-container {
-          position: relative; display: flex; justify-content: center; align-items: center;
-          height: 500px; overflow: hidden; perspective: 1000px;
+          position: relative;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 500px;
+          overflow: hidden;
+          perspective: 1000px;
         }
-        @media (max-width: 768px) { .sp-carousel-container { height: 420px; } }
-        @media (max-width: 480px) { .sp-carousel-container { height: 380px; } }
+        @media (max-width: 768px) {
+          .sp-carousel-container { height: 420px; }
+        }
+        @media (max-width: 480px) {
+          .sp-carousel-container { height: 380px; }
+        }
         .sp-carousel-content {
-          position: relative; width: 100%; height: 100%;
-          display: flex; justify-content: center; align-items: center;
+          position: relative;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
         }
         .sp-step-item {
-          position: absolute; width: 320px; height: 450px;
-          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d;
+          position: absolute;
+          width: 320px;
+          height: 450px;
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+          transform-style: preserve-3d;
         }
-        @media (max-width: 768px) { .sp-step-item { width: 260px; height: 380px; } }
-        @media (max-width: 480px) { .sp-step-item { width: 220px; height: 340px; } }
-        .sp-step-item.active { z-index: 3; transform: translateX(0) scale(1); opacity: 1; }
-        .sp-step-item.before { z-index: 2; transform: translateX(-120%) scale(0.8); opacity: 0.7; filter: blur(2px); }
-        .sp-step-item.after { z-index: 2; transform: translateX(120%) scale(0.8); opacity: 0.7; filter: blur(2px); }
-        .sp-step-item.before-all, .sp-step-item.after-all { z-index: 1; transform: translateX(0) scale(0.6); opacity: 0; filter: blur(4px); }
+        @media (max-width: 768px) {
+          .sp-step-item { width: 260px; height: 380px; }
+        }
+        @media (max-width: 480px) {
+          .sp-step-item { width: 220px; height: 340px; }
+        }
+        .sp-step-item.active {
+          z-index: 3;
+          transform: translateX(0) scale(1);
+          opacity: 1;
+        }
+        .sp-step-item.before {
+          z-index: 2;
+          transform: translateX(-120%) scale(0.8);
+          opacity: 0.7;
+          filter: blur(2px);
+        }
+        .sp-step-item.after {
+          z-index: 2;
+          transform: translateX(120%) scale(0.8);
+          opacity: 0.7;
+          filter: blur(2px);
+        }
+        .sp-step-item.before-all,
+        .sp-step-item.after-all {
+          z-index: 1;
+          transform: translateX(0) scale(0.6);
+          opacity: 0;
+          filter: blur(4px);
+        }
         .sp-card-content {
-          width: 100%; height: 100%; background: white; border-radius: 20px; overflow: hidden;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15); transition: all 0.5s ease;
+          width: 100%;
+          height: 100%;
+          background: white;
+          border-radius: 20px;
+          overflow: hidden;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+          transition: all 0.5s ease;
         }
-        .sp-step-item.active .sp-card-content { box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); }
-        .sp-card-image { position: relative; width: 100%; height: 60%; overflow: hidden; }
-        .sp-badges { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 2; }
+        .sp-step-item.active .sp-card-content {
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+        }
+        .sp-card-image {
+          position: relative;
+          width: 100%;
+          height: 60%;
+          overflow: hidden;
+        }
+        .sp-badges {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          z-index: 2;
+        }
         .sp-badge {
-          padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
-          text-transform: uppercase; letter-spacing: 0.5px; color: white;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: white;
         }
-        .sp-badge-best-choice { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .sp-badge-promo { background: var(--primary); }
-        .sp-card-info { padding: 16px; height: 40%; display: flex; flex-direction: column; justify-content: space-between; }
-        .sp-card-title { font-size: 1.25rem; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; line-height: 1.3; }
+        .sp-badge-best-choice {
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        .sp-badge-promo {
+          background: var(--primary);
+        }
+        .sp-card-info {
+          padding: 16px;
+          height: 40%;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .sp-card-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1a1a1a;
+          margin-bottom: 4px;
+          line-height: 1.3;
+        }
         .sp-card-description {
-          font-size: 0.85rem; color: #666; line-height: 1.4;
-          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+          font-size: 0.85rem;
+          color: #666;
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
-        .sp-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
-        .sp-card-price { font-size: 1.5rem; font-weight: 800; color: #059669; }
+        .sp-card-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: auto;
+        }
+        .sp-card-price {
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: #059669;
+        }
         .sp-nav-btn {
-          position: absolute; top: 50%; transform: translateY(-50%);
-          width: 50px; height: 50px; border-radius: 50%; background: white; border: none;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          transition: all 0.3s ease; z-index: 10; color: #1a1a1a;
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          background: white;
+          border: none;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          z-index: 10;
+          color: #1a1a1a;
         }
-        .sp-nav-btn:hover { transform: translateY(-50%) scale(1.1); box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2); }
-        .sp-nav-btn:active { transform: translateY(-50%) scale(0.95); }
+        .sp-nav-btn:hover {
+          transform: translateY(-50%) scale(1.1);
+          box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
+        }
+        .sp-nav-btn:active {
+          transform: translateY(-50%) scale(0.95);
+        }
         .sp-nav-prev { left: 20px; }
         .sp-nav-next { right: 20px; }
-        @media (max-width: 768px) { .sp-nav-prev { left: 10px; } .sp-nav-next { right: 10px; } .sp-nav-btn { width: 42px; height: 42px; } }
-        @media (max-width: 480px) { .sp-nav-prev { left: 5px; } .sp-nav-next { right: 5px; } .sp-nav-btn { width: 38px; height: 38px; } }
-        .sp-indicators { display: flex; justify-content: center; gap: 10px; margin-top: 24px; }
+        @media (max-width: 768px) {
+          .sp-nav-prev { left: 10px; }
+          .sp-nav-next { right: 10px; }
+          .sp-nav-btn { width: 42px; height: 42px; }
+        }
+        @media (max-width: 480px) {
+          .sp-nav-prev { left: 5px; }
+          .sp-nav-next { right: 5px; }
+          .sp-nav-btn { width: 38px; height: 38px; }
+        }
+        .sp-indicators {
+          display: flex;
+          justify-content: center;
+          gap: 10px;
+          margin-top: 24px;
+        }
         .sp-indicator {
-          width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; border: none;
-          cursor: pointer; transition: all 0.3s ease;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: #d1d5db;
+          border: none;
+          cursor: pointer;
+          transition: all 0.3s ease;
         }
         .sp-indicator:hover { background: #9ca3af; }
-        .sp-indicator-active { width: 30px; border-radius: 5px; background: var(--primary); }
-      `}} />
+        .sp-indicator-active {
+          width: 30px;
+          border-radius: 5px;
+          background: var(--primary);
+        }
+      ` }} />
     </>
   );
 }
