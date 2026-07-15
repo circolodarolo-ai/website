@@ -1,8 +1,18 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 
 type Locale = 'it' | 'en' | 'fr' | 'de' | 'es';
+
+// --- localStorage sicuro (SSR-safe) ---
+export function safeGetItem(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+export function safeSetItem(key: string, value: string): void {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
 
 // Messaggi di default (italiano) inline come fallback — deve essere completo come it.json
 const defaultMessages: Record<string, Record<string, string>> = {
@@ -195,6 +205,7 @@ interface I18nContextType {
   messages: Record<string, Record<string, string>>;
   t: (key: string, replacements?: Record<string, string>) => string;
   isMultilingual: boolean;
+  registerOverrides: (overrides: Record<string, string | null | undefined>) => void;
 }
 
 const I18nContext = createContext<I18nContextType>({
@@ -202,12 +213,28 @@ const I18nContext = createContext<I18nContextType>({
   messages: defaultMessages,
   t: (key: string) => key,
   isMultilingual: false,
+  registerOverrides: () => {},
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>('it');
   const [messages, setMessages] = useState(defaultMessages);
   const [isMultilingual, setIsMultilingual] = useState(false);
+  const [dbOverrides, setDbOverrides] = useState<Record<string, string>>({});
+
+  // Registra override dal DB con bailout (stessa reference se nulla cambia → niente re-render)
+  const registerOverrides = useCallback((overrides: Record<string, string | null | undefined>) => {
+    setDbOverrides(prev => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [key, val] of Object.entries(overrides)) {
+        if (val && val.trim()) {
+          if (next[key] !== val) { next[key] = val; changed = true; }
+        } else if (key in next) { delete next[key]; changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
 
   const loadMessages = useCallback(async (loc: Locale) => {
     if (loc === 'it') {
@@ -264,7 +291,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('locale-change', handler);
   }, [loadMessages]);
 
-  const t = (key: string, replacements?: Record<string, string>): string => {
+  const t = useCallback((key: string, replacements?: Record<string, string>): string => {
+    // Prima controlla gli override dal DB
+    if (dbOverrides[key]) return dbOverrides[key];
     const parts = key.split('.');
     let text: string;
     if (parts.length === 2) {
@@ -279,10 +308,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       });
     }
     return text;
-  };
+  }, [messages, dbOverrides]);
 
   return (
-    <I18nContext.Provider value={{ locale, messages, t, isMultilingual }}>
+    <I18nContext.Provider value={{ locale, messages, t, isMultilingual, registerOverrides }}>
       {children}
     </I18nContext.Provider>
   );
@@ -290,4 +319,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
 export function useI18n() {
   return useContext(I18nContext);
+}
+
+export function useSiteOverrides() {
+  const { registerOverrides } = useContext(I18nContext);
+  return { registerOverrides };
 }
