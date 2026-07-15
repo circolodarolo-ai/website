@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 
 type Locale = 'it' | 'en' | 'fr' | 'de' | 'es';
 
+// Messaggi di default (italiano) inline come fallback — deve essere completo come it.json
 const defaultMessages: Record<string, Record<string, string>> = {
   nav: {
     home: 'Home', menu: 'Menu', eventi: 'Eventi', chiSiamo: 'Chi Siamo',
@@ -83,7 +84,7 @@ const defaultMessages: Record<string, Record<string, string>> = {
     successo: 'Prenotazione inviata con successo! Ti contatteremo a breve per la conferma.',
   },
   footer: {
-    mappaTitolo: 'Posizione del ristorante', giorniChiusura: 'Giorni di chiusura:',
+    mappaTitolo: 'Posizione del ristorante', orariApertura: 'Orari di apertura', giorniChiusura: 'Giorni di chiusura:',
     social: 'Social', ordinaOnline: 'Ordina Online', diritti: 'Tutti i diritti riservati.',
     privacy: 'Privacy Policy', cookie: 'Cookie Policy', termini: 'Termini di Servizio',
   },
@@ -152,7 +153,7 @@ const defaultMessages: Record<string, Record<string, string>> = {
     pSec3Title: '3. Categorie di Dati Raccolti',
     pSec3Intro: 'Questo sito raccoglie le seguenti tipologie di dati personali:',
     pSec3Nav: 'Dati di navigazione: indirizzo IP (anonimizzato), tipo di browser, sistema operativo, pagine visitate, data e ora di accesso, durata della sessione. Questi dati sono raccolti in forma aggregata e anonima.',
-    pSec3Vol: 'Dati forniti volontariamente: nome, cognome, indirizzo email, numero di telefono, dati della prenotazione. Questi dati sono forniti esclusivamente dall\'utente tramite il modulo di prenotazione.',
+    pSec3Vol: 'Dati forniti voluntaryamente: nome, cognome, indirizzo email, numero di telefono, dati della prenotazione. Questi dati sono forniti esclusivamente dall\'utente tramite il modulo di prenotazione.',
     pSec3Cookie: 'Cookie tecnici e analitici: come dettagliato nella',
     pSec4Title: '4. Finalità del Trattamento',
     pSec4Intro: 'I dati personali sono trattati per le seguenti finalità:',
@@ -194,7 +195,6 @@ interface I18nContextType {
   messages: Record<string, Record<string, string>>;
   t: (key: string, replacements?: Record<string, string>) => string;
   isMultilingual: boolean;
-  registerOverrides: (overrides: Record<string, string | null | undefined>) => void;
 }
 
 const I18nContext = createContext<I18nContextType>({
@@ -202,72 +202,12 @@ const I18nContext = createContext<I18nContextType>({
   messages: defaultMessages,
   t: (key: string) => key,
   isMultilingual: false,
-  registerOverrides: () => {},
 });
-
-// Safe localStorage helper — never throws
-function safeGetItem(key: string): string | null {
-  try {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function safeSetItem(key: string, value: string): void {
-  try {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
-  } catch { /* noop — private browsing, storage quota, etc. */ }
-}
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>('it');
   const [messages, setMessages] = useState(defaultMessages);
   const [isMultilingual, setIsMultilingual] = useState(false);
-  const [dbOverrides, setDbOverrides] = useState<Record<string, string>>({});
-
-  const registerOverrides = useCallback((overrides: Record<string, string | null | undefined>) => {
-    setDbOverrides(prev => {
-      let changed = false;
-      const next = { ...prev };
-      for (const [key, val] of Object.entries(overrides)) {
-        if (val && val.trim()) {
-          if (next[key] !== val) {
-            next[key] = val;
-            changed = true;
-          }
-        } else if (key in next) {
-          delete next[key];
-          changed = true;
-        }
-      }
-      // Bailout: return the SAME reference when nothing changed so React skips
-      // the re-render. Without this, useSiteOverrides (Hero/ChiSiamo) passed a
-      // fresh object literal every render → registerOverrides ran every render
-      // → setDbOverrides returned a new {} every time → infinite re-render loop
-      // → 'Maximum update depth exceeded' → ErrorBoundary fallback (broken
-      // sections + dead links + mobile white-screen crash).
-      return changed ? next : prev;
-    });
-  }, []);
-
-  const DB_OVERRIDE_KEYS = [
-    { key: 'hero.defaultTitle', field: 'heroTitle' },
-    { key: 'hero.defaultSubtitle', field: 'heroSubtitle' },
-    { key: 'hero.badge', field: 'slogan' },
-    { key: 'chiSiamo.subtitle', field: 'chiSiamoSubtitle' },
-    { key: 'chiSiamo.defaultTitle', field: 'chiSiamoTitolo' },
-    { key: 'chiSiamo.defaultText', field: 'chiSiamoTesto' },
-    { key: 'chiSiamo.valore1Titolo', field: 'valore1Titolo' },
-    { key: 'chiSiamo.valore1Desc', field: 'valore1Desc' },
-    { key: 'chiSiamo.valore2Titolo', field: 'valore2Titolo' },
-    { key: 'chiSiamo.valore2Desc', field: 'valore2Desc' },
-    { key: 'chiSiamo.valore3Titolo', field: 'valore3Titolo' },
-    { key: 'chiSiamo.valore3Desc', field: 'valore3Desc' },
-    { key: 'chiSiamo.valore4Titolo', field: 'valore4Titolo' },
-    { key: 'chiSiamo.valore4Desc', field: 'valore4Desc' },
-  ];
 
   const loadMessages = useCallback(async (loc: Locale) => {
     if (loc === 'it') {
@@ -279,32 +219,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (Object.keys(data).length > 0) {
-          try {
-            const siteRes = await fetch('/api/site-info');
-            if (siteRes.ok) {
-              const siteInfo = await siteRes.json();
-              const textsToTranslate = DB_OVERRIDE_KEYS
-                .map(m => ({ key: m.key, text: siteInfo[m.field] }))
-                .filter(t => t.text && t.text.trim());
-              if (textsToTranslate.length > 0) {
-                const batchRes = await fetch('/api/translate-batch', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ locale: loc, texts: textsToTranslate }),
-                });
-                if (batchRes.ok) {
-                  const { translations } = await batchRes.json();
-                  for (const [key, value] of Object.entries(translations)) {
-                    const original = textsToTranslate.find(t => t.key === key);
-                    if (original && value !== original.text) {
-                      const [section, field] = key.split('.');
-                      if (data[section]) data[section][field] = value;
-                    }
-                  }
-                }
-              }
-            }
-          } catch { /* ignore — fall back to static JSON */ }
           setMessages(data);
         } else {
           setMessages(defaultMessages);
@@ -323,7 +237,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .then(data => {
         if (data.active) {
           setIsMultilingual(true);
-          const saved = safeGetItem('user-locale') || 'it';
+          const saved = localStorage.getItem('user-locale') || 'it';
           if (saved !== 'it') {
             const isValid = data.languages?.some((l: { code: string }) => l.code === saved);
             if (isValid) {
@@ -337,9 +251,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [loadMessages]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     const handler = (e: Event) => {
-      const newLocale = (e as CustomEvent).detail?.locale || safeGetItem('user-locale') || 'it';
+      const newLocale = (e as CustomEvent).detail?.locale || localStorage.getItem('user-locale') || 'it';
       setLocale(newLocale as Locale);
       if (newLocale === 'it') {
         setMessages(defaultMessages);
@@ -347,25 +260,19 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         loadMessages(newLocale as Locale);
       }
     };
-    try {
-      window.addEventListener('locale-change', handler);
-      return () => { try { window.removeEventListener('locale-change', handler); } catch { /* noop */ } };
-    } catch {
-      return;
-    }
+    window.addEventListener('locale-change', handler);
+    return () => window.removeEventListener('locale-change', handler);
   }, [loadMessages]);
 
   const t = (key: string, replacements?: Record<string, string>): string => {
     const parts = key.split('.');
     let text: string;
-
-    if (locale === 'it' && dbOverrides[key]) {
-      text = dbOverrides[key];
-    } else if (parts.length === 2) {
+    if (parts.length === 2) {
       text = messages[parts[0]]?.[parts[1]] || defaultMessages[parts[0]]?.[parts[1]] || key;
     } else {
       text = key;
     }
+    // Sostituzione variabili tipo {n}, {query}, {giorni}
     if (replacements) {
       Object.entries(replacements).forEach(([k, v]) => {
         text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
@@ -375,7 +282,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <I18nContext.Provider value={{ locale, messages, t, isMultilingual, registerOverrides }}>
+    <I18nContext.Provider value={{ locale, messages, t, isMultilingual }}>
       {children}
     </I18nContext.Provider>
   );
@@ -384,13 +291,3 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 export function useI18n() {
   return useContext(I18nContext);
 }
-
-export function useSiteOverrides(overrides: Record<string, string | null | undefined>) {
-  const { registerOverrides } = useI18n();
-  useEffect(() => {
-    if (overrides) registerOverrides(overrides);
-  }, [overrides, registerOverrides]);
-}
-
-// Export safe helpers for use by other components (CookieBanner, LanguageSelector, etc.)
-export { safeGetItem, safeSetItem };

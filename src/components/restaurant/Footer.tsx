@@ -13,7 +13,6 @@ import {
   Twitter,
   Linkedin,
   ExternalLink,
-  Settings,
 } from 'lucide-react';
 
 interface FooterInfo {
@@ -64,11 +63,6 @@ export default function Footer() {
   const dbTr = useDbTranslation();
   const [footerInfo, setFooterInfo] = useState<FooterInfo | null>(null);
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
-  const [currentYear, setCurrentYear] = useState(2026);
-
-  useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
-  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -82,27 +76,23 @@ export default function Footer() {
       .catch(() => {});
   }, []);
 
-  // Register DB texts for translation — includes opening hours split by line
   useEffect(() => {
-    if (!footerInfo || !siteInfo) return;
-    const texts: Record<string, string | null | undefined> = {
-      'footer.nomeLocale': siteInfo.nomeLocale,
-      'footer.indirizzo': footerInfo.indirizzo,
-      'footer.citta': footerInfo.citta,
-      'footer.orari': footerInfo.orariApertura,
-      'footer.giorniChiusuraTesto': footerInfo.giorniChiusura,
-    };
-    // Split multi-line hours into individual translatable lines
-    if (footerInfo.orariApertura) {
-      const lines = footerInfo.orariApertura.split('\n').filter(l => l.trim());
-      lines.forEach((line, i) => {
-        texts[`footer.orariLinea${i}`] = line.trim();
-      });
+    if (footerInfo && siteInfo) {
+      const texts: Record<string, string | null | undefined> = {
+        'footer.nomeLocale': siteInfo.nomeLocale,
+        'footer.indirizzo': footerInfo.indirizzo,
+        'footer.citta': footerInfo.citta,
+        'footer.giorniChiusuraTesto': footerInfo.giorniChiusura,
+      };
+      // Registra ogni riga degli orari singolarmente per una traduzione precisa
+      if (footerInfo.orariApertura) {
+        const lines = footerInfo.orariApertura.split('\n').filter(l => l.trim());
+        lines.forEach((line, i) => {
+          texts[`footer.orariLinea${i}`] = line.trim();
+        });
+      }
+      dbTr.register(texts);
     }
-    dbTr.register(texts);
-    // FIX: dipendenza deve essere dbTr.register (stabile, useCallback su [locale])
-    // NON l'intero oggetto dbTr, che è un nuovo reference ad ogni render perché
-    // dbTr.t dipende da translations → loop asincrono ogni 50ms (drain CPU/battery mobile).
   }, [footerInfo, siteInfo, dbTr.register]);
 
   const activeSocial = socialLinks.filter(
@@ -129,17 +119,6 @@ export default function Footer() {
     dbTr.t('footer.citta', footerInfo?.citta),
     footerInfo?.provincia && `(${footerInfo.provincia})`,
   ].filter(Boolean).join(', ');
-
-  // Render opening hours with per-line translation
-  const renderOrari = () => {
-    if (!footerInfo?.orariApertura) return null;
-    const lines = footerInfo.orariApertura.split('\n').filter(l => l.trim());
-    return lines.map((line, i) => (
-      <p key={i} className={i > 0 ? 'mt-1' : ''}>
-        {dbTr.t(`footer.orariLinea${i}`, line.trim())}
-      </p>
-    ));
-  };
 
   return (
     <footer id="contatti" style={{ backgroundColor: 'var(--footer-bg)', color: 'var(--footer-text)' }}>
@@ -193,7 +172,14 @@ export default function Footer() {
                     <Clock className="h-4 w-4 mt-0.5 flex-shrink-0 opacity-60" />
                     <div className="text-sm leading-relaxed">
                       {footerInfo?.orariApertura && (
-                        <div className="whitespace-pre-line">{renderOrari()}</div>
+                        <>
+                          <p className="font-semibold mb-1">{t('footer.orariApertura')}</p>
+                          {footerInfo.orariApertura.split('\n').filter(l => l.trim()).map((line, i) => (
+                            <p key={i} className={i > 0 ? 'mt-1' : ''}>
+                              {dbTr.t(`footer.orariLinea${i}`, line.trim())}
+                            </p>
+                          ))}
+                        </>
                       )}
                       {footerInfo?.giorniChiusura && (
                         <p className="mt-2">
@@ -250,33 +236,23 @@ export default function Footer() {
             </div>
           </div>
         </div>
+
+
       </div>
 
       {/* Bottom Bar */}
       <div className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-2">
           <p className="text-xs text-white/40">
-            &copy; {currentYear} {dbTr.t('footer.nomeLocale', siteInfo?.nomeLocale || 'Il Nostro Ristorante')}. {t('footer.diritti')}
+            &copy; {new Date().getFullYear()} {dbTr.t('footer.nomeLocale', siteInfo?.nomeLocale || 'Il Nostro Ristorante')}. {t('footer.diritti')}
           </p>
-          <div className="flex items-center gap-4 text-xs text-white/40">
+          <div className="flex gap-4 text-xs text-white/40">
             <Link href="/cookie-policy" className="hover:text-white/70 transition-colors">
               {t('footer.cookie')}
             </Link>
             <Link href="/privacy-policy" className="hover:text-white/70 transition-colors">
               {t('footer.privacy')}
             </Link>
-            <Link href="/termini" className="hover:text-white/70 transition-colors">
-              {t('footer.termini')}
-            </Link>
-            {/* Admin settings trigger */}
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-admin-panel'))}
-              className="p-1.5 text-white/60 hover:text-white transition-colors"
-              title="Admin"
-              aria-label="Admin"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
           </div>
         </div>
       </div>

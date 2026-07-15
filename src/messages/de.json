@@ -138,6 +138,7 @@
   },
   "footer": {
     "mappaTitolo": "Standort des Restaurants",
+    "orariApertura": "Oeffnungszeiten",
     "giorniChiusura": "Schliesstage:",
     "social": "Social",
     "ordinaOnline": "Online Bestellen",
