@@ -316,11 +316,20 @@ export async function translateAllContent(locale: Locale): Promise<{ translated:
   try {
     const footerInfo = await db.footerInfo.findFirst();
     if (footerInfo) {
-      const footerFields = ['orariApertura', 'giorniChiusura', 'indirizzo', 'citta'];
+      const footerFields = ['giorniChiusura', 'indirizzo', 'citta'];
       for (const field of footerFields) {
         const value = footerInfo[field as keyof typeof footerInfo];
         if (typeof value === 'string' && value.trim()) {
           await translateWithDelay(value);
+          await delay(350);
+        }
+      }
+      // orariApertura: traduci ogni riga singolarmente
+      const orari = footerInfo.orariApertura;
+      if (typeof orari === 'string' && orari.trim()) {
+        const lines = orari.split('\n').filter(l => l.trim());
+        for (const line of lines) {
+          await translateWithDelay(line.trim());
           await delay(350);
         }
       }
