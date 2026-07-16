@@ -29,23 +29,41 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { allergeneIds, ...rest } = body;
+    console.log('[POST /api/admin/articoli] Body ricevuto, keys:', Object.keys(body));
+    const { allergeneIds, immagineAiGenerata, ...rest } = body;
+
+    const prezzo = typeof rest.prezzo === 'number' ? rest.prezzo : parseFloat(rest.prezzo);
+    const prezzoPromozionale = rest.prezzoPromozionale
+      ? (typeof rest.prezzoPromozionale === 'number' ? rest.prezzoPromozionale : parseFloat(rest.prezzoPromozionale))
+      : null;
+
+    console.log('[POST /api/admin/articoli] Dati parsed:', {
+      nome: rest.nome,
+      prezzo,
+      prezzoPromozionale,
+      immagineUrl: rest.immagineUrl ? `[${String(rest.immagineUrl).length} chars]` : null,
+      immagineAiGenerata,
+    });
+
     const articolo = await db.articolo.create({
       data: {
         id: crypto.randomUUID(),
-        nome: rest.nome,
-        descrizione: rest.descrizione || null,
+        nome: String(rest.nome || '').trim(),
+        descrizione: rest.descrizione ? String(rest.descrizione).trim() : null,
         categoriaId: rest.categoriaId,
-        prezzo: parseFloat(rest.prezzo),
-        prezzoPromozionale: rest.prezzoPromozionale ? parseFloat(rest.prezzoPromozionale) : null,
-        eBestChoice: rest.eBestChoice || false,
-        eSurgelato: rest.eSurgelato || false,
-        attivo: rest.attivo !== undefined ? rest.attivo : true,
+        prezzo,
+        prezzoPromozionale,
+        eBestChoice: !!rest.eBestChoice,
+        eSurgelato: !!rest.eSurgelato,
+        attivo: rest.attivo !== undefined ? !!rest.attivo : true,
         immagineUrl: rest.immagineUrl || null,
-        immagineAiGenerata: rest.immagineAiGenerata || false,
+        immagineAiGenerata: !!immagineAiGenerata,
         updatedAt: new Date(),
       },
     });
+
+    console.log('[POST /api/admin/articoli] Creato ID:', articolo.id);
+
     // Save allergeni relations
     if (Array.isArray(allergeneIds) && allergeneIds.length > 0) {
       await db.allergeneArticolo.createMany({
@@ -56,9 +74,10 @@ export async function POST(request: NextRequest) {
         })),
       });
     }
+
     return NextResponse.json(articolo, { status: 201 });
   } catch (error) {
-    console.error('Articoli POST error:', error);
+    console.error('[POST /api/admin/articoli] Errore:', error);
     const msg = error instanceof Error ? error.message : 'Errore nella creazione';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -67,27 +86,49 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, allergeneIds, immagineAiGenerata } = body;
-    const data = body; // tutti i campi espliciti
+    console.log('[PUT /api/admin/articoli] Body ricevuto, keys:', Object.keys(body));
 
-    // Campi espliciti per evitare problemi di tipo con lo spread
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    const { id, allergeneIds, immagineAiGenerata, ...data } = body;
 
-    if (data.nome !== undefined) updateData.nome = data.nome;
-    if (data.descrizione !== undefined) updateData.descrizione = data.descrizione || null;
-    if (data.categoriaId !== undefined) updateData.categoriaId = data.categoriaId;
-    if (data.prezzo !== undefined) updateData.prezzo = parseFloat(data.prezzo);
-    if (data.prezzoPromozionale !== undefined) updateData.prezzoPromozionale = data.prezzoPromozionale ? parseFloat(data.prezzoPromozionale) : null;
-    if (data.eBestChoice !== undefined) updateData.eBestChoice = data.eBestChoice;
-    if (data.eSurgelato !== undefined) updateData.eSurgelato = data.eSurgelato;
-    if (data.attivo !== undefined) updateData.attivo = data.attivo;
-    if (data.immagineUrl !== undefined) updateData.immagineUrl = data.immagineUrl || null;
-    if (immagineAiGenerata !== undefined) updateData.immagineAiGenerata = immagineAiGenerata;
+    if (!id) {
+      return NextResponse.json({ error: 'ID mancante' }, { status: 400 });
+    }
+
+    const prezzo = data.prezzo !== undefined
+      ? (typeof data.prezzo === 'number' ? data.prezzo : parseFloat(data.prezzo))
+      : undefined;
+    const prezzoPromozionale = data.prezzoPromozionale !== undefined
+      ? (data.prezzoPromozionale ? (typeof data.prezzoPromozionale === 'number' ? data.prezzoPromozionale : parseFloat(data.prezzoPromozionale)) : null)
+      : undefined;
+
+    console.log('[PUT /api/admin/articoli] Dati parsed:', {
+      id,
+      nome: data.nome,
+      prezzo,
+      prezzoPromozionale,
+      immagineUrl: data.immagineUrl ? `[${String(data.immagineUrl).length} chars]` : null,
+      immagineAiGenerata,
+    });
 
     const articolo = await db.articolo.update({
       where: { id },
-      data: updateData,
+      data: {
+        nome: data.nome !== undefined ? String(data.nome).trim() : undefined,
+        descrizione: data.descrizione !== undefined ? (data.descrizione ? String(data.descrizione).trim() : null) : undefined,
+        categoriaId: data.categoriaId,
+        prezzo,
+        prezzoPromozionale,
+        eBestChoice: data.eBestChoice !== undefined ? !!data.eBestChoice : undefined,
+        eSurgelato: data.eSurgelato !== undefined ? !!data.eSurgelato : undefined,
+        attivo: data.attivo !== undefined ? !!data.attivo : undefined,
+        immagineUrl: data.immagineUrl !== undefined ? (data.immagineUrl || null) : undefined,
+        immagineAiGenerata: immagineAiGenerata !== undefined ? !!immagineAiGenerata : undefined,
+        updatedAt: new Date(),
+      },
     });
+
+    console.log('[PUT /api/admin/articoli] Aggiornato ID:', articolo.id);
+
     // Update allergeni: delete old, create new
     if (Array.isArray(allergeneIds)) {
       await db.allergeneArticolo.deleteMany({
@@ -103,9 +144,10 @@ export async function PUT(request: NextRequest) {
         });
       }
     }
+
     return NextResponse.json(articolo);
   } catch (error) {
-    console.error('Articoli PUT error:', error);
+    console.error('[PUT /api/admin/articoli] Errore:', error);
     const msg = error instanceof Error ? error.message : "Errore nell'aggiornamento";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

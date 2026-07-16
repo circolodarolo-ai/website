@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 const DAILY_AI_LIMIT = 20;
 const STORAGE_KEY = 'ai-gen-count';
 
-// Stable Horde (fallback, CORS nativo)
+// Stable Horde (CORS nativo)
 const SH_SUBMIT = 'https://stablehorde.net/api/v2/generate/async';
 const SH_CHECK = 'https://stablehorde.net/api/v2/generate/check/';
 const SH_STATUS = 'https://stablehorde.net/api/v2/generate/status/';
@@ -51,11 +51,36 @@ function incrementGenerationCount(): void {
   } catch { /* ignore */ }
 }
 
-function buildAutoPrompt(nome?: string, descrizione?: string): string {
+/**
+ * Costruisce il prompt automatico per la generazione AI.
+ * Per gli articoli (dishes) specifica che si tratta di un piatto e include la categoria.
+ */
+function buildAutoPrompt(
+  nome?: string,
+  descrizione?: string,
+  categoryName?: string,
+  context?: string,
+): string {
   const parts: string[] = [];
-  if (nome?.trim()) parts.push(nome.trim());
+
+  // Se è un piatto (articolo ristorante), specifica il contesto
+  if (nome?.trim()) {
+    if (categoryName?.trim()) {
+      parts.push(`piatto italiano di categoria ${categoryName.trim()}`);
+    } else {
+      parts.push('piatto italiano');
+    }
+    parts.push(nome.trim());
+  }
+
   if (descrizione?.trim()) parts.push(descrizione.trim());
-  if (parts.length === 0) return 'delicious Italian food dish';
+
+  // Aggiungi eventuale contesto aggiuntivo (es. per eventi)
+  if (context?.trim() && !nome?.trim()) {
+    parts.push(context.trim());
+  }
+
+  if (parts.length === 0) return 'delicious Italian food dish, restaurant style';
   return parts.join(', ');
 }
 
@@ -78,21 +103,17 @@ function compressImage(file: File): Promise<string> {
     img.onload = () => {
       try {
         let { width, height } = img;
-
-        // Ridimensiona solo se supera la dimensione max
         if (width > MAX_UPLOAD_DIMENSION || height > MAX_UPLOAD_DIMENSION) {
           const ratio = Math.min(MAX_UPLOAD_DIMENSION / width, MAX_UPLOAD_DIMENSION / height);
           width = Math.round(width * ratio);
           height = Math.round(height * ratio);
         }
-
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (!ctx) { reject(new Error('Canvas non supportato')); return; }
         ctx.drawImage(img, 0, 0, width, height);
-
         const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
         resolve(dataUrl);
       } catch (e) {
@@ -108,7 +129,7 @@ function compressImage(file: File): Promise<string> {
 function tryPollination(prompt: string, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const seed = Math.floor(Math.random() * 999999);
-    const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
+    const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&seed=${seed}&nologo=true`;
     const img = new Image();
 
     const timer = setTimeout(() => {
@@ -198,7 +219,6 @@ async function stableHordeGenerate(
   const blob = await imgRes.blob();
   if (blob.size < 100) throw new Error('Immagine vuota');
 
-  // Comprimi anche l'immagine AI per ridurre dimensione nel DB
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -228,6 +248,7 @@ interface ImageUploadWithAIProps {
   onChange: (url: string) => void;
   aiContext?: string;
   aiDescription?: string;
+  categoryName?: string;
   recommendedSize?: string;
   label?: string;
   aiGenerated?: boolean;
@@ -239,6 +260,7 @@ export default function ImageUploadWithAI({
   onChange,
   aiContext,
   aiDescription,
+  categoryName,
   recommendedSize = '800 × 600 px',
   label = 'Immagine',
   aiGenerated,
@@ -260,7 +282,7 @@ export default function ImageUploadWithAI({
   const abortRef = useRef<AbortController | null>(null);
 
   const remaining = getRemainingGenerations();
-  const autoPrompt = buildAutoPrompt(aiContext, aiDescription);
+  const autoPrompt = buildAutoPrompt(aiContext, aiDescription, categoryName);
 
   useEffect(() => { setImgError(false); }, [value]);
   useEffect(() => () => { abortRef.current?.abort(); }, []);
@@ -270,7 +292,6 @@ export default function ImageUploadWithAI({
     setUploading(true);
     setImgError(false);
     try {
-      // Prima tenta l'upload al server
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
@@ -281,7 +302,6 @@ export default function ImageUploadWithAI({
         toast.success('Immagine caricata');
         return;
       }
-      // Fallback: comprimi client-side e salva come base64
       console.warn('Server upload fallito, comprimo e converto in base64');
       const compressedUrl = await compressImage(file);
       onChange(compressedUrl);
@@ -331,7 +351,7 @@ export default function ImageUploadWithAI({
 
       if (signal.aborted) return;
 
-      // Strategia 2: Stable Horde (affidabile, ottimizzato)
+      // Strategia 2: Stable Horde (affidabile)
       const result = await stableHordeGenerate(prompt, updateStatus, signal);
       onChange(result);
       onAiGeneratedChange?.(true);
@@ -472,7 +492,7 @@ export default function ImageUploadWithAI({
         </div>
       )}
 
-      {/* Anteprima immagine con zoom SEMPRE visibile */}
+      {/* Anteprima immagine con zoom */}
       {value && (
         <div className="relative inline-block">
           {imgError ? (
@@ -496,7 +516,6 @@ export default function ImageUploadWithAI({
               )}
             </>
           )}
-          {/* Zoom button SEMPRE visibile (non solo hover) */}
           {hasImage && (
             <Button
               size="icon"

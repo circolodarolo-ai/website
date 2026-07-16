@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, ImageIcon } from 'lucide-react';
 import ImageUploadWithAI from './ImageUploadWithAI';
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -26,7 +26,6 @@ interface Allergene {
 interface Articolo {
   id: string; nome: string; descrizione: string | null; categoriaId: string; prezzo: number;
   prezzoPromozionale: number | null; eBestChoice: boolean; eSurgelato: boolean; attivo: boolean; immagineUrl: string | null;
-  immagineAiGenerata?: boolean;
   categoria: Categoria; allergeni: { allergene: Allergene }[];
 }
 
@@ -46,9 +45,10 @@ export default function AdminMenu() {
   const [editingArt, setEditingArt] = useState<Articolo | null>(null);
   const [artForm, setArtForm] = useState({
     nome: '', descrizione: '', categoriaId: '', prezzo: '', prezzoPromozionale: '',
-    eBestChoice: false, eSurgelato: false, attivo: true, immagineUrl: '', immagineAiGenerata: false, selectedAllergeni: [] as string[],
+    eBestChoice: false, eSurgelato: false, attivo: true, immagineUrl: '', selectedAllergeni: [] as string[],
   });
-
+  const [savingArt, setSavingArt] = useState(false);
+  const [artAiGenerated, setArtAiGenerated] = useState(false);
 
   const [allDialogOpen, setAllDialogOpen] = useState(false);
   const [editingAll, setEditingAll] = useState<Allergene | null>(null);
@@ -76,6 +76,9 @@ export default function AdminMenu() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Nome categoria corrente per il prompt AI
+  const currentCategoriaName = categorie.find(c => c.id === artForm.categoriaId)?.nome || '';
 
   // ─── Categorie CRUD ────────────────────────────────────────────────
   const openCatDialog = (cat?: Categoria) => {
@@ -121,9 +124,9 @@ export default function AdminMenu() {
         nome: art.nome, descrizione: art.descrizione || '', categoriaId: art.categoriaId,
         prezzo: String(art.prezzo), prezzoPromozionale: art.prezzoPromozionale ? String(art.prezzoPromozionale) : '',
         eBestChoice: art.eBestChoice, eSurgelato: art.eSurgelato, attivo: art.attivo, immagineUrl: art.immagineUrl || '',
-        immagineAiGenerata: art.immagineAiGenerata || false,
         selectedAllergeni: art.allergeni.map(a => a.allergene.id),
       });
+      setArtAiGenerated(!!(art as Record<string, unknown>).immagineAiGenerata);
     } else {
       setEditingArt(null);
       setArtForm({
@@ -131,48 +134,76 @@ export default function AdminMenu() {
         prezzo: '', prezzoPromozionale: '', eBestChoice: false, eSurgelato: false, attivo: true, immagineUrl: '',
         selectedAllergeni: [],
       });
+      setArtAiGenerated(false);
     }
     setArtDialogOpen(true);
   };
 
   const saveArt = async () => {
+    console.log('[saveArt] Inizio salvataggio...');
     if (!artForm.nome.trim() || !artForm.categoriaId || !artForm.prezzo) {
+      console.warn('[saveArt] Validazione fallita:', { nome: artForm.nome, cat: artForm.categoriaId, prezzo: artForm.prezzo });
       toast.error('Compila nome, categoria e prezzo');
       return;
     }
+
+    // Converti prezzo correttamente
+    const prezzoNum = parseFloat(artForm.prezzo);
+    if (isNaN(prezzoNum) || prezzoNum <= 0) {
+      toast.error('Prezzo non valido');
+      return;
+    }
+    const prezzoPromoNum = artForm.prezzoPromozionale ? parseFloat(artForm.prezzoPromozionale) : null;
+
+    setSavingArt(true);
     try {
-      const body = {
+      const body: Record<string, unknown> = {
         ...(editingArt ? { id: editingArt.id } : {}),
-        nome: artForm.nome,
-        descrizione: artForm.descrizione || null,
+        nome: artForm.nome.trim(),
+        descrizione: artForm.descrizione?.trim() || null,
         categoriaId: artForm.categoriaId,
-        prezzo: parseFloat(artForm.prezzo),
-        prezzoPromozionale: artForm.prezzoPromozionale ? parseFloat(artForm.prezzoPromozionale) : null,
+        prezzo: prezzoNum,
+        prezzoPromozionale: prezzoPromoNum,
         eBestChoice: artForm.eBestChoice,
         eSurgelato: artForm.eSurgelato,
         attivo: artForm.attivo,
         immagineUrl: artForm.immagineUrl || null,
-        immagineAiGenerata: artForm.immagineAiGenerata,
+        immagineAiGenerata: artAiGenerated,
         allergeneIds: artForm.selectedAllergeni,
       };
+
+      console.log('[saveArt] Body inviato:', { ...body, immagineUrl: body.immagineUrl ? `[data URL, ${String(body.immagineUrl).length} chars]` : null });
+
       const res = await fetch('/api/admin/articoli', {
         method: editingArt ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+
+      console.log('[saveArt] Response status:', res.status, res.ok);
+
       if (!res.ok) {
-        let detail = 'Errore';
-        try { const err = await res.json(); detail = err.error || detail; } catch { /* ignore */ }
-        toast.error(detail);
-        console.error('saveArt failed:', res.status, detail);
+        let errMsg = 'Errore nel salvataggio';
+        try {
+          const errData = await res.json();
+          errMsg = errData.error || errMsg;
+          console.error('[saveArt] Errore API:', errData);
+        } catch { /* ignore parse error */ }
+        toast.error(errMsg);
         return;
       }
+
+      const saved = await res.json();
+      console.log('[saveArt] Salvataggio OK:', saved.id);
       toast.success(editingArt ? 'Articolo aggiornato' : 'Articolo creato');
       setArtDialogOpen(false);
+      setArtAiGenerated(false);
       fetchData();
     } catch (err) {
-      console.error('saveArt exception:', err);
-      toast.error('Errore di connessione al server');
+      console.error('[saveArt] Errore catch:', err);
+      toast.error('Errore di rete nel salvataggio');
+    } finally {
+      setSavingArt(false);
     }
   };
 
@@ -483,16 +514,16 @@ export default function AdminMenu() {
               </div>
             </div>
 
-            {/* Image Upload */}
+            {/* Image Upload con AI */}
             <ImageUploadWithAI
               value={artForm.immagineUrl}
               onChange={url => setArtForm(f => ({ ...f, immagineUrl: url }))}
               aiContext={artForm.nome}
               aiDescription={artForm.descrizione}
-              recommendedSize="800 × 600 px (4:3)"
+              categoryName={currentCategoriaName}
+              aiGenerated={artAiGenerated}
+              onAiGeneratedChange={setArtAiGenerated}
               label="Immagine"
-              aiGenerated={artForm.immagineAiGenerata}
-              onAiGeneratedChange={v => setArtForm(f => ({ ...f, immagineAiGenerata: v }))}
             />
 
             {/* Allergeni */}
@@ -522,7 +553,9 @@ export default function AdminMenu() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setArtDialogOpen(false)}>Annulla</Button>
-            <Button type="button" onClick={saveArt}>Salva</Button>
+            <Button type="button" onClick={saveArt} disabled={savingArt}>
+              {savingArt ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvataggio...</> : 'Salva'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
