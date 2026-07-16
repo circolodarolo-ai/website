@@ -73,6 +73,7 @@ export default function ImageUploadWithAI({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingUrl, setGeneratingUrl] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   const [showAi, setShowAi] = useState(false);
 
@@ -87,6 +88,7 @@ export default function ImageUploadWithAI({
   const autoPrompt = buildAutoPrompt(aiContext, aiDescription);
 
   useEffect(() => { setImgError(false); }, [value]);
+  useEffect(() => { if (!generating) setGeneratingUrl(null); }, [generating]);
 
   // --- Upload file ---
   const handleUpload = useCallback(async (file: File) => {
@@ -121,10 +123,8 @@ export default function ImageUploadWithAI({
     }
   }, [onChange, onAiGeneratedChange]);
 
-  // --- AI Generation: carica immagine diretta da Pollination SENZA crossOrigin ---
-  // NOTA: NON usiamo crossOrigin='anonymous' perché Pollination non restituisce header CORS.
-  // Senza crossOrigin, il browser carica l'immagine come <img> semplice (img-src CSP, già autorizzato).
-  // L'immagine viene poi convertita in canvas → data URL base64 per persistenza nel DB.
+  // --- AI Generation: usa <img> nel DOM (React) con onLoad/onError ---
+  // NON usiamo crossOrigin (evita CORS). L'URL Pollination è permanente (deterministico).
   const handleGenerate = useCallback(() => {
     if (!autoPrompt) {
       toast.error('Inserisci il nome del piatto per generare');
@@ -135,60 +135,32 @@ export default function ImageUploadWithAI({
       return;
     }
 
-    setGenerating(true);
-    setImgError(false);
-
     const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
     const seed = Math.floor(Math.random() * 999999);
     const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
 
-    // Carica l'immagine con new Image() SENZA crossOrigin (evita CORS)
-    const img = new Image();
+    setGenerating(true);
+    setGeneratingUrl(imageUrl);
+    setImgError(false);
+  }, [autoPrompt, remaining]);
 
-    const timeoutId = setTimeout(() => {
-      img.src = '';
-      setGenerating(false);
-      toast.error('Timeout: la generazione sta impiegando troppo tempo');
-    }, 90000);
+  // Quando l'img nascosto nel DOM carica con successo
+  const handleAiImageLoad = useCallback(() => {
+    if (!generatingUrl) return;
+    onChange(generatingUrl);
+    onAiGeneratedChange?.(true);
+    incrementGenerationCount();
+    setGenerating(false);
+    toast.success('Immagine AI generata con successo');
+  }, [generatingUrl, onChange, onAiGeneratedChange]);
 
-    img.onload = () => {
-      clearTimeout(timeoutId);
-      try {
-        // Converti in data URL base64 tramite canvas per persistenza nel DB
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Canvas non supportato');
-        ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-        onChange(dataUrl);
-        onAiGeneratedChange?.(true);
-        incrementGenerationCount();
-        toast.success('Immagine AI generata con successo');
-      } catch {
-        // Fallback: usa l'URL diretto Pollination (funziona ma dipende dal servizio)
-        console.warn('Canvas conversione fallita, uso URL diretto');
-        onChange(imageUrl);
-        onAiGeneratedChange?.(true);
-        incrementGenerationCount();
-        toast.success('Immagine AI generata (URL diretto)');
-      } finally {
-        setGenerating(false);
-      }
-    };
-
-    img.onerror = () => {
-      clearTimeout(timeoutId);
-      console.error('AI image failed to load:', imageUrl);
-      setGenerating(false);
-      toast.error('Errore nella generazione AI. Riprova.');
-    };
-
-    // Avvia il caricamento (triggera la generazione su Pollination)
-    img.src = imageUrl;
-  }, [autoPrompt, remaining, onChange, onAiGeneratedChange]);
+  // Quando l'img nascosto nel DOM fallisce
+  const handleAiImageError = useCallback(() => {
+    console.error('AI image failed to load:', generatingUrl);
+    setGenerating(false);
+    setGeneratingUrl(null);
+    toast.error('Errore nella generazione AI. Riprova.');
+  }, [generatingUrl]);
 
   // --- Zoom/pan ---
   const openZoom = () => {
@@ -285,12 +257,23 @@ export default function ImageUploadWithAI({
             <span className="italic">{autoPrompt || 'Compila il nome per generare il prompt...'}</span>
           </div>
 
-          {/* Indicatore durante generazione */}
-          {generating && (
-            <div className="rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 flex flex-col items-center justify-center gap-2 text-amber-700">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="text-sm font-medium">Generazione AI in corso...</span>
-              <span className="text-xs text-amber-600">L'immagine verrà mostrata a fine generazione (10-30 secondi)</span>
+          {/* Anteprima + loader durante generazione - <img> nel DOM con onLoad/onError */}
+          {generating && generatingUrl && (
+            <div className="relative rounded-lg overflow-hidden border-2 border-dashed border-amber-300 bg-amber-50/50">
+              <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
+                <div className="flex items-center gap-2 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generazione in corso...
+                </div>
+              </div>
+              {/* Questo <img> è nel DOM reale - il browser lo carica tramite img-src CSP */}
+              <img
+                src={generatingUrl}
+                alt="Generazione AI"
+                className="w-full max-h-64 object-contain"
+                onLoad={handleAiImageLoad}
+                onError={handleAiImageError}
+              />
             </div>
           )}
 
