@@ -350,6 +350,7 @@ export default function AdminEventi() {
               value={form.immagineUrl}
               onChange={url => setForm(f => ({ ...f, immagineUrl: url }))}
               aiContext={form.titolo}
+              aiDescription={form.descrizione}
               recommendedSize="1200 × 630 px (16:9, formato eventi/card larghi)"
               label="Immagine"
             />

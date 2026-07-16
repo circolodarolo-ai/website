@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
         eSurgelato: rest.eSurgelato || false,
         attivo: rest.attivo !== undefined ? rest.attivo : true,
         immagineUrl: rest.immagineUrl || null,
+        immagineAiGenerata: rest.immagineAiGenerata || false,
         updatedAt: new Date(),
       },
     });
@@ -65,15 +66,26 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, allergeneIds, ...data } = body;
+    const { id, allergeneIds, immagineAiGenerata } = body;
+    const data = body; // tutti i campi espliciti
+
+    // Campi espliciti per evitare problemi di tipo con lo spread
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+
+    if (data.nome !== undefined) updateData.nome = data.nome;
+    if (data.descrizione !== undefined) updateData.descrizione = data.descrizione || null;
+    if (data.categoriaId !== undefined) updateData.categoriaId = data.categoriaId;
+    if (data.prezzo !== undefined) updateData.prezzo = parseFloat(data.prezzo);
+    if (data.prezzoPromozionale !== undefined) updateData.prezzoPromozionale = data.prezzoPromozionale ? parseFloat(data.prezzoPromozionale) : null;
+    if (data.eBestChoice !== undefined) updateData.eBestChoice = data.eBestChoice;
+    if (data.eSurgelato !== undefined) updateData.eSurgelato = data.eSurgelato;
+    if (data.attivo !== undefined) updateData.attivo = data.attivo;
+    if (data.immagineUrl !== undefined) updateData.immagineUrl = data.immagineUrl || null;
+    if (immagineAiGenerata !== undefined) updateData.immagineAiGenerata = immagineAiGenerata;
+
     const articolo = await db.articolo.update({
       where: { id },
-      data: {
-        ...data,
-        prezzo: data.prezzo !== undefined ? parseFloat(data.prezzo) : undefined,
-        prezzoPromozionale: data.prezzoPromozionale !== undefined ? (data.prezzoPromozionale ? parseFloat(data.prezzoPromozionale) : null) : undefined,
-        updatedAt: new Date(),
-      },
+      data: updateData,
     });
     // Update allergeni: delete old, create new
     if (Array.isArray(allergeneIds)) {
@@ -93,7 +105,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(articolo);
   } catch (error) {
     console.error('Articoli PUT error:', error);
-    return NextResponse.json({ error: 'Errore nell\'aggiornamento' }, { status: 500 });
+    return NextResponse.json({ error: "Errore nell'aggiornamento" }, { status: 500 });
   }
 }
 

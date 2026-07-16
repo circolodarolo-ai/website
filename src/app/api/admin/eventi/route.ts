@@ -53,17 +53,31 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, ...data } = body;
+    const { id } = body;
+
+    // Campi espliciti per evitare problemi di tipo
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+
+    if (body.titolo !== undefined) updateData.titolo = body.titolo;
+    if (body.descrizione !== undefined) updateData.descrizione = body.descrizione;
+    if (body.descrizioneBreve !== undefined) updateData.descrizioneBreve = body.descrizioneBreve || null;
+    if (body.immagineUrl !== undefined) updateData.immagineUrl = body.immagineUrl || null;
+    if (body.data !== undefined) updateData.data = new Date(body.data);
+    if (body.oraInizio !== undefined) updateData.oraInizio = body.oraInizio;
+    if (body.oraFine !== undefined) updateData.oraFine = body.oraFine;
+    if (body.prezzo !== undefined) updateData.prezzo = parseFloat(body.prezzo) || 0;
+    if (body.gratuito !== undefined) updateData.gratuito = body.gratuito;
+    if (body.graditaPrenotazione !== undefined) updateData.graditaPrenotazione = body.graditaPrenotazione;
+    if (body.capacita !== undefined) updateData.capacita = parseInt(body.capacita) || 0;
+    if (body.postiDisponibili !== undefined) updateData.postiDisponibili = parseInt(body.postiDisponibili) || 0;
+    if (body.attivo !== undefined) updateData.attivo = body.attivo;
+    if (body.ricorrente !== undefined) updateData.ricorrente = body.ricorrente;
+    if (body.giorniRicorrenza !== undefined) updateData.giorniRicorrenza = body.giorniRicorrenza || null;
+    if (body.inEvidenza !== undefined) updateData.inEvidenza = body.inEvidenza;
+
     const evento = await db.evento.update({
       where: { id },
-      data: {
-        ...data,
-        data: data.data ? new Date(data.data) : undefined,
-        prezzo: data.prezzo !== undefined ? parseFloat(data.prezzo) : undefined,
-        capacita: data.capacita !== undefined ? parseInt(data.capacita) : undefined,
-        postiDisponibili: data.postiDisponibili !== undefined ? parseInt(data.postiDisponibili) : undefined,
-        updatedAt: new Date(),
-      },
+      data: updateData,
     });
     return NextResponse.json(evento);
   } catch (error) {

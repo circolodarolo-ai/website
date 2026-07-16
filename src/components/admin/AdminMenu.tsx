@@ -26,6 +26,7 @@ interface Allergene {
 interface Articolo {
   id: string; nome: string; descrizione: string | null; categoriaId: string; prezzo: number;
   prezzoPromozionale: number | null; eBestChoice: boolean; eSurgelato: boolean; attivo: boolean; immagineUrl: string | null;
+  immagineAiGenerata?: boolean;
   categoria: Categoria; allergeni: { allergene: Allergene }[];
 }
 
@@ -120,6 +121,7 @@ export default function AdminMenu() {
         nome: art.nome, descrizione: art.descrizione || '', categoriaId: art.categoriaId,
         prezzo: String(art.prezzo), prezzoPromozionale: art.prezzoPromozionale ? String(art.prezzoPromozionale) : '',
         eBestChoice: art.eBestChoice, eSurgelato: art.eSurgelato, attivo: art.attivo, immagineUrl: art.immagineUrl || '',
+        immagineAiGenerata: art.immagineAiGenerata || false,
         selectedAllergeni: art.allergeni.map(a => a.allergene.id),
       });
     } else {
@@ -477,6 +479,7 @@ export default function AdminMenu() {
               value={artForm.immagineUrl}
               onChange={url => setArtForm(f => ({ ...f, immagineUrl: url }))}
               aiContext={artForm.nome}
+              aiDescription={artForm.descrizione}
               recommendedSize="800 × 600 px (4:3)"
               label="Immagine"
               aiGenerated={artForm.immagineAiGenerata}
