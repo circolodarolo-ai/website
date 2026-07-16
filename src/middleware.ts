@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://pagead2.googlesyndication.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-            "img-src 'self' data: blob: https:",
+      "img-src 'self' data: blob: https:",
       "connect-src 'self' https:",
       "frame-src https://pagead2.googlesyndication.com https://maps.google.com https://www.google.com",
       "object-src 'none'",
@@ -52,7 +52,6 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    // Aggiorna il contatore dopo la risposta (non blocchiamo qui, lo facciamo nel finally)
     // Il rate limiting vero viene gestito lato route, qui solo il check preventivo
     if (!attempt || now >= attempt.resetAt) {
       loginAttempts.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW_MS });

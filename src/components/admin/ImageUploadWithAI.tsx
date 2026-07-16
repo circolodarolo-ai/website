@@ -14,12 +14,12 @@ import { toast } from 'sonner';
 const DAILY_AI_LIMIT = 20;
 const STORAGE_KEY = 'ai-gen-count';
 
-// Stable Horde API (gratuita, CORS: *, nessuna API key necessaria)
-const STABLE_HORDE_SUBMIT = 'https://stablehorde.net/api/v2/generate/async';
-const STABLE_HORDE_CHECK = 'https://stablehorde.net/api/v2/generate/check/';
-const STABLE_HORDE_STATUS = 'https://stablehorde.net/api/v2/generate/status/';
-const POLL_INTERVAL_MS = 5000; // Controlla ogni 5 secondi
-const MAX_WAIT_MS = 120000; // Massimo 2 minuti di attesa
+// Stable Horde (fallback, CORS nativo)
+const SH_SUBMIT = 'https://stablehorde.net/api/v2/generate/async';
+const SH_CHECK = 'https://stablehorde.net/api/v2/generate/check/';
+const SH_STATUS = 'https://stablehorde.net/api/v2/generate/status/';
+const SH_POLL_MS = 4000;
+const SH_MAX_WAIT = 180000; // 3 min max per Stable Horde
 
 function getTodayKey(): string {
   return `ai-gen-${new Date().toISOString().slice(0, 10)}`;
@@ -47,13 +47,140 @@ function incrementGenerationCount(): void {
   } catch { /* ignore */ }
 }
 
-/** Costruisce un prompt fotografico professionale */
 function buildAutoPrompt(nome?: string, descrizione?: string): string {
   const parts: string[] = [];
   if (nome?.trim()) parts.push(nome.trim());
   if (descrizione?.trim()) parts.push(descrizione.trim());
   if (parts.length === 0) return 'delicious Italian food dish';
   return parts.join(', ');
+}
+
+/** Converte un Blob in data URL base64 */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Conversione base64 fallita'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Strategia 1: Pollination AI via <img> nel DOM (senza crossOrigin).
+ * Veloce (5-15s) ma potrebbe non funzionare da alcuni network.
+ * Restituisce l'URL diretto Pollination se l'immagine si carica entro il timeout.
+ */
+function tryPollination(prompt: string, timeoutMs: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const seed = Math.floor(Math.random() * 999999);
+    const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
+
+    const img = new Image();
+    // SENZA crossOrigin — evita CORS, usa solo img-src CSP (ora https:)
+
+    const timer = setTimeout(() => {
+      img.src = '';
+      img.onload = null;
+      img.onerror = null;
+      reject(new Error('timeout'));
+    }, timeoutMs);
+
+    img.onload = () => {
+      clearTimeout(timer);
+      // Verifica che sia un'immagine reale (non un errore 1x1 pixel)
+      if (img.naturalWidth < 50 || img.naturalHeight < 50) {
+        reject(new Error('immagine troppo piccola'));
+        return;
+      }
+      resolve(imageUrl);
+    };
+
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error('load error'));
+    };
+
+    img.src = imageUrl;
+  });
+}
+
+/**
+ * Strategia 2: Stable Horde (fallback affidabile, CORS nativo).
+ * Ottimizzato: 512x512, 15 step per velocità.
+ * Scarica il blob e converte in data URL base64 (permanente).
+ */
+async function stableHordeGenerate(
+  prompt: string,
+  onStatus: (msg: string) => void,
+  signal: AbortSignal,
+): Promise<string> {
+  onStatus('Invio a Stable Horde...');
+
+  const submitRes = await fetch(SH_SUBMIT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': '0000000000',
+      'Client-Agent': 'RestaurantAdmin:1.0',
+    },
+    body: JSON.stringify({
+      prompt,
+      params: { width: 512, height: 512, steps: 15, cfg_scale: 6 },
+      nsfw: false,
+      models: ['stable_diffusion'],
+      r2: true,
+    }),
+    signal,
+  });
+
+  if (!submitRes.ok) {
+    const err = await submitRes.json().catch(() => ({}));
+    throw new Error((err as Record<string, string>).message || `Submit errore ${submitRes.status}`);
+  }
+
+  const { id: jobId } = await submitRes.json();
+  onStatus('In coda Stable Horde...');
+
+  const startTime = Date.now();
+  // Polling
+  while (true) {
+    if (signal.aborted) throw new Error('Annullato');
+
+    await new Promise(r => setTimeout(r, SH_POLL_MS));
+    if (Date.now() - startTime > SH_MAX_WAIT) throw new Error('Timeout Stable Horde');
+
+    const checkRes = await fetch(`${SH_CHECK}${jobId}`, { signal });
+    if (!checkRes.ok) continue;
+    const check = await checkRes.json();
+
+    if (check.faulted) throw new Error('Generazione fallita sul worker');
+
+    if (check.done) break;
+
+    const wait = check.wait_time || 0;
+    const pos = check.queue_position ?? '?';
+    onStatus(`Stable Horde: coda ${pos}, ~${wait}s`);
+  }
+
+  // Recupera l'immagine
+  onStatus('Download immagine...');
+  const statusRes = await fetch(`${SH_STATUS}${jobId}`, { signal });
+  const status = await statusRes.json();
+
+  if (!status.generations?.length) throw new Error('Nessun risultato');
+
+  const imgUrl: string = status.generations[0].img;
+
+  // Scarica e converti in base64
+  const imgRes = await fetch(imgUrl, { signal });
+  if (!imgRes.ok) {
+    // Fallback: salva URL diretto (può scadere)
+    return imgUrl;
+  }
+
+  const blob = await imgRes.blob();
+  if (blob.size < 100) throw new Error('Immagine vuota');
+  return blobToDataUrl(blob);
 }
 
 interface ImageUploadWithAIProps {
@@ -80,7 +207,7 @@ export default function ImageUploadWithAI({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [genStatus, setGenStatus] = useState<string>('');
+  const [genStatus, setGenStatus] = useState('');
   const [imgError, setImgError] = useState(false);
   const [showAi, setShowAi] = useState(false);
 
@@ -90,19 +217,13 @@ export default function ImageUploadWithAI({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
-
-  // Ref per poter cancellare il polling
-  const abortRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const remaining = getRemainingGenerations();
   const autoPrompt = buildAutoPrompt(aiContext, aiDescription);
 
   useEffect(() => { setImgError(false); }, [value]);
-
-  // Cleanup: se il componente si smonta durante la generazione, ferma il polling
-  useEffect(() => {
-    return () => { abortRef.current = true; };
-  }, []);
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   // --- Upload file (invariato) ---
   const handleUpload = useCallback(async (file: File) => {
@@ -119,12 +240,10 @@ export default function ImageUploadWithAI({
         toast.success('Immagine caricata');
         return;
       }
-      // Fallback client-side base64 se il server fallisce (Vercel read-only)
       console.warn('Server upload fallito, converto in base64 client-side');
       const reader = new FileReader();
       reader.onload = () => {
-        const dataUrl = reader.result as string;
-        onChange(dataUrl);
+        onChange(reader.result as string);
         onAiGeneratedChange?.(false);
         toast.success('Immagine caricata (base64)');
       };
@@ -137,7 +256,7 @@ export default function ImageUploadWithAI({
     }
   }, [onChange, onAiGeneratedChange]);
 
-  // --- AI Generation via Stable Horde (tutto client-side, CORS nativo) ---
+  // --- AI Generation: doppia strategia ---
   const handleGenerate = useCallback(async () => {
     if (!autoPrompt) {
       toast.error('Inserisci il nome del piatto per generare');
@@ -148,133 +267,49 @@ export default function ImageUploadWithAI({
       return;
     }
 
-    abortRef.current = false;
-    setGenerating(true);
-    setImgError(false);
-    setGenStatus('Invio richiesta al servizio AI...');
-
     const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
 
+    setGenerating(true);
+    setImgError(false);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const signal = controller.signal;
+
+    const updateStatus = (msg: string) => {
+      if (!signal.aborted) setGenStatus(msg);
+    };
+
     try {
-      // 1) Invia il job di generazione a Stable Horde
-      const submitRes = await fetch(STABLE_HORDE_SUBMIT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': '0000000000', // anonimo
-          'Client-Agent': 'RestaurantAdmin:1.0',
-        },
-        body: JSON.stringify({
-          prompt,
-          params: {
-            width: 1024,
-            height: 768,
-            steps: 30,
-            cfg_scale: 7,
-          },
-          nsfw: false,
-          models: ['stable_diffusion'],
-          r2: true,
-        }),
-      });
-
-      if (!submitRes.ok) {
-        const errBody = await submitRes.json().catch(() => ({}));
-        throw new Error(errBody.message || `Errore submit: ${submitRes.status}`);
-      }
-
-      const submitData = await submitRes.json();
-      const jobId: string = submitData.id;
-      setGenStatus('In coda... attesa worker (10-60 secondi)');
-
-      // 2) Polling: controlla lo stato ogni POLL_INTERVAL_MS
-      const startTime = Date.now();
-
-      while (!abortRef.current) {
-        await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
-
-        if (abortRef.current) break;
-        if (Date.now() - startTime > MAX_WAIT_MS) {
-          throw new Error('Timeout: la generazione sta impiegando troppo tempo');
-        }
-
-        // Check se è pronta
-        const checkRes = await fetch(`${STABLE_HORDE_CHECK}${jobId}`);
-        if (!checkRes.ok) continue;
-        const checkData = await checkRes.json();
-
-        if (checkData.done) {
-          setGenStatus('Immagine pronta! Download...');
-          break;
-        }
-
-        if (checkData.faulted) {
-          throw new Error('La generazione è fallita sul server. Riprova.');
-        }
-
-        // Aggiorna stato
-        const wait = checkData.wait_time || 0;
-        const queue = checkData.queue_position;
-        setGenStatus(`In elaborazione... pos. coda: ${queue}, ~${wait}s rimasti`);
-      }
-
-      if (abortRef.current) return;
-
-      // 3) Recupera l'URL dell'immagine generata
-      const statusRes = await fetch(`${STABLE_HORDE_STATUS}${jobId}`);
-      if (!statusRes.ok) throw new Error('Errore nel recupero del risultato');
-      const statusData = await statusRes.json();
-
-      if (!statusData.done || !statusData.generations?.length) {
-        throw new Error('Nessuna immagine generata. Riprova.');
-      }
-
-      const generation = statusData.generations[0];
-      const imageUrl: string = generation.img;
-
-      if (!imageUrl) {
-        throw new Error('URL immagine non ricevuto dal server');
-      }
-
-      // 4) Scarica l'immagine come blob e converti in data URL base64
-      //    (l'URL firmato R2 potrebbe scadere, il base64 è permanente)
-      setGenStatus('Download immagine...');
-      const imgRes = await fetch(imageUrl);
-
-      if (!imgRes.ok) {
-        // Se il download diretto fallisce (URL scaduto), salva l'URL comunque
-        console.warn('Download immagine fallito, salvo URL diretto');
-        onChange(imageUrl);
+      // ═══ Strategia 1: Pollination AI (veloce, ~10s) ═══
+      updateStatus('Tentativo veloce con Pollination AI (max 20s)...');
+      try {
+        const pollinationUrl = await tryPollination(prompt, 20000);
+        onChange(pollinationUrl);
         onAiGeneratedChange?.(true);
         incrementGenerationCount();
-        toast.success('Immagine AI generata (URL esterno)');
-        return;
+        toast.success('Immagine AI generata con successo');
+        return; // Successo!
+      } catch {
+        updateStatus('Pollination non disponibile, provo Stable Horde...');
       }
 
-      const blob = await imgRes.blob();
-      if (blob.size < 100) {
-        throw new Error('Immagine vuota ricevuta. Riprova.');
-      }
+      if (signal.aborted) return;
 
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Conversione base64 fallita'));
-        reader.readAsDataURL(blob);
-      });
-
-      onChange(dataUrl);
+      // ═══ Strategia 2: Stable Horde (affidabile, ~30-90s ottimizzato) ═══
+      const result = await stableHordeGenerate(prompt, updateStatus, signal);
+      onChange(result);
       onAiGeneratedChange?.(true);
       incrementGenerationCount();
       toast.success('Immagine AI generata con successo');
     } catch (err: unknown) {
-      if (abortRef.current) return; // Ignora errori dopo abort
+      if (signal.aborted) return;
       const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
       console.error('AI generation error:', msg);
       toast.error(`Errore AI: ${msg}`);
     } finally {
       setGenerating(false);
       setGenStatus('');
+      abortRef.current = null;
     }
   }, [autoPrompt, remaining, onChange, onAiGeneratedChange]);
 
@@ -379,9 +414,8 @@ export default function ImageUploadWithAI({
               <Loader2 className="h-8 w-8 animate-spin" />
               <span className="text-sm font-medium">Generazione AI in corso...</span>
               {genStatus && (
-                <span className="text-xs text-amber-600 text-center">{genStatus}</span>
+                <span className="text-xs text-amber-600 text-center max-w-xs">{genStatus}</span>
               )}
-              <span className="text-xs text-amber-500">Puoi continuare a usare il pannello, l'immagine apparirá quando pronta</span>
             </div>
           )}
 
