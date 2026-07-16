@@ -42,18 +42,22 @@ export async function POST(request: NextRequest) {
     const ext = extMap[file.type] || 'jpg';
     const fileName = `${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
 
-    // Ensure uploads directory exists
-    const uploadsDir = join(process.cwd(), 'public', 'uploads');
-    await mkdir(uploadsDir, { recursive: true });
+    // Tenta scrittura su disco (funziona in locale, fallisce su Vercel)
+    try {
+      const uploadsDir = join(process.cwd(), 'public', 'uploads');
+      await mkdir(uploadsDir, { recursive: true });
+      const filePath = join(uploadsDir, fileName);
+      await writeFile(filePath, buffer);
 
-    // Write file to disk
-    const filePath = join(uploadsDir, fileName);
-    await writeFile(filePath, buffer);
-
-    // Return the public URL path
-    const url = `/uploads/${fileName}`;
-
-    return NextResponse.json({ url, fileName, size: file.size });
+      const url = `/uploads/${fileName}`;
+      return NextResponse.json({ url, fileName, size: file.size, source: 'disk' });
+    } catch {
+      // Filesystem read-only (Vercel): ritorna data URL come fallback
+      console.warn('Filesystem non scrivibile, uso fallback base64');
+      const base64 = buffer.toString('base64');
+      const dataUrl = `data:${file.type};base64,${base64}`;
+      return NextResponse.json({ url: dataUrl, fileName, size: file.size, source: 'base64' });
+    }
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Errore nel caricamento del file' }, { status: 500 });

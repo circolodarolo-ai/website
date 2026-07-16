@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Upload, ImageIcon, Sparkles, ZoomIn, ZoomOut, X, RotateCcw,
-  Loader2, Info, Eye, RefreshCw,
+  Loader2, Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Limite giornaliero di generazioni AI (Pollination è gratuito ma conviene limitare)
+// Limite giornaliero di generazioni AI
 const DAILY_AI_LIMIT = 20;
 const STORAGE_KEY = 'ai-gen-count';
 
@@ -45,7 +45,6 @@ function buildAutoPrompt(nome?: string, descrizione?: string): string {
   const parts: string[] = [];
   if (nome?.trim()) parts.push(nome.trim());
   if (descrizione?.trim()) parts.push(descrizione.trim());
-  // Se non c'è nulla, fallback generico
   if (parts.length === 0) return 'delicious Italian food dish';
   return parts.join(', ');
 }
@@ -53,15 +52,10 @@ function buildAutoPrompt(nome?: string, descrizione?: string): string {
 interface ImageUploadWithAIProps {
   value: string;
   onChange: (url: string) => void;
-  /** Nome del piatto o titolo (usato per generare automaticamente il prompt AI) */
   aiContext?: string;
-  /** Descrizione del piatto o contenuto (usata per arricchire il prompt AI) */
   aiDescription?: string;
-  /** Dimensioni consigliate per l'anteprima sul sito */
   recommendedSize?: string;
-  /** Label personalizzata */
   label?: string;
-  /** Flag se l'immagine è generata da AI */
   aiGenerated?: boolean;
   onAiGeneratedChange?: (v: boolean) => void;
 }
@@ -79,7 +73,8 @@ export default function ImageUploadWithAI({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [generatingPreviewUrl, setGeneratingPreviewUrl] = useState<string | null>(null);
+  const [generatingUrl, setGeneratingUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
   const [showAi, setShowAi] = useState(false);
 
   // Zoom/pan state
@@ -90,19 +85,19 @@ export default function ImageUploadWithAI({
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
   const remaining = getRemainingGenerations();
-
-  // Calcola il prompt automatico a partire dal nome e dalla descrizione
   const autoPrompt = buildAutoPrompt(aiContext, aiDescription);
 
-  // Reset anteprima generazione quando si chiude il pannello AI
-  useEffect(() => {
-    if (!showAi) setGeneratingPreviewUrl(null);
-  }, [showAi]);
+  // Reset quando il valore cambia
+  useEffect(() => { setImgError(false); }, [value]);
+  // Reset anteprima generazione quando si chiude il pannello
+  useEffect(() => { if (!showAi) setGeneratingUrl(null); }, [showAi]);
 
-  // --- Upload handler ---
+  // --- Upload handler (file da disco) ---
   const handleUpload = useCallback(async (file: File) => {
     setUploading(true);
+    setImgError(false);
     try {
+      // Primo tentativo: upload al server
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
@@ -110,73 +105,71 @@ export default function ImageUploadWithAI({
         const data = await res.json();
         onChange(data.url);
         onAiGeneratedChange?.(false);
-        toast.success('Immagine caricata');
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Errore nel caricamento');
+        toast.success(data.source === 'base64' ? 'Immagine caricata (base64)' : 'Immagine caricata');
+        return;
       }
-    } catch { toast.error('Errore di connessione'); }
-    finally { setUploading(false); }
+      // Se il server fallisce, fallback client-side a base64
+      console.warn('Server upload fallito, converto in base64 client-side');
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        onChange(dataUrl);
+        onAiGeneratedChange?.(false);
+        toast.success('Immagine caricata (base64 locale)');
+      };
+      reader.onerror = () => toast.error('Errore nella lettura del file');
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error('Errore di connessione');
+    } finally {
+      setUploading(false);
+    }
   }, [onChange, onAiGeneratedChange]);
 
-  // --- AI Generation handler ---
+  // --- AI Generation: usa direttamente il URL di Pollination ---
   const handleGenerate = useCallback(async () => {
-    if (!autoPrompt) { toast.error('Inserisci il nome del piatto per generare un\'immagine'); return; }
-    if (remaining <= 0) { toast.error('Limite giornaliero raggiunto. Riprova domani.'); return; }
+    if (!autoPrompt) {
+      toast.error('Inserisci il nome del piatto per generare');
+      return;
+    }
+    if (remaining <= 0) {
+      toast.error('Limite giornaliero raggiunto. Riprova domani.');
+      return;
+    }
 
     setGenerating(true);
-    setGeneratingPreviewUrl(null);
+    setGeneratingUrl(null);
+    setImgError(false);
+
     try {
-      // Costruisci il prompt completo per Pollination
       const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
-
       const seed = Math.floor(Math.random() * 999999);
-      const width = 1024;
-      const height = 768;
-      const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true`;
+      const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
 
-      // Mostra l'anteprima del URL di Pollination mentre si scarica
-      setGeneratingPreviewUrl(imageUrl);
+      // Mostra subito il URL come anteprima (Pollination renderizza l'immagine on-the-fly)
+      setGeneratingUrl(imageUrl);
 
-      // Scarica l'immagine generata
-      const imgRes = await fetch(imageUrl);
-      if (!imgRes.ok) throw new Error('Generazione fallita');
-      const blob = await imgRes.blob();
+      // Verifica che l'immagine sia raggiungibile facendo una HEAD request
+      const checkRes = await fetch(imageUrl, { method: 'HEAD' });
+      if (!checkRes.ok) throw new Error('Generazione fallita');
 
-      // Verifica che sia davvero un'immagine
-      if (!blob.type.startsWith('image/')) throw new Error('Risposta non valida');
-
-      // Salvala localmente tramite l'API upload
-      const file = new File([blob], `ai-${seed}.png`, { type: 'image/png' });
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const uploadRes = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
-      if (uploadRes.ok) {
-        const data = await uploadRes.json();
-        onChange(data.url);
-        onAiGeneratedChange?.(true);
-        incrementGenerationCount();
-        toast.success('Immagine AI generata e salvata con successo');
-      } else {
-        // Fallback: usa direttamente l'URL di Pollination
-        console.warn('Upload locale fallito, uso URL esterno Pollination');
-        onChange(imageUrl);
-        onAiGeneratedChange?.(true);
-        incrementGenerationCount();
-        toast.success('Immagine AI generata (salvata su server esterno)');
-      }
+      // Usa direttamente il URL di Pollination (funziona ovunque, nessun upload necessario)
+      onChange(imageUrl);
+      onAiGeneratedChange?.(true);
+      incrementGenerationCount();
+      toast.success('Immagine AI generata con successo');
     } catch (err) {
       console.error('AI generation error:', err);
       toast.error('Errore nella generazione AI. Riprova.');
-      setGeneratingPreviewUrl(null);
+      setGeneratingUrl(null);
     } finally {
       setGenerating(false);
     }
   }, [autoPrompt, remaining, onChange, onAiGeneratedChange]);
 
-  // --- Zoom/pan handlers ---
+  // --- Zoom/pan ---
   const openZoom = () => {
+    if (!value || imgError) return;
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setZoomOpen(true);
@@ -203,6 +196,8 @@ export default function ImageUploadWithAI({
 
   const handleMouseUp = () => setDragging(false);
 
+  const hasImage = !!value && !imgError;
+
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
@@ -211,7 +206,7 @@ export default function ImageUploadWithAI({
       <div className="flex gap-2 items-center">
         <Input
           value={value}
-          onChange={e => { onChange(e.target.value); onAiGeneratedChange?.(false); }}
+          onChange={e => { onChange(e.target.value); onAiGeneratedChange?.(false); setImgError(false); }}
           placeholder="URL immagine o carica un file"
         />
         <input
@@ -233,7 +228,7 @@ export default function ImageUploadWithAI({
           <Sparkles className="h-4 w-4" />
         </Button>
         {value && (
-          <Button type="button" variant="ghost" size="icon" onClick={() => { onChange(''); onAiGeneratedChange?.(false); }} title="Rimuovi immagine">
+          <Button type="button" variant="ghost" size="icon" onClick={() => { onChange(''); onAiGeneratedChange?.(false); setImgError(false); }} title="Rimuovi immagine">
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -269,7 +264,7 @@ export default function ImageUploadWithAI({
           </div>
 
           {/* Anteprima durante generazione */}
-          {generating && generatingPreviewUrl && (
+          {generating && generatingUrl && (
             <div className="relative rounded-lg overflow-hidden border-2 border-dashed border-amber-300 bg-amber-50/50">
               <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
                 <div className="flex items-center gap-2 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm">
@@ -278,61 +273,74 @@ export default function ImageUploadWithAI({
                 </div>
               </div>
               <img
-                src={generatingPreviewUrl}
-                alt="Generazione AI in corso"
+                src={generatingUrl}
+                alt="Generazione AI"
                 className="w-full max-h-64 object-contain"
+                onError={() => {/* l'immagine potrebbe ancora caricarsi */}}
               />
             </div>
           )}
 
           {/* Pulsante genera */}
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              className="flex-1"
-              size="sm"
-              onClick={handleGenerate}
-              disabled={generating || remaining <= 0 || !autoPrompt}
-            >
-              {generating ? (
-                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generazione...</>
-              ) : (
-                <><Sparkles className="h-4 w-4 mr-2" />Genera immagine</>
-              )}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            className="w-full"
+            size="sm"
+            onClick={handleGenerate}
+            disabled={generating || remaining <= 0 || !autoPrompt}
+          >
+            {generating ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generazione in corso...</>
+            ) : (
+              <><Sparkles className="h-4 w-4 mr-2" />Genera immagine</>
+            )}
+          </Button>
         </div>
       )}
 
-      {/* Image preview with zoom button */}
+      {/* Anteprima immagine */}
       {value && (
         <div className="relative group inline-block">
-          <img
-            src={value}
-            alt="Preview"
-            className={`w-48 h-48 object-cover rounded-lg border cursor-pointer transition-all ${aiGenerated ? 'ring-2 ring-amber-400' : ''}`}
-            onClick={openZoom}
-          />
-          {aiGenerated && (
-            <span className="absolute top-1 left-1 text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-medium">
-              AI
-            </span>
+          {imgError ? (
+            <div className="w-48 h-48 rounded-lg border-2 border-dashed border-red-300 bg-red-50 flex flex-col items-center justify-center text-red-400 text-xs gap-1">
+              <ImageIcon className="h-8 w-8" />
+              <span>Immagine non caricabile</span>
+              <span className="text-[10px]">Verifica l&apos;URL o ricarica</span>
+            </div>
+          ) : (
+            <>
+              <img
+                src={value}
+                alt="Anteprima"
+                className={`w-48 h-48 object-cover rounded-lg border-2 cursor-pointer transition-all hover:opacity-90 ${aiGenerated ? 'ring-2 ring-amber-400' : 'border-gray-200'}`}
+                onClick={openZoom}
+                onError={() => setImgError(true)}
+              />
+              {aiGenerated && (
+                <span className="absolute top-1 left-1 text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-medium shadow">
+                  AI
+                </span>
+              )}
+            </>
           )}
-          <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-            <Button size="icon" variant="secondary" className="h-7 w-7 rounded-full shadow" onClick={openZoom} title="Zoom">
-              <ZoomIn className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          {/* Pulsante zoom (visibile solo se l'immagine è caricata) */}
+          {hasImage && (
+            <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button size="icon" variant="secondary" className="h-7 w-7 rounded-full shadow" onClick={openZoom} title="Zoom">
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
       {/* Zoom/Pan Modal */}
-      {zoomOpen && value && (
+      {zoomOpen && hasImage && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
           onClick={() => setZoomOpen(false)}
         >
-          {/* Controls bar */}
+          {/* Barra controlli */}
           <div className="absolute top-4 right-4 flex gap-2 z-10">
             <Button size="icon" variant="secondary" className="rounded-full shadow-lg" onClick={e => { e.stopPropagation(); setZoom(prev => Math.min(5, prev + 0.5)); }}>
               <ZoomIn className="h-4 w-4" />
@@ -348,12 +356,12 @@ export default function ImageUploadWithAI({
             </Button>
           </div>
 
-          {/* Zoom level indicator */}
+          {/* Indicatore zoom */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">
             {Math.round(zoom * 100)}%
           </div>
 
-          {/* Image container */}
+          {/* Contenitore immagine */}
           <div
             className="overflow-hidden max-w-[90vw] max-h-[85vh] flex items-center justify-center cursor-grab active:cursor-grabbing"
             onClick={e => e.stopPropagation()}
