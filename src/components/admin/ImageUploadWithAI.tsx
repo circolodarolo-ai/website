@@ -40,7 +40,7 @@ function incrementGenerationCount(): void {
   } catch { /* ignore */ }
 }
 
-/** Costruisce un prompt fotografico professionale a partire dal nome e dalla descrizione */
+/** Costruisce un prompt fotografico professionale */
 function buildAutoPrompt(nome?: string, descrizione?: string): string {
   const parts: string[] = [];
   if (nome?.trim()) parts.push(nome.trim());
@@ -87,17 +87,14 @@ export default function ImageUploadWithAI({
   const remaining = getRemainingGenerations();
   const autoPrompt = buildAutoPrompt(aiContext, aiDescription);
 
-  // Reset quando il valore cambia
   useEffect(() => { setImgError(false); }, [value]);
-  // Reset anteprima generazione quando si chiude il pannello
   useEffect(() => { if (!showAi) setGeneratingUrl(null); }, [showAi]);
 
-  // --- Upload handler (file da disco) ---
+  // --- Upload file ---
   const handleUpload = useCallback(async (file: File) => {
     setUploading(true);
     setImgError(false);
     try {
-      // Primo tentativo: upload al server
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
@@ -105,17 +102,17 @@ export default function ImageUploadWithAI({
         const data = await res.json();
         onChange(data.url);
         onAiGeneratedChange?.(false);
-        toast.success(data.source === 'base64' ? 'Immagine caricata (base64)' : 'Immagine caricata');
+        toast.success('Immagine caricata');
         return;
       }
-      // Se il server fallisce, fallback client-side a base64
+      // Fallback client-side base64 se il server fallisce (Vercel read-only)
       console.warn('Server upload fallito, converto in base64 client-side');
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
         onChange(dataUrl);
         onAiGeneratedChange?.(false);
-        toast.success('Immagine caricata (base64 locale)');
+        toast.success('Immagine caricata (base64)');
       };
       reader.onerror = () => toast.error('Errore nella lettura del file');
       reader.readAsDataURL(file);
@@ -126,8 +123,8 @@ export default function ImageUploadWithAI({
     }
   }, [onChange, onAiGeneratedChange]);
 
-  // --- AI Generation: usa direttamente il URL di Pollination ---
-  const handleGenerate = useCallback(async () => {
+  // --- AI Generation: usa new Image() per preload + URL diretto Pollination ---
+  const handleGenerate = useCallback(() => {
     if (!autoPrompt) {
       toast.error('Inserisci il nome del piatto per generare');
       return;
@@ -141,30 +138,44 @@ export default function ImageUploadWithAI({
     setGeneratingUrl(null);
     setImgError(false);
 
-    try {
-      const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
-      const seed = Math.floor(Math.random() * 999999);
-      const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
+    const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
+    const seed = Math.floor(Math.random() * 999999);
+    const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
 
-      // Mostra subito il URL come anteprima (Pollination renderizza l'immagine on-the-fly)
-      setGeneratingUrl(imageUrl);
+    // Mostra subito l'URL come anteprima durante la generazione
+    setGeneratingUrl(imageUrl);
 
-      // Verifica che l'immagine sia raggiungibile facendo una HEAD request
-      const checkRes = await fetch(imageUrl, { method: 'HEAD' });
-      if (!checkRes.ok) throw new Error('Generazione fallita');
+    // Usa new Image() per verificare che l'immagine venga effettivamente generata
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
 
-      // Usa direttamente il URL di Pollination (funziona ovunque, nessun upload necessario)
+    const timeoutId = setTimeout(() => {
+      // Dopo 60 secondi, se non si è caricata, annulla
+      img.src = '';
+      setGenerating(false);
+      setGeneratingUrl(null);
+      toast.error('Timeout: la generazione sta impiegando troppo tempo');
+    }, 60000);
+
+    img.onload = () => {
+      clearTimeout(timeoutId);
       onChange(imageUrl);
       onAiGeneratedChange?.(true);
       incrementGenerationCount();
-      toast.success('Immagine AI generata con successo');
-    } catch (err) {
-      console.error('AI generation error:', err);
-      toast.error('Errore nella generazione AI. Riprova.');
-      setGeneratingUrl(null);
-    } finally {
       setGenerating(false);
-    }
+      toast.success('Immagine AI generata con successo');
+    };
+
+    img.onerror = () => {
+      clearTimeout(timeoutId);
+      console.error('AI image failed to load:', imageUrl);
+      setGenerating(false);
+      setGeneratingUrl(null);
+      toast.error('Errore nella generazione AI. Riprova.');
+    };
+
+    // Avvia il caricamento (questo triggera la generazione su Pollination)
+    img.src = imageUrl;
   }, [autoPrompt, remaining, onChange, onAiGeneratedChange]);
 
   // --- Zoom/pan ---
@@ -195,7 +206,6 @@ export default function ImageUploadWithAI({
   };
 
   const handleMouseUp = () => setDragging(false);
-
   const hasImage = !!value && !imgError;
 
   return (
@@ -257,7 +267,7 @@ export default function ImageUploadWithAI({
             </div>
           </div>
 
-          {/* Prompt automatico (read-only) */}
+          {/* Prompt automatico */}
           <div className="text-xs text-muted-foreground bg-background rounded-md p-2 border">
             <span className="font-medium">Prompt AI (auto-generato): </span>
             <span className="italic">{autoPrompt || 'Compila il nome per generare il prompt...'}</span>
@@ -276,7 +286,6 @@ export default function ImageUploadWithAI({
                 src={generatingUrl}
                 alt="Generazione AI"
                 className="w-full max-h-64 object-contain"
-                onError={() => {/* l'immagine potrebbe ancora caricarsi */}}
               />
             </div>
           )}
@@ -305,7 +314,6 @@ export default function ImageUploadWithAI({
             <div className="w-48 h-48 rounded-lg border-2 border-dashed border-red-300 bg-red-50 flex flex-col items-center justify-center text-red-400 text-xs gap-1">
               <ImageIcon className="h-8 w-8" />
               <span>Immagine non caricabile</span>
-              <span className="text-[10px]">Verifica l&apos;URL o ricarica</span>
             </div>
           ) : (
             <>
@@ -323,7 +331,6 @@ export default function ImageUploadWithAI({
               )}
             </>
           )}
-          {/* Pulsante zoom (visibile solo se l'immagine è caricata) */}
           {hasImage && (
             <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <Button size="icon" variant="secondary" className="h-7 w-7 rounded-full shadow" onClick={openZoom} title="Zoom">
@@ -340,7 +347,6 @@ export default function ImageUploadWithAI({
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
           onClick={() => setZoomOpen(false)}
         >
-          {/* Barra controlli */}
           <div className="absolute top-4 right-4 flex gap-2 z-10">
             <Button size="icon" variant="secondary" className="rounded-full shadow-lg" onClick={e => { e.stopPropagation(); setZoom(prev => Math.min(5, prev + 0.5)); }}>
               <ZoomIn className="h-4 w-4" />
@@ -355,13 +361,9 @@ export default function ImageUploadWithAI({
               <X className="h-4 w-4" />
             </Button>
           </div>
-
-          {/* Indicatore zoom */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">
             {Math.round(zoom * 100)}%
           </div>
-
-          {/* Contenitore immagine */}
           <div
             className="overflow-hidden max-w-[90vw] max-h-[85vh] flex items-center justify-center cursor-grab active:cursor-grabbing"
             onClick={e => e.stopPropagation()}

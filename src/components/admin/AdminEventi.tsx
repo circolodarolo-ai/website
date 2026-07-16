@@ -120,11 +120,20 @@ export default function AdminEventi() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { toast.error('Errore'); return; }
+      if (!res.ok) {
+        let detail = 'Errore';
+        try { const err = await res.json(); detail = err.error || detail; } catch { /* ignore */ }
+        toast.error(detail);
+        console.error('saveEvento failed:', res.status, detail);
+        return;
+      }
       toast.success(editing ? 'Evento aggiornato' : 'Evento creato');
       setDialogOpen(false);
       fetchData();
-    } catch { toast.error('Errore'); }
+    } catch (err) {
+      console.error('saveEvento exception:', err);
+      toast.error('Errore di connessione al server');
+    }
   };
 
   const deleteEvento = async (id: string) => {

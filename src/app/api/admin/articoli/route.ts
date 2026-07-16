@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(articolo, { status: 201 });
   } catch (error) {
     console.error('Articoli POST error:', error);
-    return NextResponse.json({ error: 'Errore nella creazione' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : 'Errore nella creazione';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -105,7 +106,8 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(articolo);
   } catch (error) {
     console.error('Articoli PUT error:', error);
-    return NextResponse.json({ error: "Errore nell'aggiornamento" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Errore nell'aggiornamento";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

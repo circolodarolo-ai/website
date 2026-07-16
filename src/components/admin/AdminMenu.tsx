@@ -144,10 +144,10 @@ export default function AdminMenu() {
       const body = {
         ...(editingArt ? { id: editingArt.id } : {}),
         nome: artForm.nome,
-        descrizione: artForm.descrizione,
+        descrizione: artForm.descrizione || null,
         categoriaId: artForm.categoriaId,
-        prezzo: artForm.prezzo,
-        prezzoPromozionale: artForm.prezzoPromozionale || null,
+        prezzo: parseFloat(artForm.prezzo),
+        prezzoPromozionale: artForm.prezzoPromozionale ? parseFloat(artForm.prezzoPromozionale) : null,
         eBestChoice: artForm.eBestChoice,
         eSurgelato: artForm.eSurgelato,
         attivo: artForm.attivo,
@@ -155,16 +155,25 @@ export default function AdminMenu() {
         immagineAiGenerata: artForm.immagineAiGenerata,
         allergeneIds: artForm.selectedAllergeni,
       };
-      const res = await fetch(editingArt ? '/api/admin/articoli' : '/api/admin/articoli', {
+      const res = await fetch('/api/admin/articoli', {
         method: editingArt ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { toast.error('Errore'); return; }
+      if (!res.ok) {
+        let detail = 'Errore';
+        try { const err = await res.json(); detail = err.error || detail; } catch { /* ignore */ }
+        toast.error(detail);
+        console.error('saveArt failed:', res.status, detail);
+        return;
+      }
       toast.success(editingArt ? 'Articolo aggiornato' : 'Articolo creato');
       setArtDialogOpen(false);
       fetchData();
-    } catch { toast.error('Errore'); }
+    } catch (err) {
+      console.error('saveArt exception:', err);
+      toast.error('Errore di connessione al server');
+    }
   };
 
   const deleteArt = async (id: string) => {
