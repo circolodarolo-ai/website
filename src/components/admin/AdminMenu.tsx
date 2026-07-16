@@ -13,7 +13,8 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Pencil, Trash2, Upload, ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import ImageUploadWithAI from './ImageUploadWithAI';
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface Categoria {
@@ -44,10 +45,9 @@ export default function AdminMenu() {
   const [editingArt, setEditingArt] = useState<Articolo | null>(null);
   const [artForm, setArtForm] = useState({
     nome: '', descrizione: '', categoriaId: '', prezzo: '', prezzoPromozionale: '',
-    eBestChoice: false, eSurgelato: false, attivo: true, immagineUrl: '', selectedAllergeni: [] as string[],
+    eBestChoice: false, eSurgelato: false, attivo: true, immagineUrl: '', immagineAiGenerata: false, selectedAllergeni: [] as string[],
   });
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const artFileInputRef = useRef<HTMLInputElement>(null);
+
 
   const [allDialogOpen, setAllDialogOpen] = useState(false);
   const [editingAll, setEditingAll] = useState<Allergene | null>(null);
@@ -75,24 +75,6 @@ export default function AdminMenu() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  // ─── Image Upload (server-side) ─────────────────────────────────
-  const handleImageUpload = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/admin/upload-image', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!res.ok) { toast.error('Errore nel caricamento'); return null; }
-      const data = await res.json();
-      return data.url as string;
-    } catch {
-      toast.error('Errore nel caricamento dell\'immagine');
-      return null;
-    }
-  };
 
   // ─── Categorie CRUD ────────────────────────────────────────────────
   const openCatDialog = (cat?: Categoria) => {
@@ -168,6 +150,7 @@ export default function AdminMenu() {
         eSurgelato: artForm.eSurgelato,
         attivo: artForm.attivo,
         immagineUrl: artForm.immagineUrl || null,
+        immagineAiGenerata: artForm.immagineAiGenerata,
         allergeneIds: artForm.selectedAllergeni,
       };
       const res = await fetch(editingArt ? '/api/admin/articoli' : '/api/admin/articoli', {
@@ -490,33 +473,15 @@ export default function AdminMenu() {
             </div>
 
             {/* Image Upload */}
-            <div className="space-y-2">
-              <Label>Immagine</Label>
-              <div className="flex gap-2 items-center">
-                <Input value={artForm.immagineUrl} onChange={e => setArtForm({ ...artForm, immagineUrl: e.target.value })} placeholder="URL immagine o carica un file" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  ref={artFileInputRef}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setUploadingImage(true);
-                    const url = await handleImageUpload(file);
-                    setUploadingImage(false);
-                    if (url) setArtForm(f => ({ ...f, immagineUrl: url }));
-                    e.target.value = '';
-                  }}
-                />
-                <Button type="button" variant="outline" disabled={uploadingImage} onClick={() => artFileInputRef.current?.click()}>
-                  {uploadingImage ? '...' : <Upload className="h-4 w-4" />}
-                </Button>
-              </div>
-              {artForm.immagineUrl && (
-                <img src={artForm.immagineUrl} alt="Preview" className="w-32 h-32 object-cover rounded-lg border" />
-              )}
-            </div>
+            <ImageUploadWithAI
+              value={artForm.immagineUrl}
+              onChange={url => setArtForm(f => ({ ...f, immagineUrl: url }))}
+              aiContext={artForm.nome}
+              recommendedSize="800 × 600 px (4:3)"
+              label="Immagine"
+              aiGenerated={artForm.immagineAiGenerata}
+              onAiGeneratedChange={v => setArtForm(f => ({ ...f, immagineAiGenerata: v }))}
+            />
 
             {/* Allergeni */}
             <div className="space-y-2">

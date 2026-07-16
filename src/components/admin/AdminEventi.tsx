@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Upload, Save, ImageIcon, Repeat } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, ImageIcon, Repeat } from 'lucide-react';
+import ImageUploadWithAI from './ImageUploadWithAI';
 
 const GIORNI_SETTIMANA = [
   { value: 'lunedì', label: 'Lun' },
@@ -45,8 +46,6 @@ export default function AdminEventi() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Evento | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -347,42 +346,13 @@ export default function AdminEventi() {
                 <Label>Attivo</Label>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Immagine</Label>
-              <div className="flex gap-2">
-                <Input value={form.immagineUrl} onChange={e => setForm({ ...form, immagineUrl: e.target.value })} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    setUploading(true);
-                    try {
-                      const formData = new FormData();
-                      formData.append('file', file);
-                      const res = await fetch('/api/admin/upload-image', {
-                        method: 'POST',
-                        body: formData,
-                      });
-                      if (res.ok) {
-                        const data = await res.json();
-                        setForm(f => ({ ...f, immagineUrl: data.url }));
-                      } else {
-                        toast.error('Errore nel caricamento');
-                      }
-                    } catch { toast.error('Errore'); }
-                    setUploading(false);
-                    e.target.value = '';
-                  }}
-                />
-                <Button type="button" variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
-                  {uploading ? '...' : <Upload className="h-4 w-4" />}
-                </Button>
-              </div>
-              {form.immagineUrl && <img src={form.immagineUrl} alt="Preview" className="w-32 h-32 object-cover rounded-lg border" />}
-            </div>
+            <ImageUploadWithAI
+              value={form.immagineUrl}
+              onChange={url => setForm(f => ({ ...f, immagineUrl: url }))}
+              aiContext={form.titolo}
+              recommendedSize="1200 × 630 px (16:9, formato eventi/card larghi)"
+              label="Immagine"
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Annulla</Button>
