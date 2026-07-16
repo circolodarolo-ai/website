@@ -19,7 +19,11 @@ const SH_SUBMIT = 'https://stablehorde.net/api/v2/generate/async';
 const SH_CHECK = 'https://stablehorde.net/api/v2/generate/check/';
 const SH_STATUS = 'https://stablehorde.net/api/v2/generate/status/';
 const SH_POLL_MS = 4000;
-const SH_MAX_WAIT = 180000; // 3 min max per Stable Horde
+const SH_MAX_WAIT = 180000;
+
+// Dimensione max per compressione upload (px lato più lungo)
+const MAX_UPLOAD_DIMENSION = 1200;
+const JPEG_QUALITY = 0.78;
 
 function getTodayKey(): string {
   return `ai-gen-${new Date().toISOString().slice(0, 10)}`;
@@ -55,7 +59,6 @@ function buildAutoPrompt(nome?: string, descrizione?: string): string {
   return parts.join(', ');
 }
 
-/** Converte un Blob in data URL base64 */
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -66,17 +69,47 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 /**
- * Strategia 1: Pollination AI via <img> nel DOM (senza crossOrigin).
- * Veloce (5-15s) ma potrebbe non funzionare da alcuni network.
- * Restituisce l'URL diretto Pollination se l'immagine si carica entro il timeout.
+ * Comprime un'immagine ridimensionandola se necessario.
+ * Restituisce un data URL JPEG compresso.
  */
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        let { width, height } = img;
+
+        // Ridimensiona solo se supera la dimensione max
+        if (width > MAX_UPLOAD_DIMENSION || height > MAX_UPLOAD_DIMENSION) {
+          const ratio = Math.min(MAX_UPLOAD_DIMENSION / width, MAX_UPLOAD_DIMENSION / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas non supportato')); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+        resolve(dataUrl);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => reject(new Error('Impossibile leggere il file immagine'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+/** Pollination: tentativo veloce senza crossOrigin */
 function tryPollination(prompt: string, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const seed = Math.floor(Math.random() * 999999);
     const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
-
     const img = new Image();
-    // SENZA crossOrigin — evita CORS, usa solo img-src CSP (ora https:)
 
     const timer = setTimeout(() => {
       img.src = '';
@@ -87,7 +120,6 @@ function tryPollination(prompt: string, timeoutMs: number): Promise<string> {
 
     img.onload = () => {
       clearTimeout(timer);
-      // Verifica che sia un'immagine reale (non un errore 1x1 pixel)
       if (img.naturalWidth < 50 || img.naturalHeight < 50) {
         reject(new Error('immagine troppo piccola'));
         return;
@@ -104,11 +136,7 @@ function tryPollination(prompt: string, timeoutMs: number): Promise<string> {
   });
 }
 
-/**
- * Strategia 2: Stable Horde (fallback affidabile, CORS nativo).
- * Ottimizzato: 512x512, 15 step per velocità.
- * Scarica il blob e converte in data URL base64 (permanente).
- */
+/** Stable Horde: fallback affidabile con ottimizzazione velocità */
 async function stableHordeGenerate(
   prompt: string,
   onStatus: (msg: string) => void,
@@ -142,19 +170,15 @@ async function stableHordeGenerate(
   onStatus('In coda Stable Horde...');
 
   const startTime = Date.now();
-  // Polling
   while (true) {
     if (signal.aborted) throw new Error('Annullato');
-
     await new Promise(r => setTimeout(r, SH_POLL_MS));
     if (Date.now() - startTime > SH_MAX_WAIT) throw new Error('Timeout Stable Horde');
 
     const checkRes = await fetch(`${SH_CHECK}${jobId}`, { signal });
     if (!checkRes.ok) continue;
     const check = await checkRes.json();
-
     if (check.faulted) throw new Error('Generazione fallita sul worker');
-
     if (check.done) break;
 
     const wait = check.wait_time || 0;
@@ -162,25 +186,41 @@ async function stableHordeGenerate(
     onStatus(`Stable Horde: coda ${pos}, ~${wait}s`);
   }
 
-  // Recupera l'immagine
   onStatus('Download immagine...');
   const statusRes = await fetch(`${SH_STATUS}${jobId}`, { signal });
   const status = await statusRes.json();
-
   if (!status.generations?.length) throw new Error('Nessun risultato');
 
   const imgUrl: string = status.generations[0].img;
-
-  // Scarica e converti in base64
   const imgRes = await fetch(imgUrl, { signal });
-  if (!imgRes.ok) {
-    // Fallback: salva URL diretto (può scadere)
-    return imgUrl;
-  }
+  if (!imgRes.ok) return imgUrl;
 
   const blob = await imgRes.blob();
   if (blob.size < 100) throw new Error('Immagine vuota');
-  return blobToDataUrl(blob);
+
+  // Comprimi anche l'immagine AI per ridurre dimensione nel DB
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > MAX_UPLOAD_DIMENSION || h > MAX_UPLOAD_DIMENSION) {
+          const ratio = Math.min(MAX_UPLOAD_DIMENSION / w, MAX_UPLOAD_DIMENSION / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas error')); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+      } catch (e) { reject(e); }
+    };
+    img.onerror = () => reject(new Error('Impossibile decomprimere immagine AI'));
+    img.src = URL.createObjectURL(blob);
+  });
 }
 
 interface ImageUploadWithAIProps {
@@ -225,11 +265,12 @@ export default function ImageUploadWithAI({
   useEffect(() => { setImgError(false); }, [value]);
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
-  // --- Upload file (invariato) ---
+  // --- Upload file con compressione ---
   const handleUpload = useCallback(async (file: File) => {
     setUploading(true);
     setImgError(false);
     try {
+      // Prima tenta l'upload al server
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
@@ -240,17 +281,15 @@ export default function ImageUploadWithAI({
         toast.success('Immagine caricata');
         return;
       }
-      console.warn('Server upload fallito, converto in base64 client-side');
-      const reader = new FileReader();
-      reader.onload = () => {
-        onChange(reader.result as string);
-        onAiGeneratedChange?.(false);
-        toast.success('Immagine caricata (base64)');
-      };
-      reader.onerror = () => toast.error('Errore nella lettura del file');
-      reader.readAsDataURL(file);
-    } catch {
-      toast.error('Errore di connessione');
+      // Fallback: comprimi client-side e salva come base64
+      console.warn('Server upload fallito, comprimo e converto in base64');
+      const compressedUrl = await compressImage(file);
+      onChange(compressedUrl);
+      onAiGeneratedChange?.(false);
+      toast.success('Immagine caricata e compressa');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Errore';
+      toast.error(`Errore upload: ${msg}`);
     } finally {
       setUploading(false);
     }
@@ -274,13 +313,10 @@ export default function ImageUploadWithAI({
     const controller = new AbortController();
     abortRef.current = controller;
     const signal = controller.signal;
-
-    const updateStatus = (msg: string) => {
-      if (!signal.aborted) setGenStatus(msg);
-    };
+    const updateStatus = (msg: string) => { if (!signal.aborted) setGenStatus(msg); };
 
     try {
-      // ═══ Strategia 1: Pollination AI (veloce, ~10s) ═══
+      // Strategia 1: Pollination AI (veloce, ~10s)
       updateStatus('Tentativo veloce con Pollination AI (max 20s)...');
       try {
         const pollinationUrl = await tryPollination(prompt, 20000);
@@ -288,14 +324,14 @@ export default function ImageUploadWithAI({
         onAiGeneratedChange?.(true);
         incrementGenerationCount();
         toast.success('Immagine AI generata con successo');
-        return; // Successo!
+        return;
       } catch {
         updateStatus('Pollination non disponibile, provo Stable Horde...');
       }
 
       if (signal.aborted) return;
 
-      // ═══ Strategia 2: Stable Horde (affidabile, ~30-90s ottimizzato) ═══
+      // Strategia 2: Stable Horde (affidabile, ottimizzato)
       const result = await stableHordeGenerate(prompt, updateStatus, signal);
       onChange(result);
       onAiGeneratedChange?.(true);
@@ -313,7 +349,7 @@ export default function ImageUploadWithAI({
     }
   }, [autoPrompt, remaining, onChange, onAiGeneratedChange]);
 
-  // --- Zoom/pan (invariato) ---
+  // --- Zoom/pan ---
   const openZoom = () => {
     if (!value || imgError) return;
     setZoom(1);
@@ -436,9 +472,9 @@ export default function ImageUploadWithAI({
         </div>
       )}
 
-      {/* Anteprima immagine */}
+      {/* Anteprima immagine con zoom SEMPRE visibile */}
       {value && (
-        <div className="relative group inline-block">
+        <div className="relative inline-block">
           {imgError ? (
             <div className="w-48 h-48 rounded-lg border-2 border-dashed border-red-300 bg-red-50 flex flex-col items-center justify-center text-red-400 text-xs gap-1">
               <ImageIcon className="h-8 w-8" />
@@ -454,18 +490,23 @@ export default function ImageUploadWithAI({
                 onError={() => setImgError(true)}
               />
               {aiGenerated && (
-                <span className="absolute top-1 left-1 text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-medium shadow">
+                <span className="absolute top-1 left-1 text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-medium shadow z-10">
                   AI
                 </span>
               )}
             </>
           )}
+          {/* Zoom button SEMPRE visibile (non solo hover) */}
           {hasImage && (
-            <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button size="icon" variant="secondary" className="h-7 w-7 rounded-full shadow" onClick={openZoom} title="Zoom">
-                <ZoomIn className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <Button
+              size="icon"
+              variant="secondary"
+              className="absolute bottom-1 right-1 h-7 w-7 rounded-full shadow bg-white/90 hover:bg-white"
+              onClick={openZoom}
+              title="Zoom"
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
           )}
         </div>
       )}
