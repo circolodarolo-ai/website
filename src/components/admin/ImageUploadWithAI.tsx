@@ -14,6 +14,13 @@ import { toast } from 'sonner';
 const DAILY_AI_LIMIT = 20;
 const STORAGE_KEY = 'ai-gen-count';
 
+// Stable Horde API (gratuita, CORS: *, nessuna API key necessaria)
+const STABLE_HORDE_SUBMIT = 'https://stablehorde.net/api/v2/generate/async';
+const STABLE_HORDE_CHECK = 'https://stablehorde.net/api/v2/generate/check/';
+const STABLE_HORDE_STATUS = 'https://stablehorde.net/api/v2/generate/status/';
+const POLL_INTERVAL_MS = 5000; // Controlla ogni 5 secondi
+const MAX_WAIT_MS = 120000; // Massimo 2 minuti di attesa
+
 function getTodayKey(): string {
   return `ai-gen-${new Date().toISOString().slice(0, 10)}`;
 }
@@ -73,7 +80,7 @@ export default function ImageUploadWithAI({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [generatingUrl, setGeneratingUrl] = useState<string | null>(null);
+  const [genStatus, setGenStatus] = useState<string>('');
   const [imgError, setImgError] = useState(false);
   const [showAi, setShowAi] = useState(false);
 
@@ -84,13 +91,20 @@ export default function ImageUploadWithAI({
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
+  // Ref per poter cancellare il polling
+  const abortRef = useRef(false);
+
   const remaining = getRemainingGenerations();
   const autoPrompt = buildAutoPrompt(aiContext, aiDescription);
 
   useEffect(() => { setImgError(false); }, [value]);
-  useEffect(() => { if (!generating) setGeneratingUrl(null); }, [generating]);
 
-  // --- Upload file ---
+  // Cleanup: se il componente si smonta durante la generazione, ferma il polling
+  useEffect(() => {
+    return () => { abortRef.current = true; };
+  }, []);
+
+  // --- Upload file (invariato) ---
   const handleUpload = useCallback(async (file: File) => {
     setUploading(true);
     setImgError(false);
@@ -123,9 +137,8 @@ export default function ImageUploadWithAI({
     }
   }, [onChange, onAiGeneratedChange]);
 
-  // --- AI Generation: usa <img> nel DOM (React) con onLoad/onError ---
-  // NON usiamo crossOrigin (evita CORS). L'URL Pollination è permanente (deterministico).
-  const handleGenerate = useCallback(() => {
+  // --- AI Generation via Stable Horde (tutto client-side, CORS nativo) ---
+  const handleGenerate = useCallback(async () => {
     if (!autoPrompt) {
       toast.error('Inserisci il nome del piatto per generare');
       return;
@@ -135,34 +148,137 @@ export default function ImageUploadWithAI({
       return;
     }
 
-    const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
-    const seed = Math.floor(Math.random() * 999999);
-    const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
-
+    abortRef.current = false;
     setGenerating(true);
-    setGeneratingUrl(imageUrl);
     setImgError(false);
-  }, [autoPrompt, remaining]);
+    setGenStatus('Invio richiesta al servizio AI...');
 
-  // Quando l'img nascosto nel DOM carica con successo
-  const handleAiImageLoad = useCallback(() => {
-    if (!generatingUrl) return;
-    onChange(generatingUrl);
-    onAiGeneratedChange?.(true);
-    incrementGenerationCount();
-    setGenerating(false);
-    toast.success('Immagine AI generata con successo');
-  }, [generatingUrl, onChange, onAiGeneratedChange]);
+    const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
 
-  // Quando l'img nascosto nel DOM fallisce
-  const handleAiImageError = useCallback(() => {
-    console.error('AI image failed to load:', generatingUrl);
-    setGenerating(false);
-    setGeneratingUrl(null);
-    toast.error('Errore nella generazione AI. Riprova.');
-  }, [generatingUrl]);
+    try {
+      // 1) Invia il job di generazione a Stable Horde
+      const submitRes = await fetch(STABLE_HORDE_SUBMIT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': '0000000000', // anonimo
+          'Client-Agent': 'RestaurantAdmin:1.0',
+        },
+        body: JSON.stringify({
+          prompt,
+          params: {
+            width: 1024,
+            height: 768,
+            steps: 30,
+            cfg_scale: 7,
+          },
+          nsfw: false,
+          models: ['stable_diffusion'],
+          r2: true,
+        }),
+      });
 
-  // --- Zoom/pan ---
+      if (!submitRes.ok) {
+        const errBody = await submitRes.json().catch(() => ({}));
+        throw new Error(errBody.message || `Errore submit: ${submitRes.status}`);
+      }
+
+      const submitData = await submitRes.json();
+      const jobId: string = submitData.id;
+      setGenStatus('In coda... attesa worker (10-60 secondi)');
+
+      // 2) Polling: controlla lo stato ogni POLL_INTERVAL_MS
+      const startTime = Date.now();
+
+      while (!abortRef.current) {
+        await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+
+        if (abortRef.current) break;
+        if (Date.now() - startTime > MAX_WAIT_MS) {
+          throw new Error('Timeout: la generazione sta impiegando troppo tempo');
+        }
+
+        // Check se è pronta
+        const checkRes = await fetch(`${STABLE_HORDE_CHECK}${jobId}`);
+        if (!checkRes.ok) continue;
+        const checkData = await checkRes.json();
+
+        if (checkData.done) {
+          setGenStatus('Immagine pronta! Download...');
+          break;
+        }
+
+        if (checkData.faulted) {
+          throw new Error('La generazione è fallita sul server. Riprova.');
+        }
+
+        // Aggiorna stato
+        const wait = checkData.wait_time || 0;
+        const queue = checkData.queue_position;
+        setGenStatus(`In elaborazione... pos. coda: ${queue}, ~${wait}s rimasti`);
+      }
+
+      if (abortRef.current) return;
+
+      // 3) Recupera l'URL dell'immagine generata
+      const statusRes = await fetch(`${STABLE_HORDE_STATUS}${jobId}`);
+      if (!statusRes.ok) throw new Error('Errore nel recupero del risultato');
+      const statusData = await statusRes.json();
+
+      if (!statusData.done || !statusData.generations?.length) {
+        throw new Error('Nessuna immagine generata. Riprova.');
+      }
+
+      const generation = statusData.generations[0];
+      const imageUrl: string = generation.img;
+
+      if (!imageUrl) {
+        throw new Error('URL immagine non ricevuto dal server');
+      }
+
+      // 4) Scarica l'immagine come blob e converti in data URL base64
+      //    (l'URL firmato R2 potrebbe scadere, il base64 è permanente)
+      setGenStatus('Download immagine...');
+      const imgRes = await fetch(imageUrl);
+
+      if (!imgRes.ok) {
+        // Se il download diretto fallisce (URL scaduto), salva l'URL comunque
+        console.warn('Download immagine fallito, salvo URL diretto');
+        onChange(imageUrl);
+        onAiGeneratedChange?.(true);
+        incrementGenerationCount();
+        toast.success('Immagine AI generata (URL esterno)');
+        return;
+      }
+
+      const blob = await imgRes.blob();
+      if (blob.size < 100) {
+        throw new Error('Immagine vuota ricevuta. Riprova.');
+      }
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Conversione base64 fallita'));
+        reader.readAsDataURL(blob);
+      });
+
+      onChange(dataUrl);
+      onAiGeneratedChange?.(true);
+      incrementGenerationCount();
+      toast.success('Immagine AI generata con successo');
+    } catch (err: unknown) {
+      if (abortRef.current) return; // Ignora errori dopo abort
+      const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
+      console.error('AI generation error:', msg);
+      toast.error(`Errore AI: ${msg}`);
+    } finally {
+      setGenerating(false);
+      setGenStatus('');
+    }
+  }, [autoPrompt, remaining, onChange, onAiGeneratedChange]);
+
+  // --- Zoom/pan (invariato) ---
   const openZoom = () => {
     if (!value || imgError) return;
     setZoom(1);
@@ -257,23 +373,15 @@ export default function ImageUploadWithAI({
             <span className="italic">{autoPrompt || 'Compila il nome per generare il prompt...'}</span>
           </div>
 
-          {/* Anteprima + loader durante generazione - <img> nel DOM con onLoad/onError */}
-          {generating && generatingUrl && (
-            <div className="relative rounded-lg overflow-hidden border-2 border-dashed border-amber-300 bg-amber-50/50">
-              <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
-                <div className="flex items-center gap-2 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generazione in corso...
-                </div>
-              </div>
-              {/* Questo <img> è nel DOM reale - il browser lo carica tramite img-src CSP */}
-              <img
-                src={generatingUrl}
-                alt="Generazione AI"
-                className="w-full max-h-64 object-contain"
-                onLoad={handleAiImageLoad}
-                onError={handleAiImageError}
-              />
+          {/* Stato generazione */}
+          {generating && (
+            <div className="rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/50 p-5 flex flex-col items-center justify-center gap-2 text-amber-700">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="text-sm font-medium">Generazione AI in corso...</span>
+              {genStatus && (
+                <span className="text-xs text-amber-600 text-center">{genStatus}</span>
+              )}
+              <span className="text-xs text-amber-500">Puoi continuare a usare il pannello, l'immagine apparirá quando pronta</span>
             </div>
           )}
 
