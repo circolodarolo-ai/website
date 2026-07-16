@@ -75,6 +75,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ result });
     }
 
+    if (action === 'translate-all-locales') {
+      // Traduce tutte le lingue supportate in sequenza
+      const results: Record<string, { translated: number; errors: number }> = {};
+      for (const loc of SUPPORTED_LOCALES) {
+        results[loc] = await translateAllContent(loc);
+      }
+      const totalTranslated = Object.values(results).reduce((s, r) => s + r.translated, 0);
+      const totalErrors = Object.values(results).reduce((s, r) => s + r.errors, 0);
+      return NextResponse.json({ results, totalTranslated, totalErrors });
+    }
+
     if (action === 'clear-cache') {
       const count = await clearTranslationCache(locale);
       return NextResponse.json({ deleted: count });

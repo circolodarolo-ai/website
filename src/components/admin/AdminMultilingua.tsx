@@ -55,6 +55,7 @@ export default function AdminMultilingua() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState<string | null>(null);
+  const [translatingAll, setTranslatingAll] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [dbTexts, setDbTexts] = useState<Record<string, string>>({});
 
@@ -148,6 +149,28 @@ export default function AdminMultilingua() {
     }
   };
 
+  const handleTranslateAllLocales = async () => {
+    setTranslatingAll(true);
+    try {
+      const res = await fetch('/api/admin/i18n', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'translate-all-locales' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`${data.totalTranslated} testi tradotti in tutte le lingue, ${data.totalErrors} errori`);
+        fetchSettings();
+      } else {
+        toast.error('Errore nella traduzione');
+      }
+    } catch {
+      toast.error('Errore di connessione');
+    } finally {
+      setTranslatingAll(false);
+    }
+  };
+
   const handleClearCache = async () => {
     setClearing(true);
     try {
@@ -169,7 +192,7 @@ export default function AdminMultilingua() {
   };
 
   const activeLocales = LANGUAGES.filter(l => settings?.[`${l.key}Attivo` as keyof I18nSettings]);
-  const isTranslating = translating !== null;
+  const isTranslating = translating !== null || translatingAll;
 
   if (loading) {
     return (
@@ -266,6 +289,22 @@ export default function AdminMultilingua() {
             </CardTitle>
             {activeLocales.length > 0 && (
               <div className="flex gap-1.5">
+                {activeLocales.length > 1 && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="h-7 text-xs gap-1"
+                    onClick={handleTranslateAllLocales}
+                    disabled={isTranslating}
+                  >
+                    {translatingAll ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Languages className="h-3 w-3" />
+                    )}
+                    Traduci tutto
+                  </Button>
+                )}
                 {activeLocales.map(lang => (
                   <Button
                     key={lang.key}
