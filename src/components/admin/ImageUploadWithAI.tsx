@@ -121,8 +121,11 @@ export default function ImageUploadWithAI({
     }
   }, [onChange, onAiGeneratedChange]);
 
-  // --- AI Generation: usa proxy server-side per evitare CORS ---
-  const handleGenerate = useCallback(async () => {
+  // --- AI Generation: carica immagine diretta da Pollination SENZA crossOrigin ---
+  // NOTA: NON usiamo crossOrigin='anonymous' perché Pollination non restituisce header CORS.
+  // Senza crossOrigin, il browser carica l'immagine come <img> semplice (img-src CSP, già autorizzato).
+  // L'immagine viene poi convertita in canvas → data URL base64 per persistenza nel DB.
+  const handleGenerate = useCallback(() => {
     if (!autoPrompt) {
       toast.error('Inserisci il nome del piatto per generare');
       return;
@@ -137,50 +140,54 @@ export default function ImageUploadWithAI({
 
     const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
     const seed = Math.floor(Math.random() * 999999);
+    const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
 
-    // Usa il proxy server-side per evitare problemi CORS con Pollination
-    const proxyUrl = `/api/proxy-ai-image?prompt=${encodeURIComponent(prompt)}&width=1024&height=768&seed=${seed}`;
+    // Carica l'immagine con new Image() SENZA crossOrigin (evita CORS)
+    const img = new Image();
 
-    // Timeout client-side (il server ha anche il suo timeout a 90s)
     const timeoutId = setTimeout(() => {
+      img.src = '';
       setGenerating(false);
       toast.error('Timeout: la generazione sta impiegando troppo tempo');
-    }, 85000);
+    }, 90000);
 
-    try {
-      const res = await fetch(proxyUrl);
+    img.onload = () => {
       clearTimeout(timeoutId);
+      try {
+        // Converti in data URL base64 tramite canvas per persistenza nel DB
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas non supportato');
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Errore HTTP ${res.status}`);
+        onChange(dataUrl);
+        onAiGeneratedChange?.(true);
+        incrementGenerationCount();
+        toast.success('Immagine AI generata con successo');
+      } catch {
+        // Fallback: usa l'URL diretto Pollination (funziona ma dipende dal servizio)
+        console.warn('Canvas conversione fallita, uso URL diretto');
+        onChange(imageUrl);
+        onAiGeneratedChange?.(true);
+        incrementGenerationCount();
+        toast.success('Immagine AI generata (URL diretto)');
+      } finally {
+        setGenerating(false);
       }
+    };
 
-      // Converti il blob in data URL base64 (persiste nel DB, a differenza dei blob URL)
-      const blob = await res.blob();
-      if (blob.size < 100) {
-        throw new Error('Immagine vuota o troppo piccola. Riprova.');
-      }
-
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Conversione in base64 fallita'));
-        reader.readAsDataURL(blob);
-      });
-
-      onChange(dataUrl);
-      onAiGeneratedChange?.(true);
-      incrementGenerationCount();
-      toast.success('Immagine AI generata con successo');
-    } catch (err: unknown) {
+    img.onerror = () => {
       clearTimeout(timeoutId);
-      const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
-      console.error('AI image generation failed:', msg);
-      toast.error(`Errore generazione AI: ${msg}`);
-    } finally {
+      console.error('AI image failed to load:', imageUrl);
       setGenerating(false);
-    }
+      toast.error('Errore nella generazione AI. Riprova.');
+    };
+
+    // Avvia il caricamento (triggera la generazione su Pollination)
+    img.src = imageUrl;
   }, [autoPrompt, remaining, onChange, onAiGeneratedChange]);
 
   // --- Zoom/pan ---
