@@ -73,7 +73,6 @@ export default function ImageUploadWithAI({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [generatingUrl, setGeneratingUrl] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   const [showAi, setShowAi] = useState(false);
 
@@ -88,7 +87,6 @@ export default function ImageUploadWithAI({
   const autoPrompt = buildAutoPrompt(aiContext, aiDescription);
 
   useEffect(() => { setImgError(false); }, [value]);
-  useEffect(() => { if (!showAi) setGeneratingUrl(null); }, [showAi]);
 
   // --- Upload file ---
   const handleUpload = useCallback(async (file: File) => {
@@ -123,8 +121,8 @@ export default function ImageUploadWithAI({
     }
   }, [onChange, onAiGeneratedChange]);
 
-  // --- AI Generation: usa new Image() per preload + URL diretto Pollination ---
-  const handleGenerate = useCallback(() => {
+  // --- AI Generation: usa proxy server-side per evitare CORS ---
+  const handleGenerate = useCallback(async () => {
     if (!autoPrompt) {
       toast.error('Inserisci il nome del piatto per generare');
       return;
@@ -135,47 +133,54 @@ export default function ImageUploadWithAI({
     }
 
     setGenerating(true);
-    setGeneratingUrl(null);
     setImgError(false);
 
     const prompt = `${autoPrompt}, professional food photography, high quality, appetizing presentation, restaurant style, warm lighting, shallow depth of field`;
     const seed = Math.floor(Math.random() * 999999);
-    const imageUrl = `https://image.pollination.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&seed=${seed}&nologo=true`;
 
-    // Mostra subito l'URL come anteprima durante la generazione
-    setGeneratingUrl(imageUrl);
+    // Usa il proxy server-side per evitare problemi CORS con Pollination
+    const proxyUrl = `/api/proxy-ai-image?prompt=${encodeURIComponent(prompt)}&width=1024&height=768&seed=${seed}`;
 
-    // Usa new Image() per verificare che l'immagine venga effettivamente generata
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-
+    // Timeout client-side (il server ha anche il suo timeout a 90s)
     const timeoutId = setTimeout(() => {
-      // Dopo 60 secondi, se non si è caricata, annulla
-      img.src = '';
       setGenerating(false);
-      setGeneratingUrl(null);
       toast.error('Timeout: la generazione sta impiegando troppo tempo');
-    }, 60000);
+    }, 85000);
 
-    img.onload = () => {
+    try {
+      const res = await fetch(proxyUrl);
       clearTimeout(timeoutId);
-      onChange(imageUrl);
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Errore HTTP ${res.status}`);
+      }
+
+      // Converti il blob in data URL base64 (persiste nel DB, a differenza dei blob URL)
+      const blob = await res.blob();
+      if (blob.size < 100) {
+        throw new Error('Immagine vuota o troppo piccola. Riprova.');
+      }
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Conversione in base64 fallita'));
+        reader.readAsDataURL(blob);
+      });
+
+      onChange(dataUrl);
       onAiGeneratedChange?.(true);
       incrementGenerationCount();
-      setGenerating(false);
       toast.success('Immagine AI generata con successo');
-    };
-
-    img.onerror = () => {
+    } catch (err: unknown) {
       clearTimeout(timeoutId);
-      console.error('AI image failed to load:', imageUrl);
+      const msg = err instanceof Error ? err.message : 'Errore sconosciuto';
+      console.error('AI image generation failed:', msg);
+      toast.error(`Errore generazione AI: ${msg}`);
+    } finally {
       setGenerating(false);
-      setGeneratingUrl(null);
-      toast.error('Errore nella generazione AI. Riprova.');
-    };
-
-    // Avvia il caricamento (questo triggera la generazione su Pollination)
-    img.src = imageUrl;
+    }
   }, [autoPrompt, remaining, onChange, onAiGeneratedChange]);
 
   // --- Zoom/pan ---
@@ -273,20 +278,12 @@ export default function ImageUploadWithAI({
             <span className="italic">{autoPrompt || 'Compila il nome per generare il prompt...'}</span>
           </div>
 
-          {/* Anteprima durante generazione */}
-          {generating && generatingUrl && (
-            <div className="relative rounded-lg overflow-hidden border-2 border-dashed border-amber-300 bg-amber-50/50">
-              <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
-                <div className="flex items-center gap-2 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generazione in corso...
-                </div>
-              </div>
-              <img
-                src={generatingUrl}
-                alt="Generazione AI"
-                className="w-full max-h-64 object-contain"
-              />
+          {/* Indicatore durante generazione */}
+          {generating && (
+            <div className="rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 flex flex-col items-center justify-center gap-2 text-amber-700">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="text-sm font-medium">Generazione AI in corso...</span>
+              <span className="text-xs text-amber-600">L'immagine verrà mostrata a fine generazione (10-30 secondi)</span>
             </div>
           )}
 

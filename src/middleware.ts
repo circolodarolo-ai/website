@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
             "img-src 'self' data: blob: https://flagcdn.com https://*.googleapis.com https://pagead2.googlesyndication.com https://images.unsplash.com https://*.unsplash.com https://image.pollination.ai",
-      "connect-src 'self' https://api.mymemory.translated.net https://translate.googleapis.com https://ip-api.com https://maps.googleapis.com https://www.google.com",
+      "connect-src 'self' https://api.mymemory.translated.net https://translate.googleapis.com https://ip-api.com https://maps.googleapis.com https://www.google.com https://image.pollination.ai",
       "frame-src https://pagead2.googlesyndication.com https://maps.google.com https://www.google.com",
       "object-src 'none'",
       "base-uri 'self'",
